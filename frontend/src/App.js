@@ -33,6 +33,7 @@ function App() {
   return (
     <div>
       <h1>SelfServ Ordering</h1>
+      <p>Hello World</p>
       <Menu addToCart={addToCart} />
       <Cart cart={cart} checkout={checkout} />
     </div>
