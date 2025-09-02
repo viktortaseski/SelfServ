@@ -8,22 +8,30 @@ router.post("/", async (req, res) => {
 
     try {
         // Get table ID from token
-        const [table] = await db.query("SELECT * FROM tables WHERE token = ?", [tableToken]);
-        if (!table.length) return res.status(400).json({ error: "Invalid table" });
+        const tableResult = await db.query(
+            "SELECT * FROM tables WHERE token = $1",
+            [tableToken]
+        );
 
-        const tableId = table[0].id;
+        if (tableResult.rows.length === 0) {
+            return res.status(400).json({ error: "Invalid table" });
+        }
 
-        // Insert order
-        const [result] = await db.query("INSERT INTO orders (tableId, status) VALUES (?, 'pending')", [tableId]);
-        const orderId = result.insertId;
+        const tableId = tableResult.rows[0].id;
+
+        // Insert order and return id
+        const orderResult = await db.query(
+            "INSERT INTO orders (table_id, status) VALUES ($1, 'pending') RETURNING id",
+            [tableId]
+        );
+        const orderId = orderResult.rows[0].id;
 
         // Insert order items
         for (let item of items) {
-            await db.query("INSERT INTO order_items (orderId, menuItemId, quantity) VALUES (?, ?, ?)", [
-                orderId,
-                item.id,
-                item.quantity,
-            ]);
+            await db.query(
+                "INSERT INTO order_items (order_id, menu_item_id, quantity) VALUES ($1, $2, $3)",
+                [orderId, item.id, item.quantity]
+            );
         }
 
         res.json({ success: true, orderId });

@@ -12,5 +12,6 @@ app.use(bodyParser.json());
 app.use("/api/menu", menuRoutes);
 app.use("/api/orders", orderRoutes);
 
-const PORT = 5000;
-app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
+// Important: use Render's port if provided
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));

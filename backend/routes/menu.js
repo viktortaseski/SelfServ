@@ -2,13 +2,13 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
-// GET all menu items
 router.get("/", async (req, res) => {
     try {
-        const [rows] = await db.query("SELECT * FROM menu_items");
-        res.json(rows);
+        const result = await db.query("SELECT * FROM menu_items");
+        res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("DB Error:", err);   // log full error
+        res.status(500).json({ error: err.message || "Unknown DB error" });
     }
 });
 
