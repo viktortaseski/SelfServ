@@ -5,6 +5,7 @@ import Notification from "./components/Notification";
 import api from "./api";
 import "./components/components-style/App.css";
 
+
 function App() {
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
