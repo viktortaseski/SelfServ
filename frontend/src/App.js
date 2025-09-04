@@ -78,16 +78,21 @@ function App() {
       {/* Navbar */}
       <nav className="navbar">
         <h1 className="logo" onClick={() => setView("menu")}>
-          SelfServ {tableName && <span className="table-id">({tableName})</span>}
+          SelfServ
         </h1>
         <div className="cart-icon" onClick={() => setView("cart")}>
           🛒 <span className="cart-count">{cart.length}</span>
         </div>
       </nav>
 
+
       {view === "menu" && (
         <>
-          {tableName && <h2 className="table-banner">You are at {tableName}</h2>}
+          {tableName && (
+            <h2 className="table-banner">
+              You are at {tableName.replace("table", "Table ")}
+            </h2>
+          )}
           <div className="category-grid">
             {["coffee", "drinks", "food", "desserts"].map(cat => (
               <div
