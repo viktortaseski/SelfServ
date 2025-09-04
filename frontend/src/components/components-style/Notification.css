@@ -1,0 +1,47 @@
+.notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 9999;
+
+    /* Animation */
+    animation: slideDown 0.3s ease, fadeOut 0.3s ease 1.7s forwards;
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translate(-50%, -100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: translate(-50%, -50%);
+    }
+}
