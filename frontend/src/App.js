@@ -1,19 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
 import Notification from "./components/Notification";
 import api from "./api";
-import "./App.css";
+import "./components/components-style/App.css";
 
 function App() {
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
   const [category, setCategory] = useState(null);
   const [notification, setNotification] = useState("");
+  const [tableToken, setTableToken] = useState(null);
+  const [tableName, setTableName] = useState(null);
 
-  const showNotification = (msg) => {
-    setNotification(msg);
-  };
+  // Grab token and fetch table info
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get("token");
+    const storedToken = localStorage.getItem("tableToken");
+
+    const activeToken = tokenFromUrl || storedToken;
+    if (activeToken) {
+      setTableToken(activeToken);
+      localStorage.setItem("tableToken", activeToken);
+
+      // fetch table name
+      api.get(`/tables/${activeToken}`)
+        .then(res => setTableName(res.data.name))
+        .catch(() => setTableName("Unknown Table"));
+    }
+  }, []);
+
+  const showNotification = (msg) => setNotification(msg);
 
   const addToCart = (item) => {
     setCart(prev => {
@@ -45,9 +63,6 @@ function App() {
   };
 
   const checkout = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tableToken = urlParams.get("token");
-
     api.post("/orders", { tableToken, items: cart })
       .then(res => {
         showNotification("Order placed! ID: " + res.data.orderId);
@@ -61,7 +76,9 @@ function App() {
     <div className="app-container">
       {/* Navbar */}
       <nav className="navbar">
-        <h1 className="logo" onClick={() => setView("menu")}>SelfServ</h1>
+        <h1 className="logo" onClick={() => setView("menu")}>
+          SelfServ {tableName && <span className="table-id">({tableName})</span>}
+        </h1>
         <div className="cart-icon" onClick={() => setView("cart")}>
           🛒 <span className="cart-count">{cart.length}</span>
         </div>
@@ -69,6 +86,7 @@ function App() {
 
       {view === "menu" && (
         <>
+          {tableName && <h2 className="table-banner">You are at {tableName}</h2>}
           <div className="category-grid">
             {["coffee", "drinks", "food", "desserts"].map(cat => (
               <div
@@ -90,14 +108,11 @@ function App() {
           checkout={checkout}
           addToCart={addToCart}
           removeFromCart={removeFromCart}
+          tableName={tableName}
         />
       )}
 
-      {/* Toast Notification */}
-      <Notification
-        message={notification}
-        onClose={() => setNotification("")}
-      />
+      <Notification message={notification} onClose={() => setNotification("")} />
     </div>
   );
 }

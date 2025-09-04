@@ -1,9 +1,11 @@
-function Cart({ cart, checkout, addToCart, removeFromCart }) {
+function Cart({ cart, checkout, addToCart, removeFromCart, tableName }) {
     const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     return (
         <div className="cart-container">
-            <h2>Your Cart</h2>
+            <h2>
+                Ordering for {tableName ? tableName : "Unknown Table"}
+            </h2>
             {cart.length === 0 && <p>No items yet</p>}
             {cart.map(item => (
                 <div key={item.id} className="cart-item">
