@@ -26,9 +26,14 @@ function App() {
       localStorage.setItem("tableToken", activeToken);
 
       // fetch table name
-      api.get(`/tables/${activeToken}`)
+      api.get(`/tables`, { params: { token: activeToken } })
         .then(res => setTableName(res.data.name))
-        .catch(() => setTableName("Unknown Table"));
+        .catch(() => {
+          setTableName("Unknown Table");
+          // optional: clear stale token so a new scan works
+          localStorage.removeItem("tableToken");
+        });
+
     }
   }, []);
 
