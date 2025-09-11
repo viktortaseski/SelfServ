@@ -46,7 +46,7 @@ router.post("/customer", async (req, res) => {
     try {
         const { table_id, items } = req.body;
 
-        const result = await pool.query(
+        const result = await db.query(
             "INSERT INTO orders (table_id, items, created_by_role) VALUES ($1, $2, 'customer') RETURNING *",
             [table_id, JSON.stringify(items)]
         );
@@ -63,7 +63,7 @@ router.post("/waiter", auth(["waiter", "admin"]), async (req, res) => {
     try {
         const { table_id, items } = req.body;
 
-        const result = await pool.query(
+        const result = await db.query(
             "INSERT INTO orders (table_id, items, created_by_role, waiter_id) VALUES ($1, $2, 'waiter', $3) RETURNING *",
             [table_id, JSON.stringify(items), req.user.id]
         );
