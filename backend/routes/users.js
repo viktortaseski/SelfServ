@@ -3,8 +3,6 @@ const pool = require("../db");
 
 const router = express.Router();
 
-// ⭐ CHANGED: removed JWT entirely, now using sessions
-
 // Register waiter/admin (manual via DB, not public API)
 router.post("/register", async (req, res) => {
     try {
@@ -26,24 +24,27 @@ router.post("/register", async (req, res) => {
     }
 });
 
-// ⭐ CHANGED: Login using sessions
+// Login (plain text version with session)
 router.post("/login", async (req, res) => {
     try {
         const { username, password } = req.body;
-        const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+        console.log("➡️ Login attempt:", { username, password });
 
+        const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
         if (!result.rows.length) return res.status(400).json({ error: "User not found" });
 
         const user = result.rows[0];
         if (password !== user.password) {
+            console.log("❌ Password mismatch for user", username);
             return res.status(400).json({ error: "Invalid password" });
         }
 
-        // Store user in session
         req.session.user = { id: user.id, role: user.role, username: user.username };
+        console.log("✅ Session created:", req.session.user);
+
         res.json({ success: true, role: user.role, username: user.username });
     } catch (err) {
-        console.error(err);
+        console.error("💥 Login error:", err);
         res.status(500).json({ error: "Server error" });
     }
 });

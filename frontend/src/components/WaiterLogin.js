@@ -9,16 +9,11 @@ function WaiterLogin({ onLogin }) {
     useEffect(() => {
         const checkSession = async () => {
             try {
-                const res = await fetch("/api/users/me", {
-                    credentials: "include", // send session cookie
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setLoggedInUser(data);
-                    localStorage.setItem("role", data.role);
-                }
+                const res = await api.get("/users/me", { withCredentials: true }); // ⭐ CHANGED
+                setLoggedInUser(res.data);
+                localStorage.setItem("role", res.data.role);
             } catch (err) {
-                console.error("Session check failed", err);
+                console.log("No active session");
             }
         };
         checkSession();
@@ -26,7 +21,7 @@ function WaiterLogin({ onLogin }) {
 
     const handleLogin = async () => {
         try {
-            const res = await fetch("/api/users/login", {
+            const res = await fetch("/users/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include", // ⭐ include cookies
@@ -51,7 +46,7 @@ function WaiterLogin({ onLogin }) {
 
     const handleLogout = async () => {
         try {
-            await fetch("/api/users/logout", {
+            await fetch("/users/logout", {
                 method: "POST",
                 credentials: "include",
             });
