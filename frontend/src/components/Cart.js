@@ -1,26 +1,52 @@
-function Cart({ cart, checkout, addToCart, removeFromCart, tableName }) {
-    const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+import React from "react";
+
+function Cart({ items, tableId }) {
+    const handleCheckout = async () => {
+        const token = localStorage.getItem("token"); // waiter token if logged in
+        const isWaiter = !!token;
+
+        const endpoint = isWaiter ? "/api/orders/waiter" : "/api/orders/customer";
+
+        try {
+            const res = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(isWaiter && { Authorization: `Bearer ${token}` }),
+                },
+                body: JSON.stringify({
+                    table_id: tableId,
+                    items: items,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                alert(
+                    isWaiter
+                        ? `Order placed by waiter for Table ${tableId}`
+                        : `Order placed by customer at Table ${tableId}`
+                );
+                console.log("Order response:", data);
+            } else {
+                alert(data.error || "Something went wrong");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Server error");
+        }
+    };
 
     return (
-        <div className="cart-container">
-            <h2>
-                Ordering for {tableName ? tableName : "Unknown Table"}
-            </h2>
-            {cart.length === 0 && <p>No items yet</p>}
-            {cart.map(item => (
-                <div key={item.id} className="cart-item">
-                    <span>{item.name}</span>
-                    <div className="cart-controls">
-                        <button onClick={() => removeFromCart(item)}>-</button>
-                        <span>{item.quantity}</span>
-                        <button onClick={() => addToCart(item)}>+</button>
-                    </div>
+        <div>
+            <h2>Your Cart</h2>
+            {items.map((item, i) => (
+                <div key={i}>
+                    {item.name} - {item.quantity}
                 </div>
             ))}
-            <p className="cart-total">Total: €{Number(total).toFixed(2)}</p>
-            {cart.length > 0 && (
-                <button className="checkout-btn" onClick={checkout}>Checkout</button>
-            )}
+            <button onClick={handleCheckout}>Place Order</button>
         </div>
     );
 }

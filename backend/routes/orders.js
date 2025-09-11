@@ -40,4 +40,37 @@ router.post("/", async (req, res) => {
     }
 });
 
+router.post("/customer", async (req, res) => {
+    try {
+        const { table_id, items } = req.body;
+
+        const result = await pool.query(
+            "INSERT INTO orders (table_id, items, created_by_role) VALUES ($1, $2, 'customer') RETURNING *",
+            [table_id, JSON.stringify(items)]
+        );
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// Waiter order (must be authenticated as waiter)
+router.post("/waiter", auth(["waiter", "admin"]), async (req, res) => {
+    try {
+        const { table_id, items } = req.body;
+
+        const result = await pool.query(
+            "INSERT INTO orders (table_id, items, created_by_role, waiter_id) VALUES ($1, $2, 'waiter', $3) RETURNING *",
+            [table_id, JSON.stringify(items), req.user.id]
+        );
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 module.exports = router;
