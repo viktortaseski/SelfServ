@@ -1,26 +1,52 @@
 import React from "react";
 
-function Cart({ cart, tableName, checkout, addToCart, removeFromCart }) {
-    return (
-        <div className="cart-container">
-            <h2>Your Cart</h2>
-            {cart.length === 0 ? (
-                <p>Your cart is empty.</p>
-            ) : (
-                <ul>
-                    {cart.map((item, i) => (
-                        <li key={i}>
-                            {item.name} - {item.quantity}
-                            <button onClick={() => addToCart(item)}>+</button>
-                            <button onClick={() => removeFromCart(item)}>-</button>
-                        </li>
-                    ))}
-                </ul>
-            )}
+function Cart({ items, tableId }) {
+    const handleCheckout = async () => {
+        const token = localStorage.getItem("token"); // waiter token if logged in
+        const isWaiter = !!token;
 
-            <button onClick={checkout}>
-                Place Order at {tableName ? tableName.replace("table", "Table ") : "?"}
-            </button>
+        const endpoint = isWaiter ? "/api/orders/waiter" : "/api/orders/customer";
+
+        try {
+            const res = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(isWaiter && { Authorization: `Bearer ${token}` }),
+                },
+                body: JSON.stringify({
+                    table_id: tableId,
+                    items: items,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                alert(
+                    isWaiter
+                        ? `Order placed by waiter for Table ${tableId}`
+                        : `Order placed by customer at Table ${tableId}`
+                );
+                console.log("Order response:", data);
+            } else {
+                alert(data.error || "Something went wrong");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Server error");
+        }
+    };
+
+    return (
+        <div>
+            <h2>Your Cart</h2>
+            {items.map((item, i) => (
+                <div key={i}>
+                    {item.name} - {item.quantity}
+                </div>
+            ))}
+            <button onClick={handleCheckout}>Place Order</button>
         </div>
     );
 }
