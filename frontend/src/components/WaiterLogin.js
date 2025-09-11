@@ -12,7 +12,12 @@ function WaiterLogin({ onLogin }) {
                 body: JSON.stringify({ username, password }),
             });
 
-            const data = await res.json();
+            let data = {};
+            try {
+                data = await res.json();
+            } catch {
+                data = {};
+            }
 
             if (res.ok && data.token) {
                 localStorage.setItem("token", data.token);
@@ -27,6 +32,7 @@ function WaiterLogin({ onLogin }) {
             alert("Server error");
         }
     };
+
 
     return (
         <div style={{ padding: "20px" }}>
