@@ -1,43 +1,44 @@
+// src/components/Cart.js
 import React from "react";
-import "./components-style/App.css"
+import api from "../api";                 // ✅ use your axios instance
+import "./components-style/App.css";
 
 function Cart({ cart, tableToken, addToCart, removeFromCart }) {
     const handleCheckout = async () => {
         const waiterToken = localStorage.getItem("token");
         const isWaiter = !!waiterToken;
 
-        const endpoint = isWaiter ? "/api/orders/waiter" : "/api/orders/customer";
+        // Endpoints match your backend routes
+        const path = isWaiter ? "/orders/waiter" : "/orders/customer";
 
         try {
-            const res = await fetch(endpoint, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(isWaiter && { Authorization: `Bearer ${waiterToken}` }),
-                },
-                body: JSON.stringify({
-                    tableToken: tableToken,
-                    items: cart,
-                }),
-            });
+            const res = await api.post(
+                path,
+                { tableToken, items: cart },
+                isWaiter
+                    ? { headers: { Authorization: `Bearer ${waiterToken}` } }
+                    : undefined
+            );
 
-            const data = await res.json();
-
-            if (res.ok) {
-                alert(
-                    isWaiter
-                        ? `Order placed by waiter for table token ${tableToken}`
-                        : `Order placed by customer at table token ${tableToken}`
-                );
-                console.log("Order response:", data);
-            } else {
-                alert(data.error || "Something went wrong");
-            }
+            const { orderId } = res.data || {};
+            const msg = isWaiter
+                ? `Order placed by waiter for table token ${tableToken}`
+                : `Order placed by customer at table token ${tableToken}`;
+            alert(orderId ? `${msg}. Order ID: ${orderId}` : msg);
+            console.log("Order response:", res.data);
         } catch (err) {
+            // Axios always gives something parseable
+            const msg =
+                err?.response?.data?.error ||
+                err?.response?.data?.message ||
+                err?.message ||
+                "Something went wrong";
             console.error(err);
-            alert("Server error");
+            alert(msg);
         }
     };
+
+    const disabled = cart.length === 0 || !tableToken;
 
     return (
         <div className="cart-container">
@@ -59,7 +60,8 @@ function Cart({ cart, tableToken, addToCart, removeFromCart }) {
             <button
                 className="checkout-btn"
                 onClick={handleCheckout}
-                disabled={cart.length === 0}
+                disabled={disabled}
+                title={disabled ? "Scan table QR and add items first" : "Place order"}
             >
                 Place Order
             </button>
