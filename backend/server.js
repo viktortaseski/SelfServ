@@ -11,7 +11,7 @@ const usersRouter = require("./routes/users");
 const app = express();
 
 app.use(cors({
-    origin: true,
+    origin: "https://selfserv-web.onrender.com",
     credentials: true
 }));
 

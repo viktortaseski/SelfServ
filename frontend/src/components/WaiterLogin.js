@@ -22,16 +22,10 @@ function WaiterLogin({ onLogin }) {
 
     const handleLogin = async () => {
         try {
-            const res = await fetch("/users/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include", // ⭐ include cookies
-                body: JSON.stringify({ username, password }),
-            });
+            const res = await api.post("/users/login", { username, password });
+            const data = res.data;
 
-            const data = await res.json();
-
-            if (res.ok && data.success) {
+            if (res.status === 200 && data.success) {
                 setLoggedInUser({ username: data.username, role: data.role });
                 localStorage.setItem("role", data.role);
                 if (onLogin) onLogin(data);
@@ -44,6 +38,7 @@ function WaiterLogin({ onLogin }) {
             alert("Server error");
         }
     };
+
 
     const handleLogout = async () => {
         try {
