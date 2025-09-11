@@ -42,4 +42,16 @@ router.get("/:token", async (req, res) => {
     }
 });
 
+// GET /api/tables/all (for waiters/admin)
+router.get("/all", async (req, res) => {
+    try {
+        const result = await pool.query("SELECT id, name FROM restaurant_tables ORDER BY id ASC");
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Error fetching tables:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+
 module.exports = router;

@@ -13,36 +13,46 @@ function App() {
   const [tableToken, setTableToken] = useState(null);
   const [tableName, setTableName] = useState(null);
 
-  // Grab token and fetch table info
+  // ⭐ New: waiter mode
+  const [isWaiter, setIsWaiter] = useState(false);
+  const [tables, setTables] = useState([]);
+  const [selectedTable, setSelectedTable] = useState(null);
+
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tokenFromUrl = urlParams.get("token");
-    const storedToken = localStorage.getItem("tableToken");
+    const role = localStorage.getItem("role");
+    if (role === "waiter" || role === "admin") {
+      setIsWaiter(true);
+      // fetch all tables
+      api.get("/tables/all").then(res => setTables(res.data));
+    } else {
+      // customer flow
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenFromUrl = urlParams.get("token");
+      const storedToken = localStorage.getItem("tableToken");
 
-    const activeToken = tokenFromUrl || storedToken;
-    if (activeToken) {
-      setTableToken(activeToken);
-      localStorage.setItem("tableToken", activeToken);
+      const activeToken = tokenFromUrl || storedToken;
+      if (activeToken) {
+        setTableToken(activeToken);
+        localStorage.setItem("tableToken", activeToken);
 
-      // fetch table name
-      api
-        .get(`/tables`, { params: { token: activeToken } })
-        .then((res) => setTableName(res.data.name))
-        .catch(() => {
-          setTableName("Unknown Table");
-          localStorage.removeItem("tableToken");
-        });
+        api.get(`/tables`, { params: { token: activeToken } })
+          .then(res => setTableName(res.data.name))
+          .catch(() => {
+            setTableName("Unknown Table");
+            localStorage.removeItem("tableToken");
+          });
+      }
     }
   }, []);
 
   const showNotification = (msg) => setNotification(msg);
 
   const addToCart = (item) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
+    setCart(prev => {
+      const existing = prev.find(i => i.id === item.id);
       if (existing) {
         showNotification(`1 ${item.name} added`);
-        return prev.map((i) =>
+        return prev.map(i =>
           i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
@@ -52,15 +62,15 @@ function App() {
   };
 
   const removeFromCart = (item) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
+    setCart(prev => {
+      const existing = prev.find(i => i.id === item.id);
       if (!existing) return prev;
       if (existing.quantity === 1) {
         showNotification(`1 ${item.name} removed`);
-        return prev.filter((i) => i.id !== item.id);
+        return prev.filter(i => i.id !== item.id);
       }
       showNotification(`1 ${item.name} removed`);
-      return prev.map((i) =>
+      return prev.map(i =>
         i.id === item.id ? { ...i, quantity: i.quantity - 1 } : i
       );
     });
@@ -78,41 +88,73 @@ function App() {
         </div>
       </nav>
 
-      {view === "menu" && (
+      {isWaiter ? (
         <>
-          {tableName && (
-            <h2 className="table-banner">
-              You are at {tableName.replace("table", "Table ")}
-            </h2>
-          )}
-          <div className="category-grid">
-            {["coffee", "drinks", "food", "desserts"].map((cat) => (
-              <div
-                key={cat}
-                className="category-card"
-                onClick={() => setCategory(cat)}
-              >
-                {cat.toUpperCase()}
-              </div>
-            ))}
+          <div className="waiter-panel">
+            <h2>Select Table</h2>
+            <select
+              value={selectedTable || ""}
+              onChange={(e) => setSelectedTable(e.target.value)}
+            >
+              <option value="">-- choose table --</option>
+              {tables.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
           </div>
-          <Menu addToCart={addToCart} category={category} />
+          {selectedTable && (
+            <>
+              <Menu addToCart={addToCart} category={category} />
+              {view === "cart" && (
+                <Cart
+                  cart={cart}
+                  addToCart={addToCart}
+                  removeFromCart={removeFromCart}
+                  tableId={selectedTable}   // ⭐ waiter uses ID
+                  isWaiter={true}
+                />
+              )}
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          {view === "menu" && (
+            <>
+              {tableName && (
+                <h2 className="table-banner">
+                  You are at {tableName.replace("table", "Table ")}
+                </h2>
+              )}
+              <div className="category-grid">
+                {["coffee", "drinks", "food", "desserts"].map(cat => (
+                  <div
+                    key={cat}
+                    className="category-card"
+                    onClick={() => setCategory(cat)}
+                  >
+                    {cat.toUpperCase()}
+                  </div>
+                ))}
+              </div>
+              <Menu addToCart={addToCart} category={category} />
+            </>
+          )}
+          {view === "cart" && (
+            <Cart
+              cart={cart}
+              addToCart={addToCart}
+              removeFromCart={removeFromCart}
+              tableToken={tableToken}   // ⭐ customer uses token
+              isWaiter={false}
+            />
+          )}
         </>
       )}
 
-      {view === "cart" && (
-        <Cart
-          cart={cart}
-          addToCart={addToCart}
-          removeFromCart={removeFromCart}
-          tableToken={tableToken}
-        />
-      )}
-
-      <Notification
-        message={notification}
-        onClose={() => setNotification("")}
-      />
+      <Notification message={notification} onClose={() => setNotification("")} />
     </div>
   );
 }
