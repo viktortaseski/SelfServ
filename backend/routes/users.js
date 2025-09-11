@@ -1,12 +1,11 @@
 const express = require("express");
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const pool = require("../db");
 const auth = require("../middleware/auth");
 
 const router = express.Router();
 
-// Register waiter/admin (done manually by manager, not public)
+// Register waiter/admin (manual via DB, not public API)
 router.post("/register", async (req, res) => {
     try {
         const { username, password, role } = req.body;
@@ -15,10 +14,9 @@ router.post("/register", async (req, res) => {
             return res.status(400).json({ error: "Invalid role" });
         }
 
-        const hashed = await bcrypt.hash(password, 10);
         const result = await pool.query(
-            "INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role",
-            [username, hashed, role]
+            "INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role",
+            [username, password, role]
         );
 
         res.json(result.rows[0]);
@@ -28,7 +26,7 @@ router.post("/register", async (req, res) => {
     }
 });
 
-// Login
+// Login (plain text version)
 router.post("/login", async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -37,8 +35,9 @@ router.post("/login", async (req, res) => {
         if (!result.rows.length) return res.status(400).json({ error: "User not found" });
 
         const user = result.rows[0];
-        const match = await bcrypt.compare(password, user.password_hash);
-        if (!match) return res.status(400).json({ error: "Invalid password" });
+        if (password !== user.password) {
+            return res.status(400).json({ error: "Invalid password" });
+        }
 
         const token = jwt.sign(
             { id: user.id, role: user.role, username: user.username },
@@ -53,17 +52,14 @@ router.post("/login", async (req, res) => {
     }
 });
 
+// Create waiter (admin only)
 router.post("/create-waiter", auth(["admin"]), async (req, res) => {
     try {
         const { username, password } = req.body;
 
-        // Hash password
-        const hashed = await bcrypt.hash(password, 10);
-
-        // Insert waiter
         const result = await pool.query(
-            "INSERT INTO users (username, password_hash, role) VALUES ($1, $2, 'waiter') RETURNING id, username, role",
-            [username, hashed]
+            "INSERT INTO users (username, password, role) VALUES ($1, $2, 'waiter') RETURNING id, username, role",
+            [username, password]
         );
 
         res.json(result.rows[0]);
