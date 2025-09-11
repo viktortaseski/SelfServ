@@ -1,21 +1,43 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 function WaiterLogin({ onLogin }) {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [loggedInUser, setLoggedInUser] = useState(null);
+
+    // ⭐ NEW: Check if already logged in on mount
+    useEffect(() => {
+        const checkSession = async () => {
+            try {
+                const res = await fetch("/api/users/me", {
+                    credentials: "include", // send session cookie
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setLoggedInUser(data);
+                    localStorage.setItem("role", data.role);
+                }
+            } catch (err) {
+                console.error("Session check failed", err);
+            }
+        };
+        checkSession();
+    }, []);
 
     const handleLogin = async () => {
         try {
             const res = await fetch("/api/users/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include", // ⭐ CHANGED: include cookies
+                credentials: "include", // ⭐ include cookies
                 body: JSON.stringify({ username, password }),
             });
 
             const data = await res.json();
 
             if (res.ok && data.success) {
+                setLoggedInUser({ username: data.username, role: data.role });
+                localStorage.setItem("role", data.role);
                 if (onLogin) onLogin(data);
                 alert(`Welcome ${data.role} ${username}!`);
             } else {
@@ -27,24 +49,49 @@ function WaiterLogin({ onLogin }) {
         }
     };
 
+    const handleLogout = async () => {
+        try {
+            await fetch("/api/users/logout", {
+                method: "POST",
+                credentials: "include",
+            });
+            setLoggedInUser(null);
+            localStorage.removeItem("role");
+            alert("Logged out successfully");
+        } catch (err) {
+            console.error("Logout failed", err);
+        }
+    };
+
     return (
         <div style={{ padding: "20px" }}>
             <h2>Waiter Login</h2>
-            <input
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-            />
-            <br />
-            <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-            />
-            <br />
-            <button onClick={handleLogin}>Login</button>
+            {loggedInUser ? (
+                <div>
+                    <p>
+                        Logged in as <b>{loggedInUser.username}</b> ({loggedInUser.role})
+                    </p>
+                    <button onClick={handleLogout}>Logout</button>
+                </div>
+            ) : (
+                <>
+                    <input
+                        type="text"
+                        placeholder="Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                    />
+                    <br />
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <br />
+                    <button onClick={handleLogin}>Login</button>
+                </>
+            )}
         </div>
     );
 }
