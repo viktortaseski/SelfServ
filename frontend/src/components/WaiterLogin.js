@@ -1,29 +1,50 @@
 import React, { useState } from "react";
 
-function WaiterLogin({ setToken }) {
+function WaiterLogin({ onLogin }) {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
 
     const handleLogin = async () => {
-        const res = await fetch("/api/users/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password }),
-        });
-        const data = await res.json();
-        if (data.token) {
-            localStorage.setItem("token", data.token);
-            setToken(data.token);
-        } else {
-            alert(data.error);
+        try {
+            const res = await fetch("/api/users/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password }),
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.token) {
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("role", data.role);
+                if (onLogin) onLogin(data);
+                alert(`Welcome waiter ${username}!`);
+            } else {
+                alert(data.error || "Login failed");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Server error");
         }
     };
 
     return (
-        <div>
+        <div style={{ padding: "20px" }}>
             <h2>Waiter Login</h2>
-            <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username" />
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" />
+            <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+            />
+            <br />
+            <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+            />
+            <br />
             <button onClick={handleLogin}>Login</button>
         </div>
     );
