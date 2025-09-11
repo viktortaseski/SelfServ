@@ -1,23 +1,18 @@
-const jwt = require("jsonwebtoken");
+// ⭐ CHANGED: replaced JWT with session check
 
 const authMiddleware = (roles = []) => {
     return (req, res, next) => {
-        const authHeader = req.headers["authorization"];
-        if (!authHeader) {
-            return res.status(401).json({ error: "Missing token" });
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: "Not authenticated" });
         }
 
-        const token = authHeader.split(" ")[1];
-        jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-            if (err) return res.status(403).json({ error: "Invalid token" });
+        const user = req.session.user;
+        if (roles.length && !roles.includes(user.role)) {
+            return res.status(403).json({ error: "Forbidden: insufficient role" });
+        }
 
-            if (roles.length && !roles.includes(user.role)) {
-                return res.status(403).json({ error: "Forbidden: insufficient role" });
-            }
-
-            req.user = user; // attach user to request
-            next();
-        });
+        req.user = user; // attach user from session
+        next();
     };
 };
 

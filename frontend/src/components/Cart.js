@@ -1,33 +1,34 @@
-// src/components/Cart.js
 import React from "react";
-import api from "../api";                 // ✅ use your axios instance
+import api from "../api";
 import "./components-style/App.css";
 
 function Cart({ cart, tableToken, addToCart, removeFromCart }) {
     const handleCheckout = async () => {
-        const waiterToken = localStorage.getItem("token");
-        const isWaiter = !!waiterToken;
-
-        // Endpoints match your backend routes
-        const path = isWaiter ? "/orders/waiter" : "/orders/customer";
+        // ⭐ CHANGED: no token in localStorage anymore
+        const resPath = "/orders/customer";
 
         try {
-            const res = await api.post(
-                path,
-                { tableToken, items: cart },
-                isWaiter
-                    ? { headers: { Authorization: `Bearer ${waiterToken}` } }
-                    : undefined
-            );
+            let res;
+            if (localStorage.getItem("role") === "waiter") {
+                // waiter request → include session cookie
+                res = await api.post(
+                    "/orders/waiter",
+                    { tableToken, items: cart },
+                    { withCredentials: true } // ⭐ CHANGED
+                );
+            } else {
+                // customer request
+                res = await api.post("/orders/customer", { tableToken, items: cart });
+            }
 
             const { orderId } = res.data || {};
-            const msg = isWaiter
-                ? `Order placed by waiter for table token ${tableToken}`
-                : `Order placed by customer at table token ${tableToken}`;
+            const msg =
+                localStorage.getItem("role") === "waiter"
+                    ? `Order placed by waiter for table token ${tableToken}`
+                    : `Order placed by customer at table token ${tableToken}`;
             alert(orderId ? `${msg}. Order ID: ${orderId}` : msg);
             console.log("Order response:", res.data);
         } catch (err) {
-            // Axios always gives something parseable
             const msg =
                 err?.response?.data?.error ||
                 err?.response?.data?.message ||

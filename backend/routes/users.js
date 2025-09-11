@@ -1,9 +1,9 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
 const pool = require("../db");
-const auth = require("../middleware/auth");
 
 const router = express.Router();
+
+// ⭐ CHANGED: removed JWT entirely, now using sessions
 
 // Register waiter/admin (manual via DB, not public API)
 router.post("/register", async (req, res) => {
@@ -26,7 +26,7 @@ router.post("/register", async (req, res) => {
     }
 });
 
-// Login (plain text version)
+// ⭐ CHANGED: Login using sessions
 router.post("/login", async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -39,34 +39,28 @@ router.post("/login", async (req, res) => {
             return res.status(400).json({ error: "Invalid password" });
         }
 
-        const token = jwt.sign(
-            { id: user.id, role: user.role, username: user.username },
-            process.env.JWT_SECRET,
-            { expiresIn: "8h" }
-        );
-
-        res.json({ token, role: user.role });
+        // Store user in session
+        req.session.user = { id: user.id, role: user.role, username: user.username };
+        res.json({ success: true, role: user.role, username: user.username });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Server error" });
     }
 });
 
-// Create waiter (admin only)
-router.post("/create-waiter", auth(["admin"]), async (req, res) => {
-    try {
-        const { username, password } = req.body;
-
-        const result = await pool.query(
-            "INSERT INTO users (username, password, role) VALUES ($1, $2, 'waiter') RETURNING id, username, role",
-            [username, password]
-        );
-
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error("Create waiter error:", err);
-        res.status(500).json({ error: "Server error" });
+// ⭐ NEW: check current session
+router.get("/me", (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Not logged in" });
     }
+    res.json(req.session.user);
+});
+
+// ⭐ NEW: logout
+router.post("/logout", (req, res) => {
+    req.session.destroy(() => {
+        res.json({ success: true });
+    });
 });
 
 module.exports = router;
