@@ -4,22 +4,22 @@ const pool = require("../db");
 
 // GET /api/tables?token=abc
 router.get("/", async (req, res) => {
+    const { token } = req.query;
+    if (!token) {
+        return res.status(400).json({ error: "Missing token" });
+    }
     try {
-        const { token } = req.query;
-        if (!token) return res.status(400).json({ error: "token is required" });
-
         const result = await pool.query(
             "SELECT * FROM restaurant_tables WHERE token = $1",
             [token]
         );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: "Invalid or expired table token" });
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Sitting table not found" });
         }
-        res.json(result.rows[0]);
+        return res.json(result.rows[0]);
     } catch (err) {
         console.error("GET /api/tables error:", err);
-        res.status(500).json({ error: "Server error" });
+        return res.status(500).json({ error: "Server error" });
     }
 });
 

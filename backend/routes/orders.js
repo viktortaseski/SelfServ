@@ -1,63 +1,113 @@
+// backend/routes/orders.js
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 const auth = require("../middleware/auth");
 
+// Helper: insert items for an order
+async function insertOrderItems(client, orderId, items) {
+    // Adjust column names if your order_items schema differs
+    // Assumes: order_items(order_id, item_id, quantity)
+    const text = `INSERT INTO order_items (order_id, item_id, quantity) VALUES ($1, $2, $3)`;
+    for (const it of items) {
+        const quantity = Number(it.quantity) > 0 ? Number(it.quantity) : 1;
+        await client.query(text, [orderId, it.id, quantity]);
+    }
+}
+
 // Customer order (no login required)
 router.post("/customer", async (req, res) => {
-    try {
-        const { tableToken, items } = req.body;
+    const { tableToken, items } = req.body;
 
-        // Lookup table by token
-        const tableRes = await pool.query(
+    if (!tableToken) {
+        return res.status(400).json({ error: "Missing table token" });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Cart is empty" });
+    }
+
+    const client = await pool.connect();
+    try {
+        // Validate table
+        const tRes = await client.query(
             "SELECT id FROM restaurant_tables WHERE token = $1",
             [tableToken]
         );
-
-        if (!tableRes.rows.length) {
+        if (tRes.rowCount === 0) {
             return res.status(400).json({ error: "Invalid table token" });
         }
+        const tableId = tRes.rows[0].id;
 
-        const tableId = tableRes.rows[0].id;
+        await client.query("BEGIN");
 
-        const result = await pool.query(
-            "INSERT INTO orders (table_id, items, created_by_role) VALUES ($1, $2, 'customer') RETURNING *",
-            [tableId, JSON.stringify(items)]
+        // Create order
+        const oRes = await client.query(
+            `INSERT INTO orders (table_id, created_by_role, status)
+       VALUES ($1, 'customer', 'pending')
+       RETURNING id`,
+            [tableId]
         );
+        const orderId = oRes.rows[0].id;
 
-        res.json(result.rows[0]);
+        // Insert items
+        await insertOrderItems(client, orderId, items);
+
+        await client.query("COMMIT");
+        return res.status(201).json({ orderId });
     } catch (err) {
+        await client.query("ROLLBACK");
         console.error("Customer order error:", err);
-        res.status(500).json({ error: "Server error" });
+        return res.status(500).json({ error: "Server error" });
+    } finally {
+        client.release();
     }
 });
 
 // Waiter order (requires login)
 router.post("/waiter", auth(["waiter", "admin"]), async (req, res) => {
-    try {
-        const { tableToken, items } = req.body;
+    const { tableToken, items } = req.body;
 
-        // Lookup table by token
-        const tableRes = await pool.query(
+    if (!tableToken) {
+        return res.status(400).json({ error: "Missing table token" });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Cart is empty" });
+    }
+
+    const client = await pool.connect();
+    try {
+        // Validate table
+        const tRes = await client.query(
             "SELECT id FROM restaurant_tables WHERE token = $1",
             [tableToken]
         );
-
-        if (!tableRes.rows.length) {
+        if (tRes.rowCount === 0) {
             return res.status(400).json({ error: "Invalid table token" });
         }
+        const tableId = tRes.rows[0].id;
 
-        const tableId = tableRes.rows[0].id;
+        await client.query("BEGIN");
 
-        const result = await pool.query(
-            "INSERT INTO orders (table_id, items, created_by_role, waiter_id) VALUES ($1, $2, 'waiter', $3) RETURNING *",
-            [tableId, JSON.stringify(items), req.user.id]
+        // Create order with waiter_id
+        const oRes = await client.query(
+            `INSERT INTO orders (table_id, created_by_role, status, waiter_id)
+       VALUES ($1, 'waiter', 'pending', $2)
+       RETURNING id`,
+            [tableId, req.user.id]
         );
+        const orderId = oRes.rows[0].id;
 
-        res.json(result.rows[0]);
+        // Insert items
+        await insertOrderItems(client, orderId, items);
+
+        await client.query("COMMIT");
+        return res.status(201).json({ orderId });
     } catch (err) {
+        await client.query("ROLLBACK");
         console.error("Waiter order error:", err);
-        res.status(500).json({ error: "Server error" });
+        return res.status(500).json({ error: "Server error" });
+    } finally {
+        client.release();
     }
 });
 

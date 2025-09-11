@@ -1,3 +1,4 @@
+// src/App.js
 import { useState, useEffect } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
@@ -30,6 +31,7 @@ function App() {
         .then((res) => setTableName(res.data.name))
         .catch(() => {
           setTableName("Unknown Table");
+          // optional: clear stale token so a new scan works
           localStorage.removeItem("tableToken");
         });
     }

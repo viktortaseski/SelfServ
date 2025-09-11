@@ -1,5 +1,15 @@
+// src/components/Cart.js
 import React from "react";
-import "./components-style/App.css"
+import "./components-style/App.css";
+
+async function parseResponse(res) {
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+        return res.json();
+    }
+    const text = await res.text();
+    return { message: text };
+}
 
 function Cart({ cart, tableToken, addToCart, removeFromCart }) {
     const handleCheckout = async () => {
@@ -16,28 +26,30 @@ function Cart({ cart, tableToken, addToCart, removeFromCart }) {
                     ...(isWaiter && { Authorization: `Bearer ${waiterToken}` }),
                 },
                 body: JSON.stringify({
-                    tableToken: tableToken,
+                    tableToken,
                     items: cart,
                 }),
             });
 
-            const data = await res.json();
+            const data = await parseResponse(res);
 
             if (res.ok) {
-                alert(
+                const msg =
                     isWaiter
                         ? `Order placed by waiter for table token ${tableToken}`
-                        : `Order placed by customer at table token ${tableToken}`
-                );
+                        : `Order placed by customer at table token ${tableToken}`;
+                alert(data?.orderId ? `${msg}. Order ID: ${data.orderId}` : msg);
                 console.log("Order response:", data);
             } else {
-                alert(data.error || "Something went wrong");
+                alert(data?.error || data?.message || "Something went wrong");
             }
         } catch (err) {
             console.error(err);
             alert("Server error");
         }
     };
+
+    const disabled = cart.length === 0 || !tableToken;
 
     return (
         <div className="cart-container">
@@ -59,7 +71,8 @@ function Cart({ cart, tableToken, addToCart, removeFromCart }) {
             <button
                 className="checkout-btn"
                 onClick={handleCheckout}
-                disabled={cart.length === 0}
+                disabled={disabled}
+                title={disabled ? "Scan table QR and add items first" : "Place order"}
             >
                 Place Order
             </button>
