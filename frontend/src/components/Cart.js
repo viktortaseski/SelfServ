@@ -1,9 +1,9 @@
 import React from "react";
 
-function Cart({ items, tableId }) {
+function Cart({ cart, tableToken, addToCart, removeFromCart }) {
     const handleCheckout = async () => {
-        const token = localStorage.getItem("token"); // waiter token if logged in
-        const isWaiter = !!token;
+        const waiterToken = localStorage.getItem("token"); // waiter JWT if logged in
+        const isWaiter = !!waiterToken;
 
         const endpoint = isWaiter ? "/api/orders/waiter" : "/api/orders/customer";
 
@@ -12,11 +12,11 @@ function Cart({ items, tableId }) {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    ...(isWaiter && { Authorization: `Bearer ${token}` }),
+                    ...(isWaiter && { Authorization: `Bearer ${waiterToken}` }),
                 },
                 body: JSON.stringify({
-                    table_id: tableId,
-                    items: items,
+                    tableToken: tableToken, // always send token, backend resolves to id
+                    items: cart,
                 }),
             });
 
@@ -25,8 +25,8 @@ function Cart({ items, tableId }) {
             if (res.ok) {
                 alert(
                     isWaiter
-                        ? `Order placed by waiter for Table ${tableId}`
-                        : `Order placed by customer at Table ${tableId}`
+                        ? `Order placed by waiter for ${tableToken}`
+                        : `Order placed by customer at ${tableToken}`
                 );
                 console.log("Order response:", data);
             } else {
@@ -41,12 +41,16 @@ function Cart({ items, tableId }) {
     return (
         <div>
             <h2>Your Cart</h2>
-            {items.map((item, i) => (
+            {cart.map((item, i) => (
                 <div key={i}>
                     {item.name} - {item.quantity}
+                    <button onClick={() => removeFromCart(item)}>-</button>
+                    <button onClick={() => addToCart(item)}>+</button>
                 </div>
             ))}
-            <button onClick={handleCheckout}>Place Order</button>
+            <button onClick={handleCheckout} disabled={cart.length === 0}>
+                Place Order
+            </button>
         </div>
     );
 }

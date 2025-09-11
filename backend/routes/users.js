@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const pool = require("../db");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -48,6 +49,26 @@ router.post("/login", async (req, res) => {
         res.json({ token, role: user.role });
     } catch (err) {
         console.error(err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+router.post("/create-waiter", auth(["admin"]), async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        // Hash password
+        const hashed = await bcrypt.hash(password, 10);
+
+        // Insert waiter
+        const result = await pool.query(
+            "INSERT INTO users (username, password_hash, role) VALUES ($1, $2, 'waiter') RETURNING id, username, role",
+            [username, hashed]
+        );
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error("Create waiter error:", err);
         res.status(500).json({ error: "Server error" });
     }
 });
