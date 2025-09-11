@@ -13,17 +13,20 @@ function App() {
   const [tableToken, setTableToken] = useState(null);
   const [tableName, setTableName] = useState(null);
 
-  // ⭐ New: waiter mode
+  // ⭐ Waiter mode
   const [isWaiter, setIsWaiter] = useState(false);
   const [tables, setTables] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
 
   useEffect(() => {
     const role = localStorage.getItem("role");
+
     if (role === "waiter" || role === "admin") {
+      // waiter/admin flow
       setIsWaiter(true);
-      // fetch all tables
-      api.get("/tables/all").then(res => setTables(res.data));
+      api.get("/tables/all")
+        .then(res => setTables(res.data))
+        .catch(err => console.error("Failed to fetch tables", err));
     } else {
       // customer flow
       const urlParams = new URLSearchParams(window.location.search);
@@ -84,7 +87,7 @@ function App() {
           SelfServ
         </h1>
         <div className="cart-icon" onClick={() => setView("cart")}>
-          🛒 <span className="cart-count">{cart.length}</span>
+          🛒 My Cart<span className="cart-count">{cart.length}</span>
         </div>
       </nav>
 
@@ -94,7 +97,11 @@ function App() {
             <h2>Select Table</h2>
             <select
               value={selectedTable || ""}
-              onChange={(e) => setSelectedTable(e.target.value)}
+              onChange={(e) => {
+                setSelectedTable(parseInt(e.target.value));
+                setCart([]); // clear cart when switching tables
+                setCategory(null);
+              }}
             >
               <option value="">-- choose table --</option>
               {tables.map(t => (
@@ -104,6 +111,7 @@ function App() {
               ))}
             </select>
           </div>
+
           {selectedTable && (
             <>
               <Menu addToCart={addToCart} category={category} />
@@ -112,7 +120,7 @@ function App() {
                   cart={cart}
                   addToCart={addToCart}
                   removeFromCart={removeFromCart}
-                  tableId={selectedTable}   // ⭐ waiter uses ID
+                  tableId={selectedTable}   // ✅ waiter uses ID
                   isWaiter={true}
                 />
               )}
@@ -147,7 +155,7 @@ function App() {
               cart={cart}
               addToCart={addToCart}
               removeFromCart={removeFromCart}
-              tableToken={tableToken}   // ⭐ customer uses token
+              tableToken={tableToken}   // ✅ customer uses token
               isWaiter={false}
             />
           )}
