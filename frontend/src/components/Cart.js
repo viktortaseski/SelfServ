@@ -1,8 +1,9 @@
 import React from "react";
+import "./components-style/App.css"
 
 function Cart({ cart, tableToken, addToCart, removeFromCart }) {
     const handleCheckout = async () => {
-        const waiterToken = localStorage.getItem("token"); // waiter JWT if logged in
+        const waiterToken = localStorage.getItem("token");
         const isWaiter = !!waiterToken;
 
         const endpoint = isWaiter ? "/api/orders/waiter" : "/api/orders/customer";
@@ -15,7 +16,7 @@ function Cart({ cart, tableToken, addToCart, removeFromCart }) {
                     ...(isWaiter && { Authorization: `Bearer ${waiterToken}` }),
                 },
                 body: JSON.stringify({
-                    tableToken: tableToken, // always send token, backend resolves to id
+                    tableToken: tableToken,
                     items: cart,
                 }),
             });
@@ -25,8 +26,8 @@ function Cart({ cart, tableToken, addToCart, removeFromCart }) {
             if (res.ok) {
                 alert(
                     isWaiter
-                        ? `Order placed by waiter for ${tableToken}`
-                        : `Order placed by customer at ${tableToken}`
+                        ? `Order placed by waiter for table token ${tableToken}`
+                        : `Order placed by customer at table token ${tableToken}`
                 );
                 console.log("Order response:", data);
             } else {
@@ -39,16 +40,27 @@ function Cart({ cart, tableToken, addToCart, removeFromCart }) {
     };
 
     return (
-        <div>
-            <h2>Your Cart</h2>
-            {cart.map((item, i) => (
-                <div key={i}>
-                    {item.name} - {item.quantity}
-                    <button onClick={() => removeFromCart(item)}>-</button>
-                    <button onClick={() => addToCart(item)}>+</button>
-                </div>
-            ))}
-            <button onClick={handleCheckout} disabled={cart.length === 0}>
+        <div className="cart-container">
+            <h2 className="cart-title">Your Cart</h2>
+            {cart.length === 0 && <p className="empty-cart">Your cart is empty</p>}
+            <ul className="cart-list">
+                {cart.map((item, i) => (
+                    <li key={i} className="cart-item">
+                        <span className="cart-item-name">
+                            {item.name} × {item.quantity}
+                        </span>
+                        <div className="cart-controls">
+                            <button onClick={() => removeFromCart(item)}>-</button>
+                            <button onClick={() => addToCart(item)}>+</button>
+                        </div>
+                    </li>
+                ))}
+            </ul>
+            <button
+                className="checkout-btn"
+                onClick={handleCheckout}
+                disabled={cart.length === 0}
+            >
                 Place Order
             </button>
         </div>
