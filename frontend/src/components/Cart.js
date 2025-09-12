@@ -9,7 +9,7 @@ function Cart({ cart, tableToken, tableId, addToCart, removeFromCart, isWaiter }
             if (isWaiter) {
                 console.log(isWaiter, "tableID: ", tableId, "tableToken: ", tableToken);
                 res = await api.post("/orders/waiter", {
-                    tableId,   // ✅ backend now expects this
+                    tableToken,
                     items: cart
                 });
             } else {
