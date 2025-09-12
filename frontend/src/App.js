@@ -91,6 +91,7 @@ function App() {
           category={category}
           setCategory={setCategory}
           view={view}
+          setView={setView}
         />
       ) : (
         <>

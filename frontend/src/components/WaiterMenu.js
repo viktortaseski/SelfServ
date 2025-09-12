@@ -3,7 +3,7 @@ import { useState } from "react";
 import Menu from "./Menu";
 import Cart from "./Cart";
 import "./components-style/App.css";
-import "./components-style/Waiter.css"
+import "./components-style/Waiter.css";
 
 function WaiterMenu({
     tableId,
@@ -14,6 +14,7 @@ function WaiterMenu({
     category,
     setCategory,
     view,
+    setView,       // ✅ NEW prop
     goBack,
 }) {
     const [search, setSearch] = useState("");
@@ -26,7 +27,10 @@ function WaiterMenu({
                     <button onClick={goBack}>⬅ Back to Tables</button>
                     <h2>Ordering for {tableId}</h2>
                 </div>
-                <button className="order-btn" onClick={() => alert("Place order logic here")}>
+                <button
+                    className="order-btn"
+                    onClick={() => setView("cart")}   // ✅ redirect to Cart
+                >
                     Order
                 </button>
             </div>
