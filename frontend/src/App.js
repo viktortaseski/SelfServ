@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
 import Notification from "./components/Notification";
+import WaiterUI from "./components/WaiterUI";   // ⭐ new import
 import api from "./api";
 import "./components/components-style/App.css";
 
@@ -12,23 +13,13 @@ function App() {
   const [notification, setNotification] = useState("");
   const [tableToken, setTableToken] = useState(null);
   const [tableName, setTableName] = useState(null);
-
-  // ⭐ Waiter mode
   const [isWaiter, setIsWaiter] = useState(false);
-  const [tables, setTables] = useState([]);
-  const [selectedTable, setSelectedTable] = useState(null);
 
   useEffect(() => {
     const role = localStorage.getItem("role");
-
     if (role === "waiter" || role === "admin") {
-      // waiter/admin flow
       setIsWaiter(true);
-      api.get("/tables/all")
-        .then(res => setTables(res.data))
-        .catch(err => console.error("Failed to fetch tables", err));
     } else {
-      // customer flow
       const urlParams = new URLSearchParams(window.location.search);
       const tokenFromUrl = urlParams.get("token");
       const storedToken = localStorage.getItem("tableToken");
@@ -92,41 +83,15 @@ function App() {
       </nav>
 
       {isWaiter ? (
-        <>
-          <div className="waiter-panel">
-            <h2>Select Table</h2>
-            <select
-              value={selectedTable || ""}
-              onChange={(e) => {
-                setSelectedTable(parseInt(e.target.value));
-                setCart([]); // clear cart when switching tables
-                setCategory(null);
-              }}
-            >
-              <option value="">-- choose table --</option>
-              {tables.map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {selectedTable && (
-            <>
-              <Menu addToCart={addToCart} category={category} />
-              {view === "cart" && (
-                <Cart
-                  cart={cart}
-                  addToCart={addToCart}
-                  removeFromCart={removeFromCart}
-                  tableId={selectedTable}   // ✅ waiter uses ID
-                  isWaiter={true}
-                />
-              )}
-            </>
-          )}
-        </>
+        <WaiterUI
+          cart={cart}
+          setCart={setCart}
+          addToCart={addToCart}
+          removeFromCart={removeFromCart}
+          category={category}
+          setCategory={setCategory}
+          view={view}
+        />
       ) : (
         <>
           {view === "menu" && (
@@ -155,7 +120,7 @@ function App() {
               cart={cart}
               addToCart={addToCart}
               removeFromCart={removeFromCart}
-              tableToken={tableToken}   // ✅ customer uses token
+              tableToken={tableToken}
               isWaiter={false}
             />
           )}
