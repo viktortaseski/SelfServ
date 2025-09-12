@@ -5,8 +5,8 @@ import "./components-style/App.css";
 import "./components-style/Waiter.css";
 
 function WaiterMenu({
-    tableId,        // ✅ restored
-    tableToken,     // ✅ keep token to pass to Cart
+    tableId,        // ✅ shows which table is active
+    tableToken,     // ✅ pass token to Cart for waiter flow
     cart,
     setCart,
     addToCart,
@@ -27,12 +27,7 @@ function WaiterMenu({
                     <button onClick={goBack}>⬅ Back to Tables</button>
                     <h2>Ordering for {tableId}</h2>
                 </div>
-                <button
-                    className="order-btn"
-                    onClick={() => setView("cart")}
-                >
-                    Order
-                </button>
+                {/* Order button moved to floating FAB; header keeps clean */}
             </div>
 
             {/* Search bar */}
@@ -54,10 +49,20 @@ function WaiterMenu({
                     cart={cart}
                     addToCart={addToCart}
                     removeFromCart={removeFromCart}
-                    tableToken={tableToken}   // ✅ backend resolves to table_id
+                    tableToken={tableToken}
                     isWaiter={true}
                 />
             )}
+
+            {/* 🟦 Floating, always-visible Order button (bottom-left) */}
+            <button
+                type="button"
+                className="order-fab"
+                onClick={() => setView("cart")}
+                aria-label="Open cart to place order"
+            >
+                Order
+            </button>
         </div>
     );
 }

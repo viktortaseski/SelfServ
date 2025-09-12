@@ -11,6 +11,7 @@
     gap: 1rem;
 }
 
+/* Old header button style (kept in case you re-use it elsewhere) */
 .order-btn {
     background-color: #007bff;
     border: none;
@@ -36,4 +37,57 @@
     border: 1px solid #ccc;
     border-radius: 8px;
     font-size: 1rem;
+}
+
+/* Ensure content never hides behind the floating button */
+.waiter-menu {
+    position: relative;
+    padding-bottom: 96px;
+    /* space for FAB */
+}
+
+/* 🟦 Floating Order button (always visible) */
+.order-fab {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 1000;
+
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 9999px;
+
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 0.9rem 1.4rem;
+
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    transition: transform 0.08s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    width: auto;
+    min-width: 120px;
+    text-align: center;
+}
+
+.order-fab:hover {
+    background-color: #0066d1;
+    box-shadow: 0 12px 22px rgba(0, 0, 0, 0.18);
+}
+
+.order-fab:active {
+    transform: translateY(1px);
+}
+
+.order-fab:focus-visible {
+    outline: 3px solid rgba(0, 123, 255, 0.4);
+    outline-offset: 2px;
+}
+
+/* Slightly larger on big screens */
+@media (min-width: 1024px) {
+    .order-fab {
+        font-size: 1.05rem;
+        padding: 1rem 1.6rem;
+    }
 }

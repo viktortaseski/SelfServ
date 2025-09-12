@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
 import Notification from "./components/Notification";
-import WaiterUI from "./components/WaiterUI";   // ⭐ new import
+import WaiterUI from "./components/WaiterUI";
 import api from "./api";
 import "./components/components-style/App.css";
 
@@ -29,8 +29,9 @@ function App() {
         setTableToken(activeToken);
         localStorage.setItem("tableToken", activeToken);
 
-        api.get(`/tables`, { params: { token: activeToken } })
-          .then(res => setTableName(res.data.name))
+        api
+          .get(`/tables`, { params: { token: activeToken } })
+          .then((res) => setTableName(res.data.name))
           .catch(() => {
             setTableName("Unknown Table");
             localStorage.removeItem("tableToken");
@@ -42,11 +43,11 @@ function App() {
   const showNotification = (msg) => setNotification(msg);
 
   const addToCart = (item) => {
-    setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
+    setCart((prev) => {
+      const existing = prev.find((i) => i.id === item.id);
       if (existing) {
         showNotification(`1 ${item.name} added`);
-        return prev.map(i =>
+        return prev.map((i) =>
           i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
@@ -56,15 +57,15 @@ function App() {
   };
 
   const removeFromCart = (item) => {
-    setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
+    setCart((prev) => {
+      const existing = prev.find((i) => i.id === item.id);
       if (!existing) return prev;
       if (existing.quantity === 1) {
         showNotification(`1 ${item.name} removed`);
-        return prev.filter(i => i.id !== item.id);
+        return prev.filter((i) => i.id !== item.id);
       }
       showNotification(`1 ${item.name} removed`);
-      return prev.map(i =>
+      return prev.map((i) =>
         i.id === item.id ? { ...i, quantity: i.quantity - 1 } : i
       );
     });
@@ -77,9 +78,11 @@ function App() {
         <h1 className="logo" onClick={() => setView("menu")}>
           SelfServ
         </h1>
-        <div className="cart-icon" onClick={() => setView("cart")}>
-          🛒 My Cart<span className="cart-count">{cart.length}</span>
-        </div>
+
+        {/* 👤 Replace “My Cart” with “My Profile” linking to waiter login */}
+        <a className="cart-icon" href="#/waiter-login">
+          👤 My Profile
+        </a>
       </nav>
 
       {isWaiter ? (
@@ -103,7 +106,7 @@ function App() {
                 </h2>
               )}
               <div className="category-grid">
-                {["coffee", "drinks", "food", "desserts"].map(cat => (
+                {["coffee", "drinks", "food", "desserts"].map((cat) => (
                   <div
                     key={cat}
                     className="category-card"
