@@ -5,7 +5,7 @@ import "./components-style/App.css";
 import "./components-style/Waiter.css";
 
 function WaiterMenu({
-    tableId,
+    tableToken,
     cart,
     setCart,
     addToCart,
@@ -20,21 +20,19 @@ function WaiterMenu({
 
     return (
         <div className="waiter-menu">
-            {/* Header row with back + order button */}
             <div className="waiter-menu-header">
                 <div className="header-left">
                     <button onClick={goBack}>⬅ Back to Tables</button>
-                    <h2>Ordering for {tableId}</h2>
+                    <h2>Ordering for {tableToken}</h2>
                 </div>
                 <button
                     className="order-btn"
-                    onClick={() => setView("cart")}   // ✅ now works
+                    onClick={() => setView("cart")}
                 >
                     Order
                 </button>
             </div>
 
-            {/* Search bar */}
             <div className="search-bar">
                 <input
                     type="text"
@@ -44,7 +42,6 @@ function WaiterMenu({
                 />
             </div>
 
-            {/* Menu + Cart */}
             {view === "menu" && (
                 <Menu addToCart={addToCart} category={category} search={search} />
             )}
@@ -54,7 +51,7 @@ function WaiterMenu({
                     cart={cart}
                     addToCart={addToCart}
                     removeFromCart={removeFromCart}
-                    tableId={tableId}
+                    tableToken={tableToken}   // ✅ pass token here
                     isWaiter={true}
                 />
             )}

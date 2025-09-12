@@ -5,7 +5,7 @@ const pool = require("../db");
 // GET /api/tables/all (for waiters/admin)
 router.get("/all", async (req, res) => {
     try {
-        const result = await pool.query("SELECT id, name FROM restaurant_tables ORDER BY id ASC");
+        const result = await pool.query("SELECT id, name, token FROM restaurant_tables ORDER BY id ASC");
         res.json(result.rows);
     } catch (err) {
         console.error("Error fetching tables:", err);

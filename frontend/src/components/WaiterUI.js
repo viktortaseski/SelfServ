@@ -11,7 +11,7 @@ function WaiterUI({
     category,
     setCategory,
     view,
-    setView,   // ✅ accept setView from App
+    setView,
 }) {
     const [tables, setTables] = useState([]);
     const [selectedTable, setSelectedTable] = useState(null);
@@ -23,11 +23,10 @@ function WaiterUI({
             .catch((err) => console.error("Failed to fetch tables", err));
     }, []);
 
-    // If a table has been chosen, show WaiterMenu instead of the table grid
     if (selectedTable) {
         return (
             <WaiterMenu
-                tableId={selectedTable}
+                tableToken={selectedTable.token}   // ✅ pass token
                 cart={cart}
                 setCart={setCart}
                 addToCart={addToCart}
@@ -35,18 +34,17 @@ function WaiterUI({
                 category={category}
                 setCategory={setCategory}
                 view={view}
-                setView={setView}   // ✅ forward setView
+                setView={setView}
                 goBack={() => {
                     setSelectedTable(null);
                     setCart([]);
                     setCategory(null);
-                    setView("menu"); // ✅ reset view when going back
+                    setView("menu");
                 }}
             />
         );
     }
 
-    // Otherwise show table grid
     return (
         <div className="waiter-ui">
             <h2>Select a Table</h2>
@@ -55,7 +53,7 @@ function WaiterUI({
                     <div
                         key={t.id}
                         className="table-card"
-                        onClick={() => setSelectedTable(t.id)}
+                        onClick={() => setSelectedTable(t)}
                     >
                         {t.name}
                     </div>

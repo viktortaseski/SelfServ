@@ -2,12 +2,11 @@ import React from "react";
 import api from "../api";
 import "./components-style/App.css";
 
-function Cart({ cart, tableToken, tableId, addToCart, removeFromCart, isWaiter }) {
+function Cart({ cart, tableToken, addToCart, removeFromCart, isWaiter }) {
     const handleCheckout = async () => {
         try {
             let res;
             if (isWaiter) {
-                console.log(isWaiter, "tableID: ", tableId, "tableToken: ", tableToken);
                 res = await api.post("/orders/waiter", {
                     tableToken,
                     items: cart
@@ -20,11 +19,7 @@ function Cart({ cart, tableToken, tableId, addToCart, removeFromCart, isWaiter }
             }
 
             const { orderId } = res.data || {};
-            alert(
-                orderId
-                    ? `Order placed! ID: ${orderId}`
-                    : "Order placed!"
-            );
+            alert(orderId ? `Order placed! ID: ${orderId}` : "Order placed!");
         } catch (err) {
             const msg =
                 err?.response?.data?.error ||
@@ -35,7 +30,7 @@ function Cart({ cart, tableToken, tableId, addToCart, removeFromCart, isWaiter }
         }
     };
 
-    const disabled = cart.length === 0 || (!isWaiter && !tableToken) || (isWaiter && !tableId);
+    const disabled = cart.length === 0 || !tableToken;
 
     return (
         <div className="cart-container">

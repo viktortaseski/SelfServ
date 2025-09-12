@@ -29,7 +29,6 @@ router.post("/customer", async (req, res) => {
 
     const client = await pool.connect();
     try {
-        // Validate table by token
         const tRes = await client.query(
             "SELECT id FROM restaurant_tables WHERE token = $1",
             [tableToken]
@@ -41,7 +40,6 @@ router.post("/customer", async (req, res) => {
 
         await client.query("BEGIN");
 
-        // Create order
         const oRes = await client.query(
             `INSERT INTO orders (table_id, created_by_role, status)
              VALUES ($1, 'customer', 'pending')
@@ -50,7 +48,6 @@ router.post("/customer", async (req, res) => {
         );
         const orderId = oRes.rows[0].id;
 
-        // Create order items
         await insertOrderItems(client, orderId, items);
 
         await client.query("COMMIT");
@@ -77,7 +74,6 @@ router.post("/waiter", auth(["waiter", "admin"]), async (req, res) => {
 
     const client = await pool.connect();
     try {
-        // Validate table by token
         const tRes = await client.query(
             "SELECT id FROM restaurant_tables WHERE token = $1",
             [tableToken]
@@ -89,23 +85,21 @@ router.post("/waiter", auth(["waiter", "admin"]), async (req, res) => {
 
         await client.query("BEGIN");
 
-        // Create order
         const oRes = await client.query(
-            `INSERT INTO orders (table_id, created_by_role, status)
-             VALUES ($1, 'customer', 'pending')
+            `INSERT INTO orders (table_id, created_by_role, status, waiter_id)
+             VALUES ($1, 'waiter', 'pending', $2)
              RETURNING id`,
-            [tableId]
+            [tableId, req.user.id]
         );
         const orderId = oRes.rows[0].id;
 
-        // Create order items
         await insertOrderItems(client, orderId, items);
 
         await client.query("COMMIT");
         return res.status(201).json({ orderId });
     } catch (err) {
         await client.query("ROLLBACK");
-        console.error("POST /orders/customer error:", err);
+        console.error("POST /orders/waiter error:", err);
         return res.status(500).json({ error: "Server error" });
     } finally {
         client.release();
