@@ -5,7 +5,8 @@ import "./components-style/App.css";
 import "./components-style/Waiter.css";
 
 function WaiterMenu({
-    tableToken,
+    tableId,        // ✅ restored
+    tableToken,     // ✅ keep token to pass to Cart
     cart,
     setCart,
     addToCart,
@@ -20,10 +21,11 @@ function WaiterMenu({
 
     return (
         <div className="waiter-menu">
+            {/* Header row */}
             <div className="waiter-menu-header">
                 <div className="header-left">
                     <button onClick={goBack}>⬅ Back to Tables</button>
-                    <h2>Ordering for {tableToken}</h2>
+                    <h2>Ordering for {tableId}</h2>
                 </div>
                 <button
                     className="order-btn"
@@ -33,6 +35,7 @@ function WaiterMenu({
                 </button>
             </div>
 
+            {/* Search bar */}
             <div className="search-bar">
                 <input
                     type="text"
@@ -51,7 +54,7 @@ function WaiterMenu({
                     cart={cart}
                     addToCart={addToCart}
                     removeFromCart={removeFromCart}
-                    tableToken={tableToken}   // ✅ pass token here
+                    tableToken={tableToken}   // ✅ backend resolves to table_id
                     isWaiter={true}
                 />
             )}

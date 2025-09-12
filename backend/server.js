@@ -32,7 +32,7 @@ app.use(session({
     cookie: {
         secure: true,        // ✅ must be true in production (HTTPS)
         httpOnly: true,
-        sameSite: "None",    // ✅ required for cross-site cookies
+        sameSite: "none",    // ✅ required for cross-site cookies
         maxAge: 1000 * 60 * 60 * 8 // 8 hours
     }
 }));
