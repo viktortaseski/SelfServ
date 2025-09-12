@@ -22,7 +22,11 @@ function WaiterLogin({ onLogin }) {
 
     const handleLogin = async () => {
         try {
-            const res = await api.post("/users/login", { username, password });
+            const res = await api.post(
+                "/users/login",
+                { username, password },
+                { withCredentials: true }   // ⭐ ensure cookie is stored
+            );
             const data = res.data;
 
             if (res.status === 200 && data.success) {
@@ -38,7 +42,6 @@ function WaiterLogin({ onLogin }) {
             alert("Server error");
         }
     };
-
 
     const handleLogout = async () => {
         try {

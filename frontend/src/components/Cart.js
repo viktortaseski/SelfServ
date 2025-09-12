@@ -10,7 +10,7 @@ function Cart({ cart, tableToken, addToCart, removeFromCart, isWaiter }) {
                 res = await api.post(
                     "/orders/waiter",
                     { tableToken, items: cart },
-                    { withCredentials: true }   // ✅ force include cookies
+                    { withCredentials: true }   // ⭐ send cookie with request
                 );
             } else {
                 res = await api.post("/orders/customer", {
