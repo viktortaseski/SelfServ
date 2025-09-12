@@ -1,3 +1,4 @@
+// src/components/Cart.js
 import React from "react";
 import api from "../api";
 import "./components-style/App.css";
@@ -10,22 +11,17 @@ function Cart({ cart, tableToken, addToCart, removeFromCart, isWaiter }) {
                 res = await api.post(
                     "/orders/waiter",
                     { tableToken, items: cart },
-                    { withCredentials: true }   // ⭐ send cookie with request
+                    { withCredentials: true }
                 );
             } else {
-                res = await api.post("/orders/customer", {
-                    tableToken,
-                    items: cart
-                });
+                res = await api.post("/orders/customer", { tableToken, items: cart });
             }
 
             const { orderId } = res.data || {};
             alert(orderId ? `Order placed! ID: ${orderId}` : "Order placed!");
         } catch (err) {
             const msg =
-                err?.response?.data?.error ||
-                err?.message ||
-                "Something went wrong";
+                err?.response?.data?.error || err?.message || "Something went wrong";
             console.error(err);
             alert(msg);
         }
@@ -50,11 +46,7 @@ function Cart({ cart, tableToken, addToCart, removeFromCart, isWaiter }) {
                     </li>
                 ))}
             </ul>
-            <button
-                className="checkout-btn"
-                onClick={handleCheckout}
-                disabled={disabled}
-            >
+            <button className="checkout-btn" onClick={handleCheckout} disabled={disabled}>
                 {isWaiter ? "Place Order (No Payment)" : "Place Order"}
             </button>
         </div>

@@ -1,3 +1,4 @@
+// src/components/WaiterLogin.js
 import React, { useState, useEffect } from "react";
 import api from "../api";
 
@@ -6,14 +7,13 @@ function WaiterLogin({ onLogin }) {
     const [password, setPassword] = useState("");
     const [loggedInUser, setLoggedInUser] = useState(null);
 
-    // ⭐ NEW: Check if already logged in on mount
     useEffect(() => {
         const checkSession = async () => {
             try {
-                const res = await api.get("/users/me", { withCredentials: true }); // ⭐ CHANGED
+                const res = await api.get("/users/me", { withCredentials: true });
                 setLoggedInUser(res.data);
                 localStorage.setItem("role", res.data.role);
-            } catch (err) {
+            } catch {
                 console.log("No active session");
             }
         };
@@ -25,7 +25,7 @@ function WaiterLogin({ onLogin }) {
             const res = await api.post(
                 "/users/login",
                 { username, password },
-                { withCredentials: true }   // ⭐ ensure cookie is stored
+                { withCredentials: true }
             );
             const data = res.data;
 
@@ -45,10 +45,7 @@ function WaiterLogin({ onLogin }) {
 
     const handleLogout = async () => {
         try {
-            await fetch("/users/logout", {
-                method: "POST",
-                credentials: "include",
-            });
+            await api.post("/users/logout", {}, { withCredentials: true });
             setLoggedInUser(null);
             localStorage.removeItem("role");
             alert("Logged out successfully");
@@ -66,7 +63,9 @@ function WaiterLogin({ onLogin }) {
                         Logged in as <b>{loggedInUser.username}</b> ({loggedInUser.role})
                     </p>
                     <button onClick={handleLogout}>Logout</button>
-                    <button onClick={() => window.location.href = "/"}>Waiter Menu</button>
+                    <button onClick={() => (window.location.href = "/")}>
+                        Waiter Menu
+                    </button>
                 </div>
             ) : (
                 <>
