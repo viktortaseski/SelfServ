@@ -8,7 +8,7 @@ function Cart({ cart, tableToken, tableId, addToCart, removeFromCart, isWaiter }
             let res;
             if (isWaiter) {
                 res = await api.post("/orders/waiter", {
-                    tableId,
+                    tableId,   // ✅ backend now expects this
                     items: cart
                 });
             } else {
