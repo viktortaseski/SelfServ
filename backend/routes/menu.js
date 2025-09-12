@@ -1,14 +1,27 @@
+// routes/menu.js
 const express = require("express");
 const router = express.Router();
-const db = require("../db");
+const pool = require("../db");
 
+// GET /api/menu?search=espresso
 router.get("/", async (req, res) => {
     try {
-        const result = await db.query("SELECT * FROM menu_items");
+        const search = req.query.search;
+        let result;
+
+        if (search) {
+            result = await pool.query(
+                "SELECT * FROM menu_items WHERE LOWER(name) LIKE LOWER($1)",
+                [`%${search}%`]
+            );
+        } else {
+            result = await pool.query("SELECT * FROM menu_items ORDER BY id ASC");
+        }
+
         res.json(result.rows);
     } catch (err) {
-        console.error("DB Error:", err);   // log full error
-        res.status(500).json({ error: err.message || "Unknown DB error" });
+        console.error("GET /api/menu error:", err);
+        res.status(500).json({ error: "Server error" });
     }
 });
 

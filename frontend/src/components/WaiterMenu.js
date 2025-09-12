@@ -1,5 +1,9 @@
+// src/components/WaiterMenu.js
+import { useState } from "react";
 import Menu from "./Menu";
 import Cart from "./Cart";
+import "./components-style/App.css";
+import "./components-style/Waiter.css"
 
 function WaiterMenu({
     tableId,
@@ -12,15 +16,34 @@ function WaiterMenu({
     view,
     goBack,
 }) {
+    const [search, setSearch] = useState("");
+
     return (
         <div className="waiter-menu">
+            {/* Header row with back + order button */}
             <div className="waiter-menu-header">
-                <h2>Ordering for {tableId}</h2>
-                <button onClick={goBack}>⬅ Back to Tables</button>
+                <div className="header-left">
+                    <button onClick={goBack}>⬅ Back to Tables</button>
+                    <h2>Ordering for {tableId}</h2>
+                </div>
+                <button className="order-btn" onClick={() => alert("Place order logic here")}>
+                    Order
+                </button>
             </div>
 
+            {/* Search bar */}
+            <div className="search-bar">
+                <input
+                    type="text"
+                    placeholder="Search menu..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                />
+            </div>
+
+            {/* Menu + Cart */}
             {view === "menu" && (
-                <Menu addToCart={addToCart} category={category} />
+                <Menu addToCart={addToCart} category={category} search={search} />
             )}
 
             {view === "cart" && (
@@ -28,7 +51,7 @@ function WaiterMenu({
                     cart={cart}
                     addToCart={addToCart}
                     removeFromCart={removeFromCart}
-                    tableId={tableId} // waiter uses numeric ID
+                    tableId={tableId}
                     isWaiter={true}
                 />
             )}
