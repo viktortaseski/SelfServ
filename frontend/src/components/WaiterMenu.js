@@ -1,4 +1,3 @@
-// src/components/WaiterMenu.js
 import { useState } from "react";
 import Menu from "./Menu";
 import Cart from "./Cart";
@@ -14,7 +13,7 @@ function WaiterMenu({
     category,
     setCategory,
     view,
-    setView,       // ✅ NEW prop
+    setView,
     goBack,
 }) {
     const [search, setSearch] = useState("");
@@ -29,7 +28,7 @@ function WaiterMenu({
                 </div>
                 <button
                     className="order-btn"
-                    onClick={() => setView("cart")}   // ✅ redirect to Cart
+                    onClick={() => setView("cart")}   // ✅ now works
                 >
                     Order
                 </button>

@@ -3,7 +3,16 @@ import api from "../api";
 import "./components-style/App.css";
 import WaiterMenu from "./WaiterMenu";
 
-function WaiterUI({ cart, setCart, addToCart, removeFromCart, category, setCategory, view }) {
+function WaiterUI({
+    cart,
+    setCart,
+    addToCart,
+    removeFromCart,
+    category,
+    setCategory,
+    view,
+    setView,   // ✅ accept setView from App
+}) {
     const [tables, setTables] = useState([]);
     const [selectedTable, setSelectedTable] = useState(null);
 
@@ -26,11 +35,12 @@ function WaiterUI({ cart, setCart, addToCart, removeFromCart, category, setCateg
                 category={category}
                 setCategory={setCategory}
                 view={view}
+                setView={setView}   // ✅ forward setView
                 goBack={() => {
-                    // reset selection if waiter wants to choose another table
                     setSelectedTable(null);
                     setCart([]);
                     setCategory(null);
+                    setView("menu"); // ✅ reset view when going back
                 }}
             />
         );
