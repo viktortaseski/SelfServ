@@ -148,6 +148,10 @@
     margin-top: 1rem;
 }
 
+.table-banner {
+    text-align: center;
+}
+
 .table-card {
     background-color: #f4f4f4;
     border: 2px solid #ccc;
