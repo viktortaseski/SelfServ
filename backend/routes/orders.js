@@ -66,10 +66,10 @@ router.post("/customer", async (req, res) => {
 
 // POST /api/orders/waiter (auth required)
 router.post("/waiter", auth(["waiter", "admin"]), async (req, res) => {
-    const { tableId, items } = req.body; // ✅ now expecting tableId
+    const { tableToken, items } = req.body;
 
-    if (!tableId) {
-        return res.status(400).json({ error: "Missing table ID" });
+    if (!tableToken) {
+        return res.status(400).json({ error: "Missing table token" });
     }
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: "Cart is empty" });
@@ -77,14 +77,24 @@ router.post("/waiter", auth(["waiter", "admin"]), async (req, res) => {
 
     const client = await pool.connect();
     try {
+        // Validate table by token
+        const tRes = await client.query(
+            "SELECT id FROM restaurant_tables WHERE token = $1",
+            [tableToken]
+        );
+        if (tRes.rowCount === 0) {
+            return res.status(400).json({ error: "Invalid table token" });
+        }
+        const tableId = tRes.rows[0].id;
+
         await client.query("BEGIN");
 
-        // Create order with waiter_id
+        // Create order
         const oRes = await client.query(
-            `INSERT INTO orders (table_id, created_by_role, status, waiter_id)
-             VALUES ($1, 'waiter', 'pending', $2)
+            `INSERT INTO orders (table_id, created_by_role, status)
+             VALUES ($1, 'customer', 'pending')
              RETURNING id`,
-            [tableId, req.user.id]
+            [tableId]
         );
         const orderId = oRes.rows[0].id;
 
@@ -95,7 +105,7 @@ router.post("/waiter", auth(["waiter", "admin"]), async (req, res) => {
         return res.status(201).json({ orderId });
     } catch (err) {
         await client.query("ROLLBACK");
-        console.error("POST /orders/waiter error:", err);
+        console.error("POST /orders/customer error:", err);
         return res.status(500).json({ error: "Server error" });
     } finally {
         client.release();
