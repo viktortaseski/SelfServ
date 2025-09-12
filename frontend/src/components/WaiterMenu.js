@@ -5,8 +5,8 @@ import "./components-style/App.css";
 import "./components-style/Waiter.css";
 
 function WaiterMenu({
-    tableId,        // ✅ shows which table is active
-    tableToken,     // ✅ pass token to Cart for waiter flow
+    tableId,        // shows which table is active
+    tableToken,     // pass token to Cart for waiter flow
     cart,
     setCart,
     addToCart,
@@ -27,7 +27,6 @@ function WaiterMenu({
                     <button onClick={goBack}>⬅ Back to Tables</button>
                     <h2>Ordering for {tableId}</h2>
                 </div>
-                {/* Order button moved to floating FAB; header keeps clean */}
             </div>
 
             {/* Search bar */}
@@ -54,7 +53,7 @@ function WaiterMenu({
                 />
             )}
 
-            {/* 🟦 Floating, always-visible Order button (bottom-left) */}
+            {/* Floating, always-visible Order button (bottom-left) */}
             <button
                 type="button"
                 className="order-fab"

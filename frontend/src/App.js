@@ -5,6 +5,7 @@ import Notification from "./components/Notification";
 import WaiterUI from "./components/WaiterUI";
 import api from "./api";
 import "./components/components-style/App.css";
+import "./components/components-style/Waiter.css"; // bring in profile/order styles
 
 function App() {
   const [cart, setCart] = useState([]);
@@ -79,10 +80,16 @@ function App() {
           SelfServ
         </h1>
 
-        {/* 👤 Replace “My Cart” with “My Profile” linking to waiter login */}
-        <a className="cart-icon" href="#/waiter-login">
-          👤 My Profile
-        </a>
+        {/* Waiter/Admin: show My Profile; Customer: show My Cart */}
+        {isWaiter ? (
+          <a className="profile-link" href="#/waiter-login">
+            👤 My Profile
+          </a>
+        ) : (
+          <div className="cart-icon" onClick={() => setView("cart")}>
+            🛒 My Cart <span className="cart-count">{cart.length}</span>
+          </div>
+        )}
       </nav>
 
       {isWaiter ? (
