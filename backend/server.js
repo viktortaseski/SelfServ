@@ -10,33 +10,35 @@ const usersRouter = require("./routes/users");
 
 const app = express();
 
-// CORS
 app.use(cors({
     origin: [
-        "https://selfserv-web.onrender.com",  // prod frontend
-        "http://localhost:3000",             // dev
+        "https://selfserv-web.onrender.com",
+        "https://selfserv.onrender.com",
+        "http://localhost:3000",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Set-Cookie"],   // ⭐ allow browser to see it
     credentials: true
 }));
+
 
 // Body parser
 app.use(bodyParser.json());
 
-// Session (for cookie-based auth)
 app.use(session({
     secret: process.env.SESSION_SECRET || "keyboardcat",
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: true,        // ✅ must be true in production (HTTPS)
+        secure: true,
         httpOnly: true,
-        sameSite: "none",    // ✅ required for cross-site cookies
-        domain: ".onrender.com",
-        maxAge: 1000 * 60 * 60 * 8 // 8 hours
+        sameSite: "none",
+        domain: ".onrender.com",   // so it works across both subdomains
+        maxAge: 1000 * 60 * 60 * 8
     }
 }));
+
 
 // Routes
 app.use("/api/menu", menuRoutes);
