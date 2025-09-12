@@ -3,7 +3,7 @@ const authMiddleware = (roles = []) => {
     return (req, res, next) => {
         console.log("🔑 Session data:", req.session);
         if (!req.session || !req.session.user) {
-            console.log(req.session.user);
+            console.log("Session.user: ", req.session.user);
             return res.status(401).json({ error: "Not authenticated" });
         }
 

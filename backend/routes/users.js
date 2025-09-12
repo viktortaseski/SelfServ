@@ -40,7 +40,7 @@ router.post("/login", async (req, res) => {
         }
 
         req.session.user = { id: user.id, role: user.role, username: user.username };
-        console.log("✅ Session created:", req.session.user);
+        console.log("✅ Session created:", req.session.user, " REQ.SESSION ", req.session);
 
         res.json({ success: true, role: user.role, username: user.username });
     } catch (err) {

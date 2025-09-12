@@ -66,6 +66,7 @@ function WaiterLogin({ onLogin }) {
                         Logged in as <b>{loggedInUser.username}</b> ({loggedInUser.role})
                     </p>
                     <button onClick={handleLogout}>Logout</button>
+                    <button onClick={() => window.location.href = "/"}>Waiter Menu</button>
                 </div>
             ) : (
                 <>

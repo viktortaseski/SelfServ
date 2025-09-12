@@ -33,6 +33,7 @@ app.use(session({
         secure: true,        // ✅ must be true in production (HTTPS)
         httpOnly: true,
         sameSite: "none",    // ✅ required for cross-site cookies
+        domain: ".onrender.com",
         maxAge: 1000 * 60 * 60 * 8 // 8 hours
     }
 }));
