@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import api from "../api";
 import "./components-style/App.css";
@@ -26,8 +27,8 @@ function WaiterUI({
     if (selectedTable) {
         return (
             <WaiterMenu
-                tableId={selectedTable.tableId}
-                tableToken={selectedTable.token}   // ✅ pass token
+                tableId={selectedTable.id}
+                tableToken={selectedTable.token}
                 cart={cart}
                 setCart={setCart}
                 addToCart={addToCart}
@@ -54,7 +55,7 @@ function WaiterUI({
                     <div
                         key={t.id}
                         className="table-card"
-                        onClick={() => setSelectedTable(t)}
+                        onClick={() => setSelectedTable(t)}  // pass full object (id, name, token)
                     >
                         {t.name}
                     </div>

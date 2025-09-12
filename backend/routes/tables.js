@@ -1,7 +1,19 @@
-// backend/routes/tables.js
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
+
+// GET /api/tables/all (for waiters/admin) → include token
+router.get("/all", async (req, res) => {
+    try {
+        const result = await pool.query(
+            "SELECT id, name, token FROM restaurant_tables ORDER BY id ASC"
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Error fetching tables:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
 
 // GET /api/tables?token=abc
 router.get("/", async (req, res) => {
@@ -38,19 +50,6 @@ router.get("/:token", async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error("GET /api/tables/:token error:", err);
-        res.status(500).json({ error: "Server error" });
-    }
-});
-
-// GET /api/tables/all (for waiters/admin) → include token
-router.get("/all", async (req, res) => {
-    try {
-        const result = await pool.query(
-            "SELECT id, name, token FROM restaurant_tables ORDER BY id ASC"
-        );
-        res.json(result.rows);
-    } catch (err) {
-        console.error("Error fetching tables:", err);
         res.status(500).json({ error: "Server error" });
     }
 });
