@@ -7,10 +7,11 @@ function Cart({ cart, tableToken, addToCart, removeFromCart, isWaiter }) {
         try {
             let res;
             if (isWaiter) {
-                res = await api.post("/orders/waiter", {
-                    tableToken,
-                    items: cart
-                });
+                res = await api.post(
+                    "/orders/waiter",
+                    { tableToken, items: cart },
+                    { withCredentials: true }   // ✅ force include cookies
+                );
             } else {
                 res = await api.post("/orders/customer", {
                     tableToken,

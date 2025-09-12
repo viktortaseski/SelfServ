@@ -26,6 +26,7 @@ function WaiterUI({
     if (selectedTable) {
         return (
             <WaiterMenu
+                tableId={selectedTable.tableId}
                 tableToken={selectedTable.token}   // ✅ pass token
                 cart={cart}
                 setCart={setCart}
