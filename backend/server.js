@@ -10,24 +10,34 @@ const usersRouter = require("./routes/users");
 
 const app = express();
 
+// CORS
 app.use(cors({
-    origin: "https://selfserv-web.onrender.com",
+    origin: [
+        "http://localhost:3000",             // dev
+        "https://selfserv-web.onrender.com"  // prod frontend
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
 }));
 
+// Body parser
 app.use(bodyParser.json());
 
+// Session (for cookie-based auth)
 app.use(session({
     secret: process.env.SESSION_SECRET || "keyboardcat",
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false, // set true if HTTPS
+        secure: true,        // ✅ must be true in production (HTTPS)
         httpOnly: true,
+        sameSite: "None",    // ✅ required for cross-site cookies
         maxAge: 1000 * 60 * 60 * 8 // 8 hours
     }
 }));
 
+// Routes
 app.use("/api/menu", menuRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/tables", tableRoutes);

@@ -1,4 +1,3 @@
-// src/components/WaiterMenu.js
 import Menu from "./Menu";
 import Cart from "./Cart";
 
