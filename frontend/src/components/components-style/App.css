@@ -109,6 +109,10 @@
     margin-bottom: 12px;
 }
 
+.cart-item-price {
+    margin-left: 8px;
+}
+
 .cart-controls {
     display: flex;
     align-items: center;

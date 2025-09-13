@@ -80,7 +80,7 @@ function Cart({ cart, tableToken, addToCart, removeFromCart, isWaiter }) {
                 <div className="cart-summary" style={{ marginTop: 16 }}>
                     <div className="tip-selector" style={{ marginBottom: 12 }}>
                         <div style={{ marginBottom: 6, fontWeight: 600 }}>Tip</div>
-                        {[0, 5, 10, 15].map((p) => (
+                        {[0, 5, 10, 15, 25].map((p) => (
                             <button
                                 key={p}
                                 type="button"
