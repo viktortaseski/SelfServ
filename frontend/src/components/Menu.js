@@ -23,6 +23,9 @@ function Menu({ addToCart, search, category, setCategory }) {
         [category]
     );
 
+    // Show only 4 items per category on the main menu; all items when a category is selected
+    const perCategoryLimit = category ? 9999 : 4;
+
     // Quick check if we’ll render any item at all (for empty states)
     const willRenderAnything = useMemo(() => {
         return categoriesToRender.some((cat) =>
@@ -45,7 +48,7 @@ function Menu({ addToCart, search, category, setCategory }) {
                     marginBottom: "8px",
                 }}
             >
-                {category && (
+                {category && typeof setCategory === "function" && (
                     <button
                         type="button"
                         onClick={() => setCategory(null)}
@@ -89,7 +92,7 @@ function Menu({ addToCart, search, category, setCategory }) {
                             item.category === cat &&
                             item.name.toLowerCase().includes((activeSearch || "").toLowerCase())
                     )
-                    .slice(0, 50);
+                    .slice(0, perCategoryLimit);
 
                 if (filtered.length === 0) return null;
 
@@ -101,9 +104,14 @@ function Menu({ addToCart, search, category, setCategory }) {
                                 <li key={item.id} className="menu-item">
                                     <div className="item-info">
                                         <span className="item-name">{item.name}</span>
-                                        <span className="item-price">€{Number(item.price).toFixed(2)}</span>
+                                        <span className="item-price">
+                                            €{Number(item.price).toFixed(2)}
+                                        </span>
                                     </div>
-                                    <button className="add-btn" onClick={() => addToCart(item)}>
+                                    <button
+                                        className="add-btn"
+                                        onClick={() => addToCart(item)}
+                                    >
                                         +
                                     </button>
                                 </li>
