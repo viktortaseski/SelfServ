@@ -23,7 +23,7 @@ function Menu({ addToCart, search, category }) {
 
             {/* Customer search bar: shown only when no external search is provided */}
             {!hasExternalSearch && (
-                <div className="search-bar" style={{ marginBottom: "1rem" }}>
+                <div className="search-bar" style={{ width: "90%", marginBottom: "1rem" }}>
                     <input
                         type="text"
                         placeholder="Search menu..."

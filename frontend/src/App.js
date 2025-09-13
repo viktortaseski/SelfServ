@@ -83,11 +83,11 @@ function App() {
         {/* Waiter/Admin: show My Profile; Customer: show My Cart */}
         {isWaiter ? (
           <a className="profile-link" href="#/waiter-login">
-            👤 My Profile
+            My Profile
           </a>
         ) : (
           <div className="cart-icon" onClick={() => setView("cart")}>
-            🛒 My Cart <span className="cart-count">{cart.length}</span>
+            My Cart <span className="cart-count">{cart.length}</span>
           </div>
         )}
       </nav>
