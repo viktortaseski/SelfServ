@@ -1,3 +1,4 @@
+// src/App.js
 import { useState, useEffect } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
@@ -112,18 +113,27 @@ function App() {
                   You are at {tableName.replace("table", "Table ")}
                 </h2>
               )}
-              <div className="category-grid">
-                {["coffee", "drinks", "food", "desserts"].map((cat) => (
-                  <div
-                    key={cat}
-                    className="category-card"
-                    onClick={() => setCategory(cat)}
-                  >
-                    {cat.toUpperCase()}
-                  </div>
-                ))}
-              </div>
-              <Menu addToCart={addToCart} category={category} />
+
+              {/* Show category grid only when no category filter is active */}
+              {category === null && (
+                <div className="category-grid">
+                  {["coffee", "drinks", "food", "desserts"].map((cat) => (
+                    <div
+                      key={cat}
+                      className="category-card"
+                      onClick={() => setCategory(cat)}
+                    >
+                      {cat.toUpperCase()}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Menu
+                addToCart={addToCart}
+                category={category}
+                setCategory={setCategory} // needed for "Back to Menu"
+              />
             </>
           )}
           {view === "cart" && (

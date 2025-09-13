@@ -1,9 +1,9 @@
 // src/components/Menu.js
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import api from "../api";
 import "./components-style/Menu.css";
 
-function Menu({ addToCart, search, category }) {
+function Menu({ addToCart, search, category, setCategory }) {
     const [items, setItems] = useState([]);
     const [localSearch, setLocalSearch] = useState("");
 
@@ -15,11 +15,55 @@ function Menu({ addToCart, search, category }) {
         api.get("/menu").then((res) => setItems(res.data));
     }, []);
 
-    const categories = ["coffee", "drinks", "food", "desserts"];
+    const allCategories = ["coffee", "drinks", "food", "desserts"];
+
+    // Decide which categories to render (one if filtered, all if not)
+    const categoriesToRender = useMemo(
+        () => (category ? [category] : allCategories),
+        [category]
+    );
+
+    // Quick check if we’ll render any item at all (for empty states)
+    const willRenderAnything = useMemo(() => {
+        return categoriesToRender.some((cat) =>
+            items.some(
+                (it) =>
+                    it.category === cat &&
+                    it.name.toLowerCase().includes((activeSearch || "").toLowerCase())
+            )
+        );
+    }, [categoriesToRender, items, activeSearch]);
 
     return (
         <div className="menu-container">
-            <h2 className="menu-title">Menu</h2>
+            {/* Header with optional Back button when a category is selected */}
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    marginBottom: "8px",
+                }}
+            >
+                {category && (
+                    <button
+                        type="button"
+                        onClick={() => setCategory(null)}
+                        className="back-to-menu-btn"
+                        style={{
+                            padding: "8px 12px",
+                            borderRadius: 10,
+                            border: "1px solid #d0d0d0",
+                            background: "#fff",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                        }}
+                    >
+                        ← Back to Menu
+                    </button>
+                )}
+                <h2 className="menu-title" style={{ margin: 0 }}>Menu</h2>
+            </div>
 
             {/* Customer search bar: shown only when no external search is provided */}
             {!hasExternalSearch && (
@@ -33,15 +77,19 @@ function Menu({ addToCart, search, category }) {
                 </div>
             )}
 
-            {categories.map((cat) => {
-                // filter by category AND search string
+            {!willRenderAnything && (
+                <p style={{ padding: "8px 4px", color: "#666" }}>No items found.</p>
+            )}
+
+            {categoriesToRender.map((cat) => {
+                // filter by (selected) category AND search string
                 const filtered = items
                     .filter(
                         (item) =>
                             item.category === cat &&
                             item.name.toLowerCase().includes((activeSearch || "").toLowerCase())
                     )
-                    .slice(0, 20); // adjust limit if you want more items shown
+                    .slice(0, 50);
 
                 if (filtered.length === 0) return null;
 
@@ -53,14 +101,9 @@ function Menu({ addToCart, search, category }) {
                                 <li key={item.id} className="menu-item">
                                     <div className="item-info">
                                         <span className="item-name">{item.name}</span>
-                                        <span className="item-price">
-                                            €{Number(item.price).toFixed(2)}
-                                        </span>
+                                        <span className="item-price">€{Number(item.price).toFixed(2)}</span>
                                     </div>
-                                    <button
-                                        className="add-btn"
-                                        onClick={() => addToCart(item)}
-                                    >
+                                    <button className="add-btn" onClick={() => addToCart(item)}>
                                         +
                                     </button>
                                 </li>
