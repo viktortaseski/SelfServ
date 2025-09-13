@@ -133,6 +133,8 @@ function App() {
               removeFromCart={removeFromCart}
               tableToken={tableToken}
               isWaiter={false}
+              clearCart={() => setCart([])}
+              onBackToMenu={() => setView("menu")}
             />
           )}
         </>

@@ -3,7 +3,16 @@ import React, { useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/App.css";
 
-function Cart({ cart, tableToken, addToCart, removeFromCart, isWaiter }) {
+function Cart({
+    cart,
+    tableToken,
+    addToCart,
+    removeFromCart,
+    isWaiter,
+    // NEW (optional) callbacks. If you pass them, UX is nicer.
+    onBackToMenu,   // e.g. () => setView("menu")
+    clearCart,      // e.g. () => setCart([])
+}) {
     // Tip selection (percent)
     const [tipPercent, setTipPercent] = useState(0);
 
@@ -11,12 +20,17 @@ function Cart({ cart, tableToken, addToCart, removeFromCart, isWaiter }) {
     const subtotal = useMemo(
         () =>
             (cart || []).reduce(
-                (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
+                (sum, item) =>
+                    sum +
+                    (Number(item.price) || 0) * (Number(item.quantity) || 0),
                 0
             ),
         [cart]
     );
-    const tipAmount = useMemo(() => (subtotal * tipPercent) / 100, [subtotal, tipPercent]);
+    const tipAmount = useMemo(
+        () => (subtotal * tipPercent) / 100,
+        [subtotal, tipPercent]
+    );
     const total = useMemo(() => subtotal + tipAmount, [subtotal, tipAmount]);
 
     const handleCheckout = async () => {
@@ -44,21 +58,50 @@ function Cart({ cart, tableToken, addToCart, removeFromCart, isWaiter }) {
         }
     };
 
+    const handleBackToMenu = () => {
+        if (typeof onBackToMenu === "function") {
+            onBackToMenu();
+        } else {
+            // graceful fallback if parent didn’t wire it
+            window.location.hash = "/"; // defaults your app back to menu view
+        }
+    };
+
+    const handleClearCart = () => {
+        if (!cart || cart.length === 0) return;
+        const ok = window.confirm("Empty the entire cart?");
+        if (!ok) return;
+
+        if (typeof clearCart === "function") {
+            clearCart();
+            return;
+        }
+
+        // Fallback: brute-force clear via remove calls (works without parent changes)
+        cart.forEach((item) => {
+            const times = Number(item.quantity) || 1;
+            for (let i = 0; i < times; i++) removeFromCart(item);
+        });
+    };
+
     const disabled = (cart?.length || 0) === 0 || !tableToken;
 
     return (
         <div className="cart-container">
             <h2 className="cart-title">Your Cart</h2>
 
-            {(!cart || cart.length === 0) && <p className="empty-cart">Your cart is empty</p>}
+            {(!cart || cart.length === 0) && (
+                <p className="empty-cart">Your cart is empty</p>
+            )}
 
             <ul className="cart-list">
                 {cart.map((item, i) => (
                     <li key={i} className="cart-item">
-                        <div className="cart-item-left">
-                            <span className="cart-item-name">
-                                {item.name}
-                            </span>
+                        <div
+                            className="cart-item-left"
+                            style={{ display: "flex", alignItems: "center", gap: 8 }}
+                        >
+                            <span className="cart-item-name">{item.name}</span>
                             <span className="cart-item-price">
                                 €{Number(item.price || 0).toFixed(2)}
                             </span>
@@ -66,7 +109,10 @@ function Cart({ cart, tableToken, addToCart, removeFromCart, isWaiter }) {
 
                         <div className="cart-controls">
                             <button onClick={() => removeFromCart(item)}>-</button>
-                            <span className="cart-qty" style={{ minWidth: 18, textAlign: "center" }}>
+                            <span
+                                className="cart-qty"
+                                style={{ minWidth: 18, textAlign: "center" }}
+                            >
                                 {item.quantity}
                             </span>
                             <button onClick={() => addToCart(item)}>+</button>
@@ -105,6 +151,44 @@ function Cart({ cart, tableToken, addToCart, removeFromCart, isWaiter }) {
                         <Row label="Subtotal" value={subtotal} />
                         <Row label={`Tip (${tipPercent}%)`} value={tipAmount} />
                         <Row label="Total" value={total} bold />
+                    </div>
+
+                    {/* Navigation & destructive actions */}
+                    <div
+                        className="cart-actions"
+                        style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}
+                    >
+                        <button
+                            type="button"
+                            onClick={handleBackToMenu}
+                            style={{
+                                background: "#f1f5f9",
+                                color: "#0f172a",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: 8,
+                                padding: "10px 14px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                            }}
+                        >
+                            ← Back to Menu
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={handleClearCart}
+                            style={{
+                                background: "#dc3545",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: 8,
+                                padding: "10px 14px",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                            }}
+                        >
+                            Empty Cart
+                        </button>
                     </div>
                 </div>
             )}

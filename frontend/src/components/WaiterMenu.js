@@ -50,6 +50,8 @@ function WaiterMenu({
                     removeFromCart={removeFromCart}
                     tableToken={tableToken}
                     isWaiter={true}
+                    clearCart={() => setCart([])}
+                    onBackToMenu={() => setView("menu")}
                 />
             )}
 
