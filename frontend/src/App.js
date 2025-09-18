@@ -17,6 +17,57 @@ function App() {
   const [tableName, setTableName] = useState(null);
   const [isWaiter, setIsWaiter] = useState(false);
 
+  // ---------- URL/hash <-> view sync (so browser back works) ----------
+  const viewFromHash = () => {
+    const raw = window.location.hash.replace(/^#/, "");
+    const path = raw.startsWith("/") ? raw.slice(1) : raw;
+    // we only care about '', 'cart'
+    if (path.split("?")[0] === "cart") return "cart";
+    return "menu";
+  };
+
+  useEffect(() => {
+    // set initial view from hash
+    setView(viewFromHash());
+
+    const onHashChange = () => {
+      setView(viewFromHash());
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  // Helper to navigate and push to history
+  const goto = (nextView) => {
+    if (nextView === "cart") {
+      window.location.hash = "/cart";
+    } else {
+      window.location.hash = "/";
+    }
+    // setView runs via hashchange listener, but also set immediately for snappy UI
+    setView(nextView);
+  };
+
+  // ---------- Cart persistence (not permanent) ----------
+  // Load from sessionStorage on first mount
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("cart");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setCart(parsed);
+      }
+    } catch { }
+  }, []);
+
+  // Save to sessionStorage whenever cart changes
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("cart", JSON.stringify(cart));
+    } catch { }
+  }, [cart]);
+
+  // ---------- Token / waiter detection ----------
   useEffect(() => {
     const role = localStorage.getItem("role");
     if (role === "waiter" || role === "admin") {
@@ -77,7 +128,7 @@ function App() {
     <div className="app-container">
       {/* Navbar */}
       <nav className="navbar">
-        <h1 className="logo" onClick={() => setView("menu")}>
+        <h1 className="logo" onClick={() => goto("menu")}>
           SelfServ
         </h1>
 
@@ -87,7 +138,7 @@ function App() {
             My Profile
           </a>
         ) : (
-          <div className="cart-icon" onClick={() => setView("cart")}>
+          <div className="cart-icon" onClick={() => goto("cart")}>
             My Cart <span className="cart-count">{cart.length}</span>
           </div>
         )}
@@ -136,6 +187,7 @@ function App() {
               />
             </>
           )}
+
           {view === "cart" && (
             <Cart
               cart={cart}
@@ -144,7 +196,7 @@ function App() {
               tableToken={tableToken}
               isWaiter={false}
               clearCart={() => setCart([])}
-              onBackToMenu={() => setView("menu")}
+              onBackToMenu={() => goto("menu")}
             />
           )}
         </>
