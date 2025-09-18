@@ -1,3 +1,4 @@
+// src/App.js
 import { useState, useEffect } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
@@ -11,7 +12,7 @@ function App() {
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
   const [category, setCategory] = useState(null);
-  const [notice, setNotice] = useState(null); // 🔔 changed from string -> object
+  const [notice, setNotice] = useState(null); // { id, text }
   const [tableToken, setTableToken] = useState(null);
   const [tableName, setTableName] = useState(null);
   const [isWaiter, setIsWaiter] = useState(false);
@@ -20,7 +21,6 @@ function App() {
   const viewFromHash = () => {
     const raw = window.location.hash.replace(/^#/, "");
     const path = raw.startsWith("/") ? raw.slice(1) : raw;
-    // we only care about '', 'cart'
     if (path.split("?")[0] === "cart") return "cart";
     return "menu";
   };
@@ -29,21 +29,15 @@ function App() {
     // set initial view from hash
     setView(viewFromHash());
 
-    const onHashChange = () => {
-      setView(viewFromHash());
-    };
+    const onHashChange = () => setView(viewFromHash());
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
   // Helper to navigate and push to history
   const goto = (nextView) => {
-    if (nextView === "cart") {
-      window.location.hash = "/cart";
-    } else {
-      window.location.hash = "/";
-    }
-    // setView runs via hashchange listener, but also set immediately for snappy UI
+    window.location.hash = nextView === "cart" ? "/cart" : "/";
+    // setView also runs via hashchange, but do it now for snappy UI
     setView(nextView);
   };
 
@@ -208,7 +202,12 @@ function App() {
         </>
       )}
 
-      <Notification message={notice} onClose={() => setNotice(null)} />
+      {/* Pass both text and id so Notification retriggers even with same text */}
+      <Notification
+        message={notice?.text || ""}
+        id={notice?.id || 0}
+        onClose={() => setNotice(null)}
+      />
     </div>
   );
 }

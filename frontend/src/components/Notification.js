@@ -1,31 +1,20 @@
 import { useEffect } from "react";
 import "./components-style/Notification.css";
 
-/**
- * Accepts either:
- * - string (legacy)
- * - { id: number|string, text: string }
- */
-function Notification({ message, onClose, duration = 2000 }) {
-    // Normalize to an object
-    const text = typeof message === "string" ? message : message?.text;
-    const key = typeof message === "object" && message ? message.id : text;
-
+function Notification({ message, id, onClose }) {
+    // Re-run timer every time "id" changes (even if message text is identical)
     useEffect(() => {
-        if (!text) return;
-        const t = setTimeout(() => onClose(), duration);
-        return () => clearTimeout(t);
-        // depend on `key` so identical text still retriggers when id changes
-    }, [key, text, onClose, duration]);
+        if (!message) return;
+        const timer = setTimeout(onClose, 2000);
+        return () => clearTimeout(timer);
+    }, [id, message, onClose]);
 
-    if (!text) return null;
+    if (!message) return null;
 
     return (
         <div className="notification">
-            <span>{text}</span>
-            <button className="close-btn" onClick={onClose}>
-                OK
-            </button>
+            <span>{message}</span>
+            <button className="close-btn" onClick={onClose}>OK</button>
         </div>
     );
 }
