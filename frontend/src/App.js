@@ -1,4 +1,3 @@
-// src/App.js
 import { useState, useEffect } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
@@ -12,7 +11,7 @@ function App() {
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
   const [category, setCategory] = useState(null);
-  const [notification, setNotification] = useState("");
+  const [notice, setNotice] = useState(null); // 🔔 changed from string -> object
   const [tableToken, setTableToken] = useState(null);
   const [tableName, setTableName] = useState(null);
   const [isWaiter, setIsWaiter] = useState(false);
@@ -93,18 +92,22 @@ function App() {
     }
   }, []);
 
-  const showNotification = (msg) => setNotification(msg);
+  // 🔔 tiny helper to fire a toast, always unique so it retriggers
+  const toast = (text) => {
+    setNotice({ id: Date.now() + Math.random(), text });
+  };
 
   const addToCart = (item) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === item.id);
       if (existing) {
-        showNotification(`1 ${item.name} added`);
+        const newQty = (existing.quantity || 0) + 1;
+        toast(`${item.name} added. ${newQty} in order.`);
         return prev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.id === item.id ? { ...i, quantity: newQty } : i
         );
       }
-      showNotification(`1 ${item.name} added`);
+      toast(`${item.name} added. 1 in order.`);
       return [...prev, { ...item, quantity: 1 }];
     });
   };
@@ -113,13 +116,16 @@ function App() {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === item.id);
       if (!existing) return prev;
-      if (existing.quantity === 1) {
-        showNotification(`1 ${item.name} removed`);
+
+      if (existing.quantity <= 1) {
+        toast(`${item.name} removed from order.`);
         return prev.filter((i) => i.id !== item.id);
       }
-      showNotification(`1 ${item.name} removed`);
+
+      const newQty = existing.quantity - 1;
+      toast(`${item.name} removed. ${newQty} left.`);
       return prev.map((i) =>
-        i.id === item.id ? { ...i, quantity: i.quantity - 1 } : i
+        i.id === item.id ? { ...i, quantity: newQty } : i
       );
     });
   };
@@ -202,7 +208,7 @@ function App() {
         </>
       )}
 
-      <Notification message={notification} onClose={() => setNotification("")} />
+      <Notification message={notice} onClose={() => setNotice(null)} />
     </div>
   );
 }
