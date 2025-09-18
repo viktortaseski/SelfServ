@@ -3,6 +3,9 @@ import { useEffect, useState, useMemo } from "react";
 import api from "../api";
 import "./components-style/Menu.css";
 
+const PLACEHOLDER =
+    "https://dummyimage.com/96x96/eaeaea/555&text=%F0%9F%8D%BA"; // neutral placeholder
+
 function Menu({ addToCart, search, category, setCategory }) {
     const [items, setItems] = useState([]);
     const [localSearch, setLocalSearch] = useState("");
@@ -65,7 +68,9 @@ function Menu({ addToCart, search, category, setCategory }) {
                         ← Back to Menu
                     </button>
                 )}
-                <h2 className="menu-title" style={{ margin: 0 }}>Menu</h2>
+                <h2 className="menu-title" style={{ margin: 0 }}>
+                    Menu
+                </h2>
             </div>
 
             {/* Customer search bar: shown only when no external search is provided */}
@@ -90,7 +95,9 @@ function Menu({ addToCart, search, category, setCategory }) {
                     .filter(
                         (item) =>
                             item.category === cat &&
-                            item.name.toLowerCase().includes((activeSearch || "").toLowerCase())
+                            item.name
+                                .toLowerCase()
+                                .includes((activeSearch || "").toLowerCase())
                     )
                     .slice(0, perCategoryLimit);
 
@@ -101,16 +108,58 @@ function Menu({ addToCart, search, category, setCategory }) {
                         <h3 className="menu-section-title">{cat.toUpperCase()}</h3>
                         <ul className="menu-list">
                             {filtered.map((item) => (
-                                <li key={item.id} className="menu-item">
-                                    <div className="item-info">
+                                <li
+                                    key={item.id}
+                                    className="menu-item"
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 12,
+                                        padding: "10px 12px",
+                                    }}
+                                >
+                                    {/* Thumbnail */}
+                                    <img
+                                        src={item.image_url || PLACEHOLDER}
+                                        alt={item.name}
+                                        loading="lazy"
+                                        style={{
+                                            width: 64,
+                                            height: 64,
+                                            objectFit: "cover",
+                                            borderRadius: 10,
+                                            flexShrink: 0,
+                                            background: "#f3f4f6",
+                                            border: "1px solid #eee",
+                                        }}
+                                        onError={(e) => {
+                                            // Fallback if an image fails to load
+                                            e.currentTarget.src = PLACEHOLDER;
+                                        }}
+                                    />
+
+                                    {/* Name + price */}
+                                    <div
+                                        className="item-info"
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            width: "100%",
+                                            gap: 12,
+                                        }}
+                                    >
                                         <span className="item-name">{item.name}</span>
                                         <span className="item-price">
                                             €{Number(item.price).toFixed(2)}
                                         </span>
                                     </div>
+
+                                    {/* Add button */}
                                     <button
                                         className="add-btn"
                                         onClick={() => addToCart(item)}
+                                        style={{ marginLeft: 8 }}
                                     >
                                         +
                                     </button>
