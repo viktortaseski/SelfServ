@@ -32,6 +32,16 @@ function App() {
   const [tableName, setTableName] = useState(null);
   const [isWaiter, setIsWaiter] = useState(false);
 
+  // NEW: header collapse on scroll
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setIsCollapsed(window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // ---------- URL/hash <-> view sync ----------
   const viewFromHash = () => {
     const raw = window.location.hash.replace(/^#/, "");
@@ -144,7 +154,7 @@ function App() {
   return (
     <div className="app-container">
       {/* ===== One fixed header: navbar + search + categories ===== */}
-      <nav className="navbar">
+      <nav className={`navbar ${isCollapsed ? "is-collapsed" : ""}`}>
         <div className="nav-top">
           <div className="brand-wrap" onClick={() => goto("menu")}>
             <div className="brand-logo">LOGO</div>
@@ -167,9 +177,7 @@ function App() {
                 className="search-input"
                 type="text"
                 placeholder="Search"
-                style={{
-                  backgroundImage: `url(${searchIcon})`,
-                }}
+                style={{ backgroundImage: `url(${searchIcon})` }}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
               />

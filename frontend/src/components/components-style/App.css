@@ -17,7 +17,8 @@
     background: var(--bg);
     min-height: 100vh;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    /* Taller header now includes search + categories */
+
+    /* space for expanded header (logo + search + categories) */
     padding-top: 186px;
     padding-bottom: 110px;
     /* sticky View Order pill */
@@ -36,6 +37,9 @@
     background: #fff;
     color: #111;
     box-shadow: var(--shadow-soft);
+    overflow: hidden;
+    /* clip active underline at bottom edge */
+    transition: height .2s ease, box-shadow .2s ease;
 }
 
 /* top row: logo + supported by */
@@ -82,6 +86,7 @@
 /* search inside header */
 .search-wrap {
     padding: 8px 16px;
+    transition: padding .18s ease, opacity .18s ease, transform .18s ease;
 }
 
 .search-input {
@@ -91,18 +96,18 @@
     border: none;
     /* no border */
     background: #fff;
-    /* matches page background (appears "transparent") */
+    /* looks transparent on white bg */
     box-shadow: 0 8px 22px rgba(0, 0, 0, .12);
     /* only shadow */
     outline: none;
     font-size: 16px;
 
-    /* search icon */
     background-repeat: no-repeat;
+    /* search icon */
     background-position: 16px center;
     background-size: 18px 18px;
     padding-left: 44px;
-    /* room for the icon */
+    /* room for icon */
 }
 
 /* category tabs inside header */
@@ -114,6 +119,7 @@
     gap: 4px;
     border-top: 1px solid #f3f4f6;
     border-bottom: 1px solid #f0f0f0;
+    transition: padding .18s ease;
 }
 
 .category-chip {
@@ -144,10 +150,33 @@
     display: block;
     user-select: none;
     -webkit-user-drag: none;
+    transition: opacity .18s ease, transform .18s ease;
 }
 
 .chip-label {
     font-size: 14px;
+}
+
+/* COLLAPSED STATE (on scroll) ----------------------------------------- */
+.navbar.is-collapsed {
+    box-shadow: var(--shadow-soft);
+}
+
+.navbar.is-collapsed .search-wrap {
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    height: 0;
+}
+
+.navbar.is-collapsed .chip-icon-img {
+    opacity: 0;
+    transform: translateY(-6px);
+    height: 0;
+    margin: 0;
+    /* keep label visible; icon effectively hidden */
 }
 
 /* ========== Table banner (short) ========== */
