@@ -192,7 +192,10 @@
     right: 16px;
     bottom: 18px;
     z-index: 999;
-    background: #fff;
+    background: #000;
+    /* black pill */
+    color: #fff;
+    /* white text */
     border: none;
     cursor: pointer;
     display: flex;
@@ -200,7 +203,7 @@
     justify-content: space-between;
     padding: 14px 18px;
     border-radius: 28px;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, .12);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .18);
     transition: transform .18s ease, opacity .18s ease;
 }
 
@@ -217,8 +220,10 @@
 }
 
 .pill-count {
-    background: #000;
-    color: #fff;
+    background: #fff;
+    /* white dot */
+    color: #000;
+    /* black number */
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -230,12 +235,14 @@
 
 .pill-text {
     font-weight: 700;
-    color: var(--text);
+    color: #fff;
+    /* white text */
 }
 
 .pill-total {
     font-weight: 800;
-    color: var(--text);
+    color: #fff;
+    /* white text */
 }
 
 /* ========== Menu container spacing ========== */
@@ -248,3 +255,5 @@
     font-size: 1.3rem;
     cursor: pointer;
 }
+
+/* -------- Menu.css (unchanged here) keeps list & card styles -------- */
