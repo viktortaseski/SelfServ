@@ -1,74 +1,166 @@
-.menu-container {
-    padding: 16px;
+/* Search pill */
+.search-bar {
+    width: 100%;
+    margin: 8px 0 14px;
 }
 
-.menu-title {
-    text-align: center;
-    font-size: 1.6rem;
-    font-weight: bold;
-    margin-bottom: 20px;
-    color: #222;
+.search-bar input {
+    width: 100%;
+    height: 54px;
+    padding: 0 18px;
+    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    outline: none;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+    font-size: 16px;
 }
 
-/* Section */
+/* Top Picks grid */
+.top-picks {
+    margin-top: 6px;
+}
+
+.section-head {
+    font-size: 28px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 10px 6px 12px;
+}
+
+.top-picks-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.pick-card {
+    position: relative;
+    background: #fff;
+    border-radius: 20px;
+    padding: 14px;
+    box-shadow:
+        0 2px 4px rgba(0, 0, 0, 0.05),
+        0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.pick-image {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    background: #f3f4f6;
+    border-radius: 14px;
+}
+
+.pick-meta {
+    margin-top: 10px;
+}
+
+.pick-name {
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.pick-price {
+    color: #6b7280;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.pick-add {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 20px;
+    background: #e9eef5;
+    color: #111;
+    font-size: 22px;
+    line-height: 0;
+}
+
+/* Category sections */
 .menu-section {
-    margin-bottom: 32px;
+    margin-top: 22px;
 }
 
 .menu-section-title {
-    font-size: 1.3rem;
-    margin-bottom: 12px;
-    color: #007aff;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 6px;
+    font-size: 22px;
+    margin: 0 6px 10px;
+    color: #1d4ed8;
+    font-weight: 800;
 }
 
-/* Items */
+/* List items */
 .menu-list {
     list-style: none;
-    padding: 0;
     margin: 0;
+    padding: 0;
 }
 
 .menu-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    background: white;
-    padding: 12px 16px;
+    gap: 12px;
+    background: #fff;
+    padding: 12px 14px;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     margin-bottom: 10px;
+}
+
+.thumb {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
     border-radius: 12px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    background: #f3f4f6;
+    border: 1px solid #eee;
+    flex-shrink: 0;
 }
 
 .item-info {
     display: flex;
     flex-direction: column;
+    gap: 3px;
+    width: 100%;
 }
 
 .item-name {
-    font-weight: 600;
-    font-size: 1rem;
+    font-weight: 700;
+    font-size: 16px;
+    color: #0f172a;
 }
 
 .item-price {
-    font-size: 0.9rem;
-    color: #666;
-    margin-top: 3px;
+    color: #6b7280;
+    font-weight: 600;
 }
 
 .add-btn {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border: none;
-    border-radius: 50%;
-    background-color: #007aff;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    transition: background 0.2s;
+    border-radius: 20px;
+    background: #e9eef5;
+    color: #111;
+    font-size: 22px;
+    line-height: 0;
+    transition: transform .08s ease;
 }
 
 .add-btn:active {
-    background-color: #005bb5;
+    transform: scale(0.96);
+}
+
+/* Back button when a category is open */
+.back-to-menu-btn {
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid #d0d0d0;
+    background: #fff;
+    font-weight: 700;
+    cursor: pointer;
 }

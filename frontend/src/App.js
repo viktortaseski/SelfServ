@@ -1,4 +1,3 @@
-// src/App.js
 import { useState, useEffect } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
@@ -6,7 +5,7 @@ import Notification from "./components/Notification";
 import WaiterUI from "./components/WaiterUI";
 import api from "./api";
 import "./components/components-style/App.css";
-import "./components/components-style/Waiter.css"; // bring in profile/order styles
+import "./components/components-style/Waiter.css"; // profile/order styles
 
 function App() {
   const [cart, setCart] = useState([]);
@@ -26,9 +25,7 @@ function App() {
   };
 
   useEffect(() => {
-    // set initial view from hash
     setView(viewFromHash());
-
     const onHashChange = () => setView(viewFromHash());
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
@@ -37,12 +34,10 @@ function App() {
   // Helper to navigate and push to history
   const goto = (nextView) => {
     window.location.hash = nextView === "cart" ? "/cart" : "/";
-    // setView also runs via hashchange, but do it now for snappy UI
     setView(nextView);
   };
 
   // ---------- Cart persistence (not permanent) ----------
-  // Load from sessionStorage on first mount
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem("cart");
@@ -52,8 +47,6 @@ function App() {
       }
     } catch { }
   }, []);
-
-  // Save to sessionStorage whenever cart changes
   useEffect(() => {
     try {
       sessionStorage.setItem("cart", JSON.stringify(cart));
@@ -86,10 +79,8 @@ function App() {
     }
   }, []);
 
-  // 🔔 tiny helper to fire a toast, always unique so it retriggers
-  const toast = (text) => {
-    setNotice({ id: Date.now() + Math.random(), text });
-  };
+  // 🔔 retriggering toast
+  const toast = (text) => setNotice({ id: Date.now() + Math.random(), text });
 
   const addToCart = (item) => {
     setCart((prev) => {
@@ -97,9 +88,7 @@ function App() {
       if (existing) {
         const newQty = (existing.quantity || 0) + 1;
         toast(`${item.name} added. ${newQty} in order.`);
-        return prev.map((i) =>
-          i.id === item.id ? { ...i, quantity: newQty } : i
-        );
+        return prev.map((i) => (i.id === item.id ? { ...i, quantity: newQty } : i));
       }
       toast(`${item.name} added. 1 in order.`);
       return [...prev, { ...item, quantity: 1 }];
@@ -110,39 +99,47 @@ function App() {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === item.id);
       if (!existing) return prev;
-
       if (existing.quantity <= 1) {
         toast(`${item.name} removed from order.`);
         return prev.filter((i) => i.id !== item.id);
       }
-
       const newQty = existing.quantity - 1;
       toast(`${item.name} removed. ${newQty} left.`);
-      return prev.map((i) =>
-        i.id === item.id ? { ...i, quantity: newQty } : i
-      );
+      return prev.map((i) => (i.id === item.id ? { ...i, quantity: newQty } : i));
     });
   };
 
+  // total for sticky "View Order" pill
+  const cartTotal = cart.reduce(
+    (s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0),
+    0
+  );
+
   return (
     <div className="app-container">
-      {/* Navbar */}
+      {/* Top bar */}
       <nav className="navbar">
-        <h1 className="logo" onClick={() => goto("menu")}>
-          SelfServ
-        </h1>
+        <div className="brand-wrap" onClick={() => goto("menu")} role="button">
+          <div className="brand-logo">LOGO</div>
+          <div className="powered-by">
+            powered by <span>selfserv</span>
+          </div>
+        </div>
 
-        {/* Waiter/Admin: show My Profile; Customer: show My Cart */}
+        {/* Waiter/Admin: My Profile; Customer: My Order */}
         {isWaiter ? (
           <a className="profile-link" href="#/waiter-login">
             My Profile
           </a>
         ) : (
           <div className="cart-icon" onClick={() => goto("cart")}>
-            My Cart <span className="cart-count">{cart.length}</span>
+            My Order <span className="cart-count">{cart.length}</span>
           </div>
         )}
       </nav>
+
+      {/* Header background (just visual) */}
+      <div className="header-bg" />
 
       {isWaiter ? (
         <WaiterUI
@@ -159,32 +156,28 @@ function App() {
         <>
           {view === "menu" && (
             <>
+              {/* Category row (icons) */}
+              <div className="category-row">
+                {["coffee", "drinks", "food", "desserts"].map((cat) => (
+                  <button
+                    key={cat}
+                    className={`category-chip ${category === cat ? "is-active" : ""}`}
+                    data-cat={cat}
+                    onClick={() => setCategory(cat)}
+                  >
+                    <span className="chip-label">{cat[0].toUpperCase() + cat.slice(1)}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Optional table banner */}
               {tableName && (
-                <h2 className="table-banner">
+                <h2 className="table-banner" style={{ marginTop: 6 }}>
                   You are at {tableName.replace("table", "Table ")}
                 </h2>
               )}
 
-              {/* Show category grid only when no category filter is active */}
-              {category === null && (
-                <div className="category-grid">
-                  {["coffee", "drinks", "food", "desserts"].map((cat) => (
-                    <div
-                      key={cat}
-                      className="category-card"
-                      onClick={() => setCategory(cat)}
-                    >
-                      {cat.toUpperCase()}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <Menu
-                addToCart={addToCart}
-                category={category}
-                setCategory={setCategory} // needed for "Back to Menu"
-              />
+              <Menu addToCart={addToCart} category={category} setCategory={setCategory} />
             </>
           )}
 
@@ -202,7 +195,16 @@ function App() {
         </>
       )}
 
-      {/* Pass both text and id so Notification retriggers even with same text */}
+      {/* Sticky “View Order” pill (only on menu view, when there are items) */}
+      {!isWaiter && view === "menu" && cart.length > 0 && (
+        <button className="view-order-pill" onClick={() => goto("cart")}>
+          <span className="pill-count">{cart.length}</span>
+          <span className="pill-text">View Order</span>
+          <span className="pill-total">€{cartTotal.toFixed(2)}</span>
+        </button>
+      )}
+
+      {/* Toast */}
       <Notification
         message={notice?.text || ""}
         id={notice?.id || 0}
