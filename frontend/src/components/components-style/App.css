@@ -90,7 +90,7 @@
 }
 
 .search-input {
-    width: 100%;
+    width: 90%;
     height: 48px;
     border-radius: 24px;
     border: none;
@@ -112,12 +112,11 @@
 
 /* category tabs inside header */
 .category-row--tabs {
-    padding: 6px 8px 10px;
+    padding: 6px 8px 0px;
     display: flex;
     align-items: flex-end;
     justify-content: space-around;
     gap: 4px;
-    border-top: 1px solid #f3f4f6;
     border-bottom: 1px solid #f0f0f0;
     transition: padding .18s ease;
 }
