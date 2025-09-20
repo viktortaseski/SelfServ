@@ -1,21 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
 import Notification from "./components/Notification";
 import WaiterUI from "./components/WaiterUI";
 import api from "./api";
 import "./components/components-style/App.css";
-import "./components/components-style/Waiter.css"; // profile/order styles
+import "./components/components-style/Waiter.css";
 
 function App() {
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
   const [category, setCategory] = useState(null);
-  const [notice, setNotice] = useState(null); // { id, text }
+  const [searchText, setSearchText] = useState(""); // 🔎 header search
+  const [notice, setNotice] = useState(null);       // { id, text }
   const [tableToken, setTableToken] = useState(null);
   const [tableName, setTableName] = useState(null);
   const [isWaiter, setIsWaiter] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(""); // 🔎 header search
 
   // ---------- URL/hash <-> view sync ----------
   const viewFromHash = () => {
@@ -36,7 +36,7 @@ function App() {
     setView(nextView);
   };
 
-  // ---------- Cart persistence ----------
+  // ---------- Cart persistence (sessionStorage) ----------
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem("cart");
@@ -61,12 +61,10 @@ function App() {
       const urlParams = new URLSearchParams(window.location.search);
       const tokenFromUrl = urlParams.get("token");
       const storedToken = localStorage.getItem("tableToken");
-
       const activeToken = tokenFromUrl || storedToken;
       if (activeToken) {
         setTableToken(activeToken);
         localStorage.setItem("tableToken", activeToken);
-
         api
           .get(`/tables`, { params: { token: activeToken } })
           .then((res) => setTableName(res.data.name))
@@ -78,9 +76,10 @@ function App() {
     }
   }, []);
 
-  // 🔔 retriggering toast
+  // ---------- Notifications ----------
   const toast = (text) => setNotice({ id: Date.now() + Math.random(), text });
 
+  // ---------- Cart ops ----------
   const addToCart = (item) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === item.id);
@@ -108,70 +107,65 @@ function App() {
     });
   };
 
-  const cartTotal = cart.reduce(
-    (s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0),
-    0
+  const total = useMemo(
+    () =>
+      cart.reduce(
+        (sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 0),
+        0
+      ),
+    [cart]
   );
+
+  // Category chip click (toggle off when clicking the same one)
+  const toggleCategory = (cat) => setCategory((cur) => (cur === cat ? null : cat));
 
   return (
     <div className="app-container">
-      {/* Top bar */}
+      {/* ===== Top: logo row only ===== */}
       <nav className="navbar">
-        <div className="brand-wrap" onClick={() => goto("menu")} role="button">
+        <div className="brand-wrap" onClick={() => goto("menu")}>
           <div className="brand-logo">LOGO</div>
-          <div className="powered-by">
-            powered by <span>selfserv</span>
-          </div>
         </div>
-
-        {/* Right action */}
         {isWaiter ? (
-          <a className="profile-link" href="#/waiter-login">
-            My Profile
-          </a>
+          <a className="profile-link" href="#/waiter-login">My Profile</a>
         ) : (
-          <div className="cart-icon" onClick={() => goto("cart")}>
-            View Order <span className="cart-count">{cart.length}</span>
-          </div>
+          <div className="powered-by">powered by <span>selfserv</span></div>
         )}
+      </nav>
 
-        {/* Decorative header background */}
-        <div className="header-bg" />
-
-        {/* 🔎 Search pill inside header area */}
-        {!isWaiter && view === "menu" && (
+      {/* ===== Decorative header area that also contains Search + Category chips ===== */}
+      {!isWaiter && (
+        <>
+          <div className="header-bg" />
           <div className="search-wrap">
             <input
               className="search-input"
               type="text"
-              placeholder="  🔍   Search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="  🔍  Search"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
             />
           </div>
-        )}
 
-        {/* Category row */}
-        {!isWaiter && view === "menu" && (
           <div className="category-row">
             {["coffee", "drinks", "food", "desserts"].map((cat) => (
               <button
                 key={cat}
-                className={`category-chip ${category === cat ? "is-active" : ""}`}
+                type="button"
                 data-cat={cat}
-                onClick={() => setCategory(cat)}
+                className={`category-chip ${category === cat ? "is-active" : ""}`}
+                onClick={() => toggleCategory(cat)}
               >
-                <span className="chip-label">
-                  {cat[0].toUpperCase() + cat.slice(1)}
+                <span className="chip-label" style={{ textTransform: "capitalize" }}>
+                  {cat}
                 </span>
               </button>
             ))}
           </div>
-        )}
+        </>
+      )}
 
-      </nav>
-
-
+      {/* ===== CONTENT ===== */}
       {isWaiter ? (
         <WaiterUI
           cart={cart}
@@ -188,7 +182,7 @@ function App() {
           {view === "menu" && (
             <>
               {tableName && (
-                <h2 className="table-banner" style={{ marginTop: 6 }}>
+                <h2 className="table-banner">
                   You are at {tableName.replace("table", "Table ")}
                 </h2>
               )}
@@ -197,7 +191,7 @@ function App() {
                 addToCart={addToCart}
                 category={category}
                 setCategory={setCategory}
-                search={searchQuery}
+                search={searchText}   // 🔎 external search drives Menu filtering
               />
             </>
           )}
@@ -216,12 +210,14 @@ function App() {
         </>
       )}
 
-      {/* Sticky “View Order” pill (kept) */}
-      {!isWaiter && view === "menu" && cart.length > 0 && (
+      {/* Sticky bottom pill (replaces top-right “My Order”) */}
+      {!isWaiter && view === "menu" && (
         <button className="view-order-pill" onClick={() => goto("cart")}>
-          <span className="pill-count">{cart.length}</span>
-          <span className="pill-text">View Order</span>
-          <span className="pill-total">€{cartTotal.toFixed(2)}</span>
+          <span style={{ display: "flex", alignItems: "center" }}>
+            <span className="pill-count">{cart.length}</span>
+            <span className="pill-text">View Order</span>
+          </span>
+          <span className="pill-total">€{total.toFixed(2)}</span>
         </button>
       )}
 

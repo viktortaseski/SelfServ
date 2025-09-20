@@ -24,7 +24,7 @@
     /* room for sticky View Order pill */
 }
 
-/* ========== Top bar ========== */
+/* ========== Top bar (logo + powered by) ========== */
 .navbar {
     position: fixed;
     top: 0;
@@ -40,7 +40,6 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
 }
 
-/* Brand + "powered by" */
 .brand-wrap {
     display: flex;
     flex-direction: column;
@@ -56,36 +55,14 @@
 
 .powered-by {
     font-size: 11px;
-    opacity: .9;
-    margin-top: -2px
+    opacity: .95
 }
 
 .powered-by span {
     font-weight: 800
 }
 
-/* Right action */
-.profile-link,
-.cart-icon {
-    font-size: 1.05rem;
-    cursor: pointer;
-    position: relative;
-    color: #fff;
-    text-decoration: none;
-}
-
-.cart-count {
-    position: absolute;
-    top: -8px;
-    right: -12px;
-    background: var(--danger);
-    color: #fff;
-    font-size: .8rem;
-    padding: 2px 6px;
-    border-radius: 50%;
-}
-
-/* Decorative header (taller to contain search + chips) */
+/* ========== Decorative header (search + chips live visually inside this) ========== */
 .header-bg {
     height: 180px;
     margin: 0 -16px;
@@ -94,7 +71,7 @@
     border-bottom-right-radius: 24px;
 }
 
-/* ========== Search IN header ========== */
+/* Search in header */
 .search-wrap {
     margin-top: -136px;
     padding: 0 16px 6px;
@@ -112,7 +89,7 @@
     font-size: 16px;
 }
 
-/* ========== Category chips row (emoji style) ========== */
+/* Category chips under search */
 .category-row {
     margin-top: -90px;
     padding: 0 16px 8px;
@@ -169,13 +146,6 @@
     font-size: 14px;
 }
 
-/* ========== Table banner ========== */
-.table-banner {
-    text-align: center;
-    font-weight: 800;
-    color: #111827;
-}
-
 /* ========== Sticky “View Order” pill ========== */
 .view-order-pill {
     position: fixed;
@@ -215,6 +185,13 @@
 .pill-total {
     font-weight: 800;
     color: var(--text);
+}
+
+/* ========== Table banner ========== */
+.table-banner {
+    text-align: center;
+    font-weight: 800;
+    color: #111827;
 }
 
 /* ========== Menu (sections & items) ========== */
@@ -296,39 +273,7 @@
     background: #005bb5;
 }
 
-/* ========== Customer (legacy) category grid — kept for compatibility ========== */
-.category-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    padding: 16px;
-}
-
-.category-card {
-    background: #fff;
-    padding: 40px 0;
-    text-align: center;
-    border-radius: 16px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #111;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, .05), 0 6px 12px rgba(0, 0, 0, .08);
-    border: 1px solid rgba(0, 0, 0, .06);
-    cursor: pointer;
-    transition: all .25s ease;
-}
-
-.category-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, .07), 0 12px 20px rgba(0, 0, 0, .10);
-}
-
-.category-card:active {
-    transform: scale(.98);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, .1), 0 3px 6px rgba(0, 0, 0, .15);
-}
-
-/* ========== Cart styles ========== */
+/* ========== Cart styles (unchanged logic) ========== */
 .cart-container {
     padding: 16px;
 }
@@ -447,18 +392,16 @@
     border-color: #888;
 }
 
-/* ========== Shared/legacy helpers ========== */
+/* Legacy helpers kept for compatibility */
 .logo {
     font-size: 1.3rem;
     cursor: pointer;
 }
 
-/* kept for compatibility */
 .menu-title+.search-bar {
     margin-top: 8px;
 }
 
-/* spacing if waiter uses inline search */
 .search-bar input {
     width: 100%;
     padding: .6rem 1rem;
