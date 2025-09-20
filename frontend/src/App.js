@@ -134,41 +134,43 @@ function App() {
             View Order <span className="cart-count">{cart.length}</span>
           </div>
         )}
+
+        {/* Decorative header background */}
+        <div className="header-bg" />
+
+        {/* 🔎 Search pill inside header area */}
+        {!isWaiter && view === "menu" && (
+          <div className="search-wrap">
+            <input
+              className="search-input"
+              type="text"
+              placeholder="  🔍   Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        )}
+
+        {/* Category row */}
+        {!isWaiter && view === "menu" && (
+          <div className="category-row">
+            {["coffee", "drinks", "food", "desserts"].map((cat) => (
+              <button
+                key={cat}
+                className={`category-chip ${category === cat ? "is-active" : ""}`}
+                data-cat={cat}
+                onClick={() => setCategory(cat)}
+              >
+                <span className="chip-label">
+                  {cat[0].toUpperCase() + cat.slice(1)}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
       </nav>
 
-      {/* Decorative header background */}
-      <div className="header-bg" />
-
-      {/* 🔎 Search pill inside header area */}
-      {!isWaiter && view === "menu" && (
-        <div className="search-wrap">
-          <input
-            className="search-input"
-            type="text"
-            placeholder="  🔍   Search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      )}
-
-      {/* Category row */}
-      {!isWaiter && view === "menu" && (
-        <div className="category-row">
-          {["coffee", "drinks", "food", "desserts"].map((cat) => (
-            <button
-              key={cat}
-              className={`category-chip ${category === cat ? "is-active" : ""}`}
-              data-cat={cat}
-              onClick={() => setCategory(cat)}
-            >
-              <span className="chip-label">
-                {cat[0].toUpperCase() + cat.slice(1)}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {isWaiter ? (
         <WaiterUI
