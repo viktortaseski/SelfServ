@@ -7,6 +7,19 @@ import api from "./api";
 import "./components/components-style/App.css";
 import "./components/components-style/Waiter.css";
 
+/* ---- Category icons (PNG) ---- */
+import coffeeIcon from "./assets/category-icons/coffee.png";
+import drinksIcon from "./assets/category-icons/drinks.png";
+import foodIcon from "./assets/category-icons/food.png";
+import dessertsIcon from "./assets/category-icons/desserts.png";
+
+const ICONS = {
+  coffee: coffeeIcon,
+  drinks: drinksIcon,
+  food: foodIcon,
+  desserts: dessertsIcon,
+};
+
 function App() {
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
@@ -44,12 +57,12 @@ function App() {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) setCart(parsed);
       }
-    } catch { /* ignore */ }
+    } catch { }
   }, []);
   useEffect(() => {
     try {
       sessionStorage.setItem("cart", JSON.stringify(cart));
-    } catch { /* ignore */ }
+    } catch { }
   }, [cart]);
 
   // ---------- Token / waiter detection ----------
@@ -133,10 +146,14 @@ function App() {
         <div className="brand-wrap" onClick={() => goto("menu")}>
           <div className="brand-logo">LOGO</div>
         </div>
+
         {isWaiter ? (
           <a className="profile-link" href="#/waiter-login">My Profile</a>
         ) : (
-          <div className="powered-by">powered by <span>selfserv</span></div>
+          <div className="powered-by">
+            <span className="powered-by-small">supported by</span>
+            <span className="powered-by-brand">selfserv</span>
+          </div>
         )}
       </nav>
 
@@ -162,7 +179,12 @@ function App() {
                 className={`category-chip ${category === cat ? "is-active" : ""}`}
                 onClick={() => toggleCategory(cat)}
               >
-                <span className="chip-icon" aria-hidden="true" />
+                <img
+                  src={ICONS[cat]}
+                  alt=""
+                  className="chip-icon-img"
+                  draggable="false"
+                />
                 <span className="chip-label" style={{ textTransform: "capitalize" }}>
                   {cat}
                 </span>
@@ -190,7 +212,7 @@ function App() {
             <>
               {tableName && (
                 <h2 className="table-banner">
-                  You are at {tableName.replace("table", "Table ")}
+                  {tableName.replace("table", "Table ")}
                 </h2>
               )}
 
