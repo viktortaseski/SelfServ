@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
 import Notification from "./components/Notification";
@@ -32,14 +32,35 @@ function App() {
   const [tableName, setTableName] = useState(null);
   const [isWaiter, setIsWaiter] = useState(false);
 
-  // NEW: header collapse on scroll
+  // Header collapse on scroll (hides search + category icons)
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // New: hide the bottom pill when scrolling down
+  const [pillHidden, setPillHidden] = useState(false);
+  const lastY = useRef(0);
+  const idleTimer = useRef(null);
+
   useEffect(() => {
-    const onScroll = () => setIsCollapsed(window.scrollY > 8);
+    const onScroll = () => {
+      const y = window.scrollY || 0;
+      setIsCollapsed(y > 8);
+
+      // hide on scroll down, show on scroll up
+      if (y > lastY.current + 4) setPillHidden(true);
+      else if (y < lastY.current - 4) setPillHidden(false);
+      lastY.current = y;
+
+      // when scrolling stops for a bit, show it again
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      idleTimer.current = setTimeout(() => setPillHidden(false), 250);
+    };
+
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+    };
   }, []);
 
   // ---------- URL/hash <-> view sync ----------
@@ -253,9 +274,12 @@ function App() {
         </>
       )}
 
-      {/* Sticky bottom pill */}
-      {!isWaiter && view === "menu" && (
-        <button className="view-order-pill" onClick={() => goto("cart")}>
+      {/* Sticky bottom pill: only when there is at least 1 item */}
+      {!isWaiter && view === "menu" && cartCount > 0 && (
+        <button
+          className={`view-order-pill ${pillHidden ? "pill-hidden" : ""}`}
+          onClick={() => goto("cart")}
+        >
           <span className="pill-left">
             <span className="pill-count">{cartCount}</span>
             <span className="pill-text">View Order</span>
