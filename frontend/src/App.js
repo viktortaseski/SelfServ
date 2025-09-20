@@ -11,8 +11,8 @@ function App() {
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
   const [category, setCategory] = useState(null);
-  const [searchText, setSearchText] = useState(""); // 🔎 header search
-  const [notice, setNotice] = useState(null);       // { id, text }
+  const [searchText, setSearchText] = useState("");
+  const [notice, setNotice] = useState(null);
   const [tableToken, setTableToken] = useState(null);
   const [tableName, setTableName] = useState(null);
   const [isWaiter, setIsWaiter] = useState(false);
@@ -36,7 +36,7 @@ function App() {
     setView(nextView);
   };
 
-  // ---------- Cart persistence (sessionStorage) ----------
+  // ---------- Cart persistence ----------
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem("cart");
@@ -44,12 +44,12 @@ function App() {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) setCart(parsed);
       }
-    } catch { }
+    } catch { /* ignore */ }
   }, []);
   useEffect(() => {
     try {
       sessionStorage.setItem("cart", JSON.stringify(cart));
-    } catch { }
+    } catch { /* ignore */ }
   }, [cart]);
 
   // ---------- Token / waiter detection ----------
@@ -107,7 +107,14 @@ function App() {
     });
   };
 
-  const total = useMemo(
+  // Sum of quantities for the black count dot
+  const cartCount = useMemo(
+    () => cart.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0),
+    [cart]
+  );
+
+  // MKD total
+  const totalMKD = useMemo(
     () =>
       cart.reduce(
         (sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 0),
@@ -121,7 +128,7 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* ===== Top: logo row only ===== */}
+      {/* ===== Top: logo row ===== */}
       <nav className="navbar">
         <div className="brand-wrap" onClick={() => goto("menu")}>
           <div className="brand-logo">LOGO</div>
@@ -133,11 +140,10 @@ function App() {
         )}
       </nav>
 
-      {/* ===== Decorative header area that also contains Search + Category chips ===== */}
+      {/* ===== Search + Category tabs (under navbar) ===== */}
       {!isWaiter && (
         <>
-          <div className="header-bg" />
-          <div className="search-wrap">
+          <div className="search-wrap search-wrap--under-nav">
             <input
               className="search-input"
               type="text"
@@ -147,7 +153,7 @@ function App() {
             />
           </div>
 
-          <div className="category-row">
+          <div className="category-row category-row--tabs">
             {["coffee", "drinks", "food", "desserts"].map((cat) => (
               <button
                 key={cat}
@@ -156,6 +162,7 @@ function App() {
                 className={`category-chip ${category === cat ? "is-active" : ""}`}
                 onClick={() => toggleCategory(cat)}
               >
+                <span className="chip-icon" aria-hidden="true" />
                 <span className="chip-label" style={{ textTransform: "capitalize" }}>
                   {cat}
                 </span>
@@ -191,7 +198,7 @@ function App() {
                 addToCart={addToCart}
                 category={category}
                 setCategory={setCategory}
-                search={searchText}   // 🔎 external search drives Menu filtering
+                search={searchText}
               />
             </>
           )}
@@ -210,14 +217,14 @@ function App() {
         </>
       )}
 
-      {/* Sticky bottom pill (replaces top-right “My Order”) */}
+      {/* Sticky bottom pill */}
       {!isWaiter && view === "menu" && (
         <button className="view-order-pill" onClick={() => goto("cart")}>
-          <span style={{ display: "flex", alignItems: "center" }}>
-            <span className="pill-count">{cart.length}</span>
+          <span className="pill-left">
+            <span className="pill-count">{cartCount}</span>
             <span className="pill-text">View Order</span>
           </span>
-          <span className="pill-total">€{total.toFixed(2)}</span>
+          <span className="pill-total">{Math.round(totalMKD)} MKD</span>
         </button>
       )}
 

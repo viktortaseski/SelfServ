@@ -1,37 +1,17 @@
-/* Search pill */
-.search-bar {
-    width: 100%;
-    margin: 8px 0 14px;
-}
-
-.search-bar input {
-    width: 100%;
-    height: 54px;
-    padding: 0 18px;
-    border-radius: 28px;
-    border: 1px solid rgba(255, 255, 255, 0.7);
-    outline: none;
-    background: #fff;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-    font-size: 16px;
-}
-
-/* Top Picks grid */
-.top-picks {
-    margin-top: 6px;
-}
-
-.section-head {
+/* Page section header: "Top Picks" or current category name (e.g., Coffee) */
+.page-head {
     font-size: 28px;
     font-weight: 800;
     color: #0f172a;
     margin: 10px 6px 12px;
 }
 
+/* Top Picks grid (home only) */
 .top-picks-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 14px;
+    margin-bottom: 8px;
 }
 
 .pick-card {
@@ -39,9 +19,7 @@
     background: #fff;
     border-radius: 20px;
     padding: 14px;
-    box-shadow:
-        0 2px 4px rgba(0, 0, 0, 0.05),
-        0 8px 16px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .05), 0 8px 16px rgba(0, 0, 0, .08);
 }
 
 .pick-image {
@@ -81,23 +59,15 @@
     line-height: 0;
 }
 
-/* Category sections */
-.menu-section {
-    margin-top: 22px;
-}
-
-.menu-section-title {
-    font-size: 22px;
-    margin: 0 6px 10px;
-    color: #1d4ed8;
-    font-weight: 800;
-}
-
-/* List items */
+/* List items (used on both home and category pages) */
 .menu-list {
     list-style: none;
     margin: 0;
     padding: 0;
+}
+
+.menu-list--full {
+    margin-top: 6px;
 }
 
 .menu-item {
@@ -107,7 +77,7 @@
     background: #fff;
     padding: 12px 14px;
     border-radius: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
     margin-bottom: 10px;
 }
 
@@ -163,4 +133,22 @@
     background: #fff;
     font-weight: 700;
     cursor: pointer;
+}
+
+/* (Optional) legacy internal search, kept for compatibility */
+.search-bar {
+    width: 100%;
+    margin: 8px 0 14px;
+}
+
+.search-bar input {
+    width: 100%;
+    height: 54px;
+    padding: 0 18px;
+    border-radius: 28px;
+    border: 1px solid rgba(229, 231, 235, 1);
+    outline: none;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .06);
+    font-size: 16px;
 }

@@ -1,14 +1,13 @@
 /* ========== Variables ========== */
 :root {
-    --blue1: #86a8ff;
-    --blue2: #7aa0ff;
-    --primary: #007aff;
+    --primary: #111111;
     --success: #34c759;
     --danger: #ff3b30;
     --text: #0f172a;
     --muted: #6b7280;
     --card: #ffffff;
-    --bg: #f6f8fb;
+    --bg: #ffffff;
+    --shadow-soft: 0 2px 6px rgba(0, 0, 0, .06);
 }
 
 /* ========== App frame ========== */
@@ -35,68 +34,59 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: linear-gradient(180deg, var(--blue1) 0%, var(--blue2) 100%);
-    color: #fff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+    background: #fff;
+    color: #111;
+    box-shadow: var(--shadow-soft);
 }
 
 .brand-wrap {
     display: flex;
     flex-direction: column;
     cursor: pointer;
-    user-select: none
+    user-select: none;
 }
 
 .brand-logo {
     font-size: 28px;
     font-weight: 800;
-    letter-spacing: 1px
+    letter-spacing: .5px;
 }
 
 .powered-by {
     font-size: 11px;
-    opacity: .95
+    color: #7a7a7a;
 }
 
 .powered-by span {
-    font-weight: 800
+    color: #111;
+    font-weight: 800;
 }
 
-/* ========== Decorative header (search + chips live visually inside this) ========== */
-.header-bg {
-    height: 180px;
-    margin: 0 -16px;
-    background: linear-gradient(180deg, var(--blue1) 0%, var(--blue2) 100%);
-    border-bottom-left-radius: 24px;
-    border-bottom-right-radius: 24px;
-}
-
-/* Search in header */
-.search-wrap {
-    margin-top: -136px;
-    padding: 0 16px 6px;
+/* ========== Search under navbar ========== */
+.search-wrap--under-nav {
+    padding: 10px 16px 6px;
 }
 
 .search-input {
     width: 100%;
-    height: 54px;
-    padding: 0 18px;
-    border-radius: 28px;
-    border: 1px solid rgba(255, 255, 255, .7);
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 22px;
+    border: 1px solid #e5e7eb;
     outline: none;
     background: #fff;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, .06);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .06);
     font-size: 16px;
 }
 
-/* Category chips under search */
-.category-row {
-    margin-top: -90px;
-    padding: 0 16px 8px;
+/* ========== Category tabs row ========== */
+.category-row--tabs {
+    padding: 6px 8px 10px;
     display: flex;
     align-items: flex-end;
-    justify-content: space-between;
-    gap: 8px;
+    justify-content: space-around;
+    gap: 4px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 .category-chip {
@@ -112,38 +102,44 @@
     color: #2b2b2b;
     font-weight: 600;
     border-bottom: 3px solid transparent;
-    transition: border-color .2s ease;
     cursor: pointer;
 }
 
 .category-chip.is-active {
-    border-color: #fff;
+    border-color: #000;
 }
 
-.category-chip::before {
+.category-chip .chip-icon {
     display: block;
     font-size: 34px;
     line-height: 1;
 }
 
-.category-chip[data-cat="coffee"]::before {
+.category-chip[data-cat="coffee"] .chip-icon::before {
     content: "☕️";
 }
 
-.category-chip[data-cat="drinks"]::before {
+.category-chip[data-cat="drinks"] .chip-icon::before {
     content: "🧃";
 }
 
-.category-chip[data-cat="food"]::before {
+.category-chip[data-cat="food"] .chip-icon::before {
     content: "🍔";
 }
 
-.category-chip[data-cat="desserts"]::before {
+.category-chip[data-cat="desserts"] .chip-icon::before {
     content: "🧁";
 }
 
 .chip-label {
     font-size: 14px;
+}
+
+/* ========== Table banner (kept, subtle) ========== */
+.table-banner {
+    text-align: center;
+    font-weight: 800;
+    color: #111827;
 }
 
 /* ========== Sticky “View Order” pill ========== */
@@ -161,11 +157,17 @@
     justify-content: space-between;
     padding: 14px 18px;
     border-radius: 28px;
-    box-shadow: 0 12px 25px rgba(0, 0, 0, .12);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .12);
+}
+
+.pill-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .pill-count {
-    background: var(--blue1);
+    background: #000;
     color: #fff;
     width: 44px;
     height: 44px;
@@ -174,7 +176,6 @@
     align-items: center;
     justify-content: center;
     font-weight: 800;
-    margin-right: 12px;
 }
 
 .pill-text {
@@ -187,225 +188,13 @@
     color: var(--text);
 }
 
-/* ========== Table banner ========== */
-.table-banner {
-    text-align: center;
-    font-weight: 800;
-    color: #111827;
-}
-
-/* ========== Menu (sections & items) ========== */
+/* ========== Menu container spacing ========== */
 .menu-container {
     padding: 0 16px 24px;
 }
 
-.menu-title {
-    text-align: center;
-    font-size: 1.6rem;
-    font-weight: 800;
-    margin: 10px 0 20px;
-    color: #111827;
-}
-
-.menu-section {
-    margin-bottom: 28px;
-}
-
-.menu-section-title {
-    font-size: 1.2rem;
-    margin-bottom: 12px;
-    color: var(--primary);
-    border-bottom: 1px solid #eee;
-    padding-bottom: 6px;
-    font-weight: 800;
-}
-
-.menu-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-.menu-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    background: #fff;
-    padding: 12px 16px;
-    margin-bottom: 10px;
-    border-radius: 12px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, .05);
-}
-
-.item-info {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    gap: 12px;
-}
-
-.item-name {
-    font-weight: 700;
-    font-size: 1rem;
-    color: #111827;
-}
-
-.item-price {
-    font-size: .95rem;
-    color: var(--muted);
-}
-
-.add-btn {
-    width: 38px;
-    height: 38px;
-    border: none;
-    border-radius: 50%;
-    background: var(--primary);
-    color: #fff;
-    font-size: 1.2rem;
-    cursor: pointer;
-    transition: background .2s ease;
-}
-
-.add-btn:active {
-    background: #005bb5;
-}
-
-/* ========== Cart styles (unchanged logic) ========== */
-.cart-container {
-    padding: 16px;
-}
-
-.cart-title {
-    font-size: 1.6rem;
-    font-weight: 800;
-    margin: 0 0 10px;
-}
-
-.empty-cart {
-    color: var(--muted);
-}
-
-.cart-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-.cart-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #fff;
-    border-radius: 12px;
-    padding: 12px 16px;
-    margin-bottom: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, .05);
-}
-
-.cart-item-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.cart-item-price {
-    color: var(--muted);
-}
-
-.cart-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.cart-controls button {
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: 6px;
-    background: var(--primary);
-    color: #fff;
-    font-size: 1rem;
-    cursor: pointer;
-}
-
-.cart-summary {
-    background: #fff;
-    border-radius: 12px;
-    padding: 12px 16px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, .05);
-}
-
-.tip-btn {
-    margin-right: 8px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    border: 1px solid #d0d0d0;
-    background: #fff;
-    cursor: pointer;
-    font-weight: 500;
-}
-
-.tip-btn--active {
-    background: #e8f2ff;
-    font-weight: 700;
-    border-color: #c7defe;
-}
-
-.checkout-btn {
-    width: 100%;
-    padding: 12px;
-    background: var(--success);
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    font-size: 1rem;
-    margin-top: 12px;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-/* ========== Tables (waiter) ========== */
-.table-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.table-card {
-    background: #f4f4f4;
-    border: 2px solid #ccc;
-    border-radius: 12px;
-    padding: 2rem;
-    text-align: center;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all .2s ease;
-}
-
-.table-card:hover {
-    background: #eaeaea;
-    border-color: #888;
-}
-
-/* Legacy helpers kept for compatibility */
+/* Legacy helpers kept (unused by new header) */
 .logo {
     font-size: 1.3rem;
     cursor: pointer;
-}
-
-.menu-title+.search-bar {
-    margin-top: 8px;
-}
-
-.search-bar input {
-    width: 100%;
-    padding: .6rem 1rem;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 1rem;
 }
