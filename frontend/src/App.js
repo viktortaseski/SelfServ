@@ -15,13 +15,13 @@ function App() {
   const [tableToken, setTableToken] = useState(null);
   const [tableName, setTableName] = useState(null);
   const [isWaiter, setIsWaiter] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(""); // 🔎 header search
 
-  // ---------- URL/hash <-> view sync (so browser back works) ----------
+  // ---------- URL/hash <-> view sync ----------
   const viewFromHash = () => {
     const raw = window.location.hash.replace(/^#/, "");
     const path = raw.startsWith("/") ? raw.slice(1) : raw;
-    if (path.split("?")[0] === "cart") return "cart";
-    return "menu";
+    return path.split("?")[0] === "cart" ? "cart" : "menu";
   };
 
   useEffect(() => {
@@ -31,13 +31,12 @@ function App() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  // Helper to navigate and push to history
   const goto = (nextView) => {
     window.location.hash = nextView === "cart" ? "/cart" : "/";
     setView(nextView);
   };
 
-  // ---------- Cart persistence (not permanent) ----------
+  // ---------- Cart persistence ----------
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem("cart");
@@ -109,7 +108,6 @@ function App() {
     });
   };
 
-  // total for sticky "View Order" pill
   const cartTotal = cart.reduce(
     (s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0),
     0
@@ -126,20 +124,51 @@ function App() {
           </div>
         </div>
 
-        {/* Waiter/Admin: My Profile; Customer: My Order */}
+        {/* Right action */}
         {isWaiter ? (
           <a className="profile-link" href="#/waiter-login">
             My Profile
           </a>
         ) : (
           <div className="cart-icon" onClick={() => goto("cart")}>
-            My Order <span className="cart-count">{cart.length}</span>
+            View Order <span className="cart-count">{cart.length}</span>
           </div>
         )}
       </nav>
 
-      {/* Header background (just visual) */}
+      {/* Decorative header background */}
       <div className="header-bg" />
+
+      {/* 🔎 Search pill inside header area */}
+      {!isWaiter && view === "menu" && (
+        <div className="search-wrap">
+          <input
+            className="search-input"
+            type="text"
+            placeholder="  🔍   Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      )}
+
+      {/* Category row */}
+      {!isWaiter && view === "menu" && (
+        <div className="category-row">
+          {["coffee", "drinks", "food", "desserts"].map((cat) => (
+            <button
+              key={cat}
+              className={`category-chip ${category === cat ? "is-active" : ""}`}
+              data-cat={cat}
+              onClick={() => setCategory(cat)}
+            >
+              <span className="chip-label">
+                {cat[0].toUpperCase() + cat.slice(1)}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {isWaiter ? (
         <WaiterUI
@@ -156,28 +185,18 @@ function App() {
         <>
           {view === "menu" && (
             <>
-              {/* Category row (icons) */}
-              <div className="category-row">
-                {["coffee", "drinks", "food", "desserts"].map((cat) => (
-                  <button
-                    key={cat}
-                    className={`category-chip ${category === cat ? "is-active" : ""}`}
-                    data-cat={cat}
-                    onClick={() => setCategory(cat)}
-                  >
-                    <span className="chip-label">{cat[0].toUpperCase() + cat.slice(1)}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Optional table banner */}
               {tableName && (
                 <h2 className="table-banner" style={{ marginTop: 6 }}>
                   You are at {tableName.replace("table", "Table ")}
                 </h2>
               )}
 
-              <Menu addToCart={addToCart} category={category} setCategory={setCategory} />
+              <Menu
+                addToCart={addToCart}
+                category={category}
+                setCategory={setCategory}
+                search={searchQuery}
+              />
             </>
           )}
 
@@ -195,7 +214,7 @@ function App() {
         </>
       )}
 
-      {/* Sticky “View Order” pill (only on menu view, when there are items) */}
+      {/* Sticky “View Order” pill (kept) */}
       {!isWaiter && view === "menu" && cart.length > 0 && (
         <button className="view-order-pill" onClick={() => goto("cart")}>
           <span className="pill-count">{cart.length}</span>
