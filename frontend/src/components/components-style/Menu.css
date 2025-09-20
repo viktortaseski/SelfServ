@@ -1,4 +1,4 @@
-/* Page section header: "Top Picks" or current category name (e.g., Coffee) */
+/* Page section header */
 .page-head {
     font-size: 28px;
     font-weight: 800;
@@ -59,7 +59,7 @@
     line-height: 0;
 }
 
-/* List items (used on both home and category pages) */
+/* Lists */
 .menu-list {
     list-style: none;
     margin: 0;
@@ -70,6 +70,7 @@
     margin-top: 6px;
 }
 
+/* Item rows — NO shadow, NO bottom margin */
 .menu-item {
     display: flex;
     align-items: center;
@@ -77,8 +78,10 @@
     background: #fff;
     padding: 12px 14px;
     border-radius: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
-    margin-bottom: 10px;
+    box-shadow: none;
+    /* removed shadow */
+    margin-bottom: 0;
+    /* removed margin */
 }
 
 .thumb {
@@ -109,15 +112,20 @@
     font-weight: 600;
 }
 
+/* Add button forced round */
 .add-btn {
     width: 40px;
-    height: 40px;
+    aspect-ratio: 1 / 1;
+    /* enforce perfect circle */
     border: none;
-    border-radius: 20px;
+    border-radius: 50%;
     background: #e9eef5;
     color: #111;
     font-size: 22px;
     line-height: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     transition: transform .08s ease;
 }
 
@@ -125,7 +133,7 @@
     transform: scale(0.96);
 }
 
-/* Back button when a category is open */
+/* Back button */
 .back-to-menu-btn {
     padding: 10px 14px;
     border-radius: 12px;
@@ -135,7 +143,7 @@
     cursor: pointer;
 }
 
-/* (Optional) legacy internal search, kept for compatibility */
+/* (Optional) legacy internal search (unchanged) */
 .search-bar {
     width: 100%;
     margin: 8px 0 14px;

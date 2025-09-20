@@ -12,6 +12,8 @@ import coffeeIcon from "./assets/category-icons/coffee.png";
 import drinksIcon from "./assets/category-icons/drinks.png";
 import foodIcon from "./assets/category-icons/food.png";
 import dessertsIcon from "./assets/category-icons/desserts.png";
+/* ---- Search icon ---- */
+import searchIcon from "./assets/category-icons/search.png";
 
 const ICONS = {
   coffee: coffeeIcon,
@@ -141,58 +143,62 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* ===== Top: logo row ===== */}
+      {/* ===== One fixed header: navbar + search + categories ===== */}
       <nav className="navbar">
-        <div className="brand-wrap" onClick={() => goto("menu")}>
-          <div className="brand-logo">LOGO</div>
+        <div className="nav-top">
+          <div className="brand-wrap" onClick={() => goto("menu")}>
+            <div className="brand-logo">LOGO</div>
+          </div>
+
+          {isWaiter ? (
+            <a className="profile-link" href="#/waiter-login">My Profile</a>
+          ) : (
+            <div className="powered-by">
+              <span className="powered-by-small">supported by</span>
+              <span className="powered-by-brand">selfserv</span>
+            </div>
+          )}
         </div>
 
-        {isWaiter ? (
-          <a className="profile-link" href="#/waiter-login">My Profile</a>
-        ) : (
-          <div className="powered-by">
-            <span className="powered-by-small">supported by</span>
-            <span className="powered-by-brand">selfserv</span>
-          </div>
+        {!isWaiter && (
+          <>
+            <div className="search-wrap">
+              <input
+                className="search-input"
+                type="text"
+                placeholder="Search"
+                style={{
+                  backgroundImage: `url(${searchIcon})`,
+                }}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+            </div>
+
+            <div className="category-row category-row--tabs">
+              {["coffee", "drinks", "food", "desserts"].map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  data-cat={cat}
+                  className={`category-chip ${category === cat ? "is-active" : ""}`}
+                  onClick={() => toggleCategory(cat)}
+                >
+                  <img
+                    src={ICONS[cat]}
+                    alt=""
+                    className="chip-icon-img"
+                    draggable="false"
+                  />
+                  <span className="chip-label" style={{ textTransform: "capitalize" }}>
+                    {cat}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </nav>
-
-      {/* ===== Search + Category tabs (under navbar) ===== */}
-      {!isWaiter && (
-        <>
-          <div className="search-wrap search-wrap--under-nav">
-            <input
-              className="search-input"
-              type="text"
-              placeholder="  🔍  Search"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
-          </div>
-
-          <div className="category-row category-row--tabs">
-            {["coffee", "drinks", "food", "desserts"].map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                data-cat={cat}
-                className={`category-chip ${category === cat ? "is-active" : ""}`}
-                onClick={() => toggleCategory(cat)}
-              >
-                <img
-                  src={ICONS[cat]}
-                  alt=""
-                  className="chip-icon-img"
-                  draggable="false"
-                />
-                <span className="chip-label" style={{ textTransform: "capitalize" }}>
-                  {cat}
-                </span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
 
       {/* ===== CONTENT ===== */}
       {isWaiter ? (
