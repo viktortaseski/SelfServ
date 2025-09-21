@@ -129,13 +129,14 @@
 
 .item-name {
     font-weight: 700;
-    font-size: 16px;
+    font-size: 18px;
     color: #0f172a;
 }
 
 .item-price {
     color: #6b7280;
     font-weight: 600;
+    font-size: 14px;
 }
 
 /* Add button forced round */
