@@ -207,8 +207,7 @@
 }
 
 .navbar.is-collapsed .search-wrap {
-    padding-top: 0;
-    padding-bottom: 0;
+    padding: 8px 16px;
 }
 
 .navbar.is-collapsed .chip-icon-img {
