@@ -128,10 +128,10 @@
 /* Sliding curved indicator (curves DOWN) */
 .tab-indicator {
     position: absolute;
-    top: calc(100% - 6px);
-    /* sit slightly below the row to curve downward */
-    height: 12px;
-    /* thickness */
+    top: calc(100% - 4px);
+    /* sit slightly below the row */
+    height: 8px;
+    /* thinner than before (was 12px) */
     background: #000;
     border-radius: 10px 10px 0 0;
     /* downward rounded corners */
@@ -155,7 +155,7 @@
     /* No border-bottom underline anymore */
 }
 
-/* (optional) visual emphasis on active label */
+/* (optional) visual emphasis on active label) */
 .category-chip.is-active .chip-label {
     font-weight: 700;
 }

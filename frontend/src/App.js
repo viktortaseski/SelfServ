@@ -55,9 +55,12 @@ function App() {
 
     const rowBox = row.getBoundingClientRect();
     const box = activeEl.getBoundingClientRect();
-    const bubbleWidth = box.width * 0.58; // ~rounded width like Figma
-    const left =
-      (box.left - rowBox.left) + (box.width - bubbleWidth) / 2;
+
+    // Make it a little wider than before (was 0.58)
+    const bubbleWidth = box.width * 0.70;
+
+    // Center the wider bubble under the chip
+    const left = (box.left - rowBox.left) + (box.width - bubbleWidth) / 2;
 
     setIndicatorStyle({ left, width: bubbleWidth });
   };
