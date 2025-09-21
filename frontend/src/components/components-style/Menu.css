@@ -65,18 +65,18 @@
 }
 
 .pick-name {
-    margin: 0 0 4px 0;
-    /* 4px gap before price */
-    line-height: 20px;
-    /* so price y ≈ 192 + 20 + 4 = 216px */
-    font-weight: 800;
     color: #0f172a;
+    font-weight: 590;
+    font-size: 16px;
+    line-height: 20px;
+    margin: 0 0 4px;
 }
 
 .pick-price {
     line-height: 16px;
     color: #6b7280;
     font-weight: 600;
+    font-size: 12px;
 }
 
 /* Floating add button (top-right like the design) */

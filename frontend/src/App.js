@@ -301,11 +301,11 @@ function App() {
         <>
           {view === "menu" && (
             <>
-              {tableName && (
+              {/*tableName && (
                 <h2 className="table-banner">
                   {tableName.replace("table", "Table ")}
                 </h2>
-              )}
+              )*/}
 
               <Menu
                 addToCart={addToCart}

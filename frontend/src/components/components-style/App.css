@@ -268,21 +268,24 @@
     align-items: center;
     justify-content: center;
     font-weight: 800;
+    font-size: 16px;
 }
 
 .pill-text {
     font-weight: 700;
     color: #ffffff;
+    font-size: 16px;
 }
 
 .pill-total {
-    font-weight: 800;
+    font-size: 16px;
     color: #ffffff;
+    font-weight: 590;
 }
 
 /* ========== Menu container spacing ========== */
 .menu-container {
-    padding: 0 16px 24px;
+    padding: 0 0px 24px;
     background-color: #f2f2f2;
 }
 
