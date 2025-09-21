@@ -15,7 +15,6 @@
     scroll-snap-type: x mandatory;
     padding: 2px 2px 10px;
     margin: 0 -2px 8px;
-    /* slight negative to balance card padding */
 }
 
 /* Hide scrollbars on mobile while keeping scrollable */
@@ -27,7 +26,8 @@
     scrollbar-width: none;
 }
 
-/* Cards sized for swipe; snap to start */
+/* Cards sized for swipe; snap to start
+   (Plain white, no shadow; big image on top) */
 .pick-card {
     position: relative;
     flex: 0 0 72%;
@@ -35,28 +35,30 @@
     background: #fff;
     border-radius: 20px;
     padding: 14px;
-    box-shadow:
-        0 2px 4px rgba(0, 0, 0, 0.05),
-        0 8px 16px rgba(0, 0, 0, 0.08);
+    box-shadow: none;
+    /* remove shadows */
     scroll-snap-align: start;
     outline: none;
-    /* we add focus ring below */
+    border: 1px solid #f0f0f0;
+    /* subtle edge to match mock */
 }
 
 .pick-card:focus-visible {
-    box-shadow:
-        0 0 0 2px rgba(29, 78, 216, 0.25),
-        0 8px 16px rgba(0, 0, 0, 0.08);
+    outline: 2px solid rgba(29, 78, 216, 0.25);
 }
 
 .pick-image {
     width: 100%;
-    height: 120px;
-    object-fit: cover;
-    background: #f3f4f6;
-    border-radius: 14px;
+    height: 140px;
+    /* slightly taller image */
+    object-fit: contain;
+    /* show full asset on white */
+    background: transparent;
+    /* plain white behind */
+    border-radius: 16px;
 }
 
+/* name + price under the image */
 .pick-meta {
     margin-top: 10px;
 }
@@ -72,11 +74,12 @@
     margin-top: 2px;
 }
 
-/* Floating add button on card */
+/* Floating add button (top-right like the design) */
 .pick-add {
     position: absolute;
     right: 12px;
-    bottom: 12px;
+    top: 12px;
+    /* move to top */
     width: 40px;
     height: 40px;
     border: none;
@@ -98,7 +101,7 @@
     margin-top: 6px;
 }
 
-/* Item rows — NO shadow, NO bottom margin */
+/* Item rows — simple white rows (no shadow) */
 .menu-item {
     display: flex;
     align-items: center;
@@ -108,6 +111,7 @@
     border-radius: 16px;
     box-shadow: none;
     margin-bottom: 0;
+    border: 1px solid #f3f3f3;
 }
 
 .thumb {
@@ -155,16 +159,6 @@
 
 .add-btn:active {
     transform: scale(0.96);
-}
-
-/* Back button */
-.back-to-menu-btn {
-    padding: 10px 14px;
-    border-radius: 12px;
-    border: 1px solid #d0d0d0;
-    background: #fff;
-    font-weight: 700;
-    cursor: pointer;
 }
 
 /* (Optional) legacy internal search (unchanged) */

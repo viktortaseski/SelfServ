@@ -56,10 +56,8 @@ function App() {
     const rowBox = row.getBoundingClientRect();
     const box = activeEl.getBoundingClientRect();
 
-    // Make it a little wider than before (was 0.58)
-    const bubbleWidth = box.width * 0.70;
-
-    // Center the wider bubble under the chip
+    // A little wider look (also stays centered)
+    const bubbleWidth = box.width * 0.7;
     const left = (box.left - rowBox.left) + (box.width - bubbleWidth) / 2;
 
     setIndicatorStyle({ left, width: bubbleWidth });
@@ -72,7 +70,6 @@ function App() {
   useEffect(() => {
     const onResize = () => recalcIndicator();
     window.addEventListener("resize", onResize);
-    // small delay to catch layout after images/fonts paint
     const t = setTimeout(recalcIndicator, 0);
     return () => {
       window.removeEventListener("resize", onResize);
@@ -85,12 +82,10 @@ function App() {
       const y = window.scrollY || 0;
       setIsCollapsed(y > 8);
 
-      // hide on scroll down, show on scroll up
       if (y > lastY.current + 4) setPillHidden(true);
       else if (y < lastY.current - 4) setPillHidden(false);
       lastY.current = y;
 
-      // when scrolling stops for a bit, show it again
       if (idleTimer.current) clearTimeout(idleTimer.current);
       idleTimer.current = setTimeout(() => setPillHidden(false), 250);
     };
@@ -244,15 +239,19 @@ function App() {
 
         {!isWaiter && (
           <>
+            {/* Centered search (icon + text group) */}
             <div className="search-wrap">
               <input
                 className="search-input"
                 type="text"
-                placeholder="Search"
-                style={{ backgroundImage: `url(${searchIcon})` }}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
+                aria-label="Search menu"
               />
+              <div className={`search-center ${searchText ? "is-hidden" : ""}`}>
+                <img src={searchIcon} alt="" className="search-center-icon" />
+                <span className="search-center-text">Search</span>
+              </div>
             </div>
 
             <div ref={rowRef} className="category-row category-row--tabs">
