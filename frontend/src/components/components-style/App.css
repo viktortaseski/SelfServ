@@ -128,12 +128,12 @@
 /* Sliding curved indicator (curves DOWN) */
 .tab-indicator {
     position: absolute;
-    bottom: -4px;
+    top: calc(100% - 6px);
     /* sit slightly below the row to curve downward */
     height: 12px;
     /* thickness */
     background: #000;
-    border-radius: 0 0 999px 999px;
+    border-radius: 10px 10px 0 0;
     /* downward rounded corners */
     transition: left .22s ease, width .22s ease;
     pointer-events: none;
