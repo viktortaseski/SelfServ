@@ -69,8 +69,7 @@ function Menu({ addToCart, search, category, setCategory }) {
                 <p style={{ padding: "8px 4px", color: "#666" }}>No items found.</p>
             )}
 
-            {/* Current category name */}
-            <h3 className="page-head">{titleCase(category || "Menu")}</h3>
+            {/*<h3 className="page-head">{titleCase(category || "Menu")}</h3>*/}
 
             {/* Category-specific Top Picks (horizontal scroller) */}
             {topPicks.length > 0 && (
