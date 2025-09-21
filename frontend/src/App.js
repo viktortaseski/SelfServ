@@ -204,8 +204,11 @@ function App() {
     [cart]
   );
 
-  // Category chip click — we keep a category selected at all times
-  const selectCategory = (cat) => setCategory(cat);
+  // Category chip click — always show the menu when a category is chosen
+  const selectCategory = (cat) => {
+    setCategory(cat);
+    if (view !== "menu") goto("menu"); // <-- ensures menu is shown from Cart (or anywhere)
+  };
 
   // LOGO click: stay in menu, select Coffee, scroll to top
   const onLogoClick = () => {
