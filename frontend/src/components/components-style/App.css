@@ -167,7 +167,8 @@
     justify-content: center;
     gap: 6px;
     padding: 6px 0 10px;
-    color: #2b2b2b;
+    color: #808080;
+    /* INACTIVE label color */
     font-weight: 600;
     cursor: pointer;
 }
@@ -190,6 +191,14 @@
 
 .chip-label {
     font-size: 14px;
+    color: inherit;
+    /* inherit color from chip (inactive #808080, active #000) */
+}
+
+/* ACTIVE color override for chip + label */
+.category-chip.is-active,
+.category-chip.is-active .chip-label {
+    color: #000;
 }
 
 /* COLLAPSED STATE (on scroll) ----------------------------------------- */
@@ -224,7 +233,7 @@
     right: 16px;
     bottom: 18px;
     z-index: 999;
-    background: #fff;
+    background: #000000;
     color: var(--text);
     border: none;
     cursor: pointer;
@@ -250,8 +259,8 @@
 }
 
 .pill-count {
-    background: #000;
-    color: #fff;
+    background: #ffffff;
+    color: #000000;
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -263,12 +272,12 @@
 
 .pill-text {
     font-weight: 700;
-    color: var(--text);
+    color: #ffffff;
 }
 
 .pill-total {
     font-weight: 800;
-    color: var(--text);
+    color: #ffffff;
 }
 
 /* ========== Menu container spacing ========== */
