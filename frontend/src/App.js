@@ -8,7 +8,7 @@ import "./components/components-style/App.css";
 import "./components/components-style/Waiter.css";
 
 /* ---- Category icons (PNG) ---- */
-import coffeeIcon from "./assets/category-icons/coffee.png";
+import coffeeIcon from "./assets/category-icons/espresso.png";
 import drinksIcon from "./assets/category-icons/drinks.png";
 import foodIcon from "./assets/category-icons/food.png";
 import dessertsIcon from "./assets/category-icons/desserts.png";
@@ -35,7 +35,7 @@ function App() {
   // Header collapse on scroll (hides search + category icons)
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // New: hide the bottom pill when scrolling down
+  // Hide the bottom pill when scrolling down
   const [pillHidden, setPillHidden] = useState(false);
   const lastY = useRef(0);
   const idleTimer = useRef(null);
@@ -90,12 +90,12 @@ function App() {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) setCart(parsed);
       }
-    } catch { }
+    } catch { /* ignore */ }
   }, []);
   useEffect(() => {
     try {
       sessionStorage.setItem("cart", JSON.stringify(cart));
-    } catch { }
+    } catch { /* ignore */ }
   }, [cart]);
 
   // ---------- Token / waiter detection ----------
@@ -172,12 +172,24 @@ function App() {
   // Category chip click (toggle off when clicking the same one)
   const toggleCategory = (cat) => setCategory((cur) => (cur === cat ? null : cat));
 
+  // When clicking the LOGO: go to menu, clear category so "Top Picks" shows, and scroll to top
+  const onLogoClick = () => {
+    setCategory(null);         // ensures Top Picks is visible
+    // setSearchText("");      // uncomment if you also want to clear the search
+    goto("menu");
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  };
+
   return (
     <div className="app-container">
       {/* ===== One fixed header: navbar + search + categories ===== */}
       <nav className={`navbar ${isCollapsed ? "is-collapsed" : ""}`}>
         <div className="nav-top">
-          <div className="brand-wrap" onClick={() => goto("menu")}>
+          <div className="brand-wrap" onClick={onLogoClick}>
             <div className="brand-logo">LOGO</div>
           </div>
 

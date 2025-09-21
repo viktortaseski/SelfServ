@@ -186,16 +186,16 @@
 }
 
 /* ========== Sticky “View Order” pill ========== */
+/* ========== Sticky “View Order” pill (reverted to white style) ========== */
 .view-order-pill {
     position: fixed;
     left: 16px;
     right: 16px;
     bottom: 18px;
     z-index: 999;
-    background: #000;
-    /* black pill */
-    color: #fff;
-    /* white text */
+    background: #fff;
+    /* white pill */
+    color: var(--text);
     border: none;
     cursor: pointer;
     display: flex;
@@ -203,7 +203,7 @@
     justify-content: space-between;
     padding: 14px 18px;
     border-radius: 28px;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, .18);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .12);
     transition: transform .18s ease, opacity .18s ease;
 }
 
@@ -220,10 +220,10 @@
 }
 
 .pill-count {
-    background: #fff;
-    /* white dot */
-    color: #000;
-    /* black number */
+    background: #000;
+    /* black dot */
+    color: #fff;
+    /* white number */
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -235,15 +235,16 @@
 
 .pill-text {
     font-weight: 700;
-    color: #fff;
-    /* white text */
+    color: var(--text);
+    /* dark text */
 }
 
 .pill-total {
     font-weight: 800;
-    color: #fff;
-    /* white text */
+    color: var(--text);
+    /* dark text */
 }
+
 
 /* ========== Menu container spacing ========== */
 .menu-container {
