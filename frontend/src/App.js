@@ -25,7 +25,10 @@ const ICONS = {
 function App() {
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
-  const [category, setCategory] = useState(null);
+
+  // Start with Coffee selected (no home page)
+  const [category, setCategory] = useState("coffee");
+
   const [searchText, setSearchText] = useState("");
   const [notice, setNotice] = useState(null);
   const [tableToken, setTableToken] = useState(null);
@@ -169,13 +172,12 @@ function App() {
     [cart]
   );
 
-  // Category chip click (toggle off when clicking the same one)
-  const toggleCategory = (cat) => setCategory((cur) => (cur === cat ? null : cat));
+  // Category chip click — no toggle-to-null (we keep a category selected at all times)
+  const selectCategory = (cat) => setCategory(cat);
 
-  // When clicking the LOGO: go to menu, clear category so "Top Picks" shows, and scroll to top
+  // LOGO click: stay in menu, select Coffee, scroll to top
   const onLogoClick = () => {
-    setCategory(null);         // ensures Top Picks is visible
-    // setSearchText("");      // uncomment if you also want to clear the search
+    setCategory("coffee");
     goto("menu");
     try {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -223,7 +225,7 @@ function App() {
                   type="button"
                   data-cat={cat}
                   className={`category-chip ${category === cat ? "is-active" : ""}`}
-                  onClick={() => toggleCategory(cat)}
+                  onClick={() => selectCategory(cat)}
                 >
                   <img
                     src={ICONS[cat]}

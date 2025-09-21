@@ -30,18 +30,31 @@ router.get("/", async (req, res) => {
 
 /**
  * GET /api/menu/top-picks
- * Returns the top 10 most-ordered menu items by total quantity.
- * If an item has never been ordered, it falls to the bottom.
- * (No schema changes required.)
+ * Returns the most-ordered menu items by total quantity.
  *
- * Optional query:
- *   - ?limit=10 (default 10)
+ * Query params:
+ *   - category: (optional) limit results to this category (e.g., "coffee")
+ *   - limit: (optional) number of items to return (default 10, max 50)
  */
 router.get("/top-picks", async (req, res) => {
-    const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 50);
+    const category = (req.query.category || "").trim();
+    const limit = Math.min(
+        Math.max(parseInt(req.query.limit || "10", 10), 1),
+        50
+    );
 
-    // Note: If you want to restrict to completed orders only,
-    // add: AND o.status <> 'cancelled' (or a whitelist) in the subquery WHERE.
+    // Aggregate quantities from order_items (+orders join if you want status filters)
+    // If category is supplied, restrict the base menu_items before ordering.
+    const hasCategory = category.length > 0;
+    const params = [];
+    let idx = 1;
+
+    const whereClause = hasCategory ? `WHERE mi.category = $${idx++}` : "";
+
+    if (hasCategory) params.push(category);
+
+    params.push(limit); // last param is always limit
+
     const sql = `
     SELECT
       mi.id,
@@ -60,12 +73,13 @@ router.get("/top-picks", async (req, res) => {
       WHERE oi.quantity > 0
       GROUP BY oi.menu_item_id
     ) s ON s.menu_item_id = mi.id
+    ${whereClause}
     ORDER BY s.total_qty DESC NULLS LAST, mi.id ASC
-    LIMIT $1
+    LIMIT $${idx}
   `;
 
     try {
-        const { rows } = await pool.query(sql, [limit]);
+        const { rows } = await pool.query(sql, params);
         res.json(rows);
     } catch (err) {
         console.error("GET /api/menu/top-picks error:", err);

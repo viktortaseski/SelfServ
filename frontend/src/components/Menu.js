@@ -12,13 +12,25 @@ function titleCase(s) {
 
 function Menu({ addToCart, search, category, setCategory }) {
     const [items, setItems] = useState([]);
+    const [topPicks, setTopPicks] = useState([]);
+
     const [localSearch, setLocalSearch] = useState("");
     const hasExternalSearch = typeof search === "string";
     const activeSearch = hasExternalSearch ? search : localSearch;
 
+    // Load entire menu once (client filters by category/search)
     useEffect(() => {
         api.get("/menu").then((res) => setItems(res.data));
     }, []);
+
+    // Load Top Picks for the active category (most-ordered 8)
+    useEffect(() => {
+        if (!category) return;
+        api
+            .get("/menu/top-picks", { params: { category, limit: 8 } })
+            .then((res) => setTopPicks(res.data))
+            .catch(() => setTopPicks([]));
+    }, [category]);
 
     const allCategories = ["coffee", "drinks", "food", "desserts"];
     const categoriesToRender = useMemo(
@@ -26,20 +38,10 @@ function Menu({ addToCart, search, category, setCategory }) {
         [category]
     );
 
-    // Show only 4 items per category on home; all items when a category is selected
+    // When a category is selected we show *all* items of that category
     const perCategoryLimit = category ? 9999 : 4;
 
-    // Top Picks (up to 10), home only, filtered by search
-    const topPicks = useMemo(() => {
-        if (category) return [];
-        const q = (activeSearch || "").toLowerCase();
-        return items
-            .filter((it) => it.name.toLowerCase().includes(q))
-            .slice(0, 10);
-    }, [items, category, activeSearch]);
-
     const willRenderAnything = useMemo(() => {
-        if (!category && topPicks.length > 0) return true;
         return categoriesToRender.some((cat) =>
             items.some(
                 (it) =>
@@ -47,7 +49,7 @@ function Menu({ addToCart, search, category, setCategory }) {
                     it.name.toLowerCase().includes((activeSearch || "").toLowerCase())
             )
         );
-    }, [categoriesToRender, items, activeSearch, category, topPicks.length]);
+    }, [categoriesToRender, items, activeSearch]);
 
     return (
         <div className="menu-container">
@@ -67,46 +69,43 @@ function Menu({ addToCart, search, category, setCategory }) {
                 <p style={{ padding: "8px 4px", color: "#666" }}>No items found.</p>
             )}
 
-            {/* Header title: Top Picks (home) OR current category (e.g., Coffee) */}
-            <h3 className="page-head">
-                {category ? titleCase(category) : "Top Picks"}
-            </h3>
+            {/* Current category name */}
+            <h3 className="page-head">{titleCase(category || "Menu")}</h3>
 
-            {/* HOME: horizontally scrollable Top Picks; CATEGORY: skip cards and show list */}
-            {!category && topPicks.length > 0 && (
-                <div
-                    className="top-picks-scroller"
-                    aria-label="Top Picks"
-                    role="region"
-                >
-                    {topPicks.map((item) => (
-                        <div key={item.id} className="pick-card" tabIndex={0}>
-                            <img
-                                className="pick-image"
-                                src={item.image_url || PLACEHOLDER}
-                                alt={item.name}
-                                loading="lazy"
-                                onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
-                            />
-                            <div className="pick-meta">
-                                <div className="pick-name">{item.name}</div>
-                                <div className="pick-price">
-                                    {Math.round(Number(item.price))} MKD
+            {/* Category-specific Top Picks (horizontal scroller) */}
+            {topPicks.length > 0 && (
+                <>
+                    <h3 className="page-head" style={{ marginTop: 0 }}>Top Picks</h3>
+                    <div className="top-picks-scroller" aria-label="Top Picks" role="region">
+                        {topPicks.map((item) => (
+                            <div key={item.id} className="pick-card" tabIndex={0}>
+                                <img
+                                    className="pick-image"
+                                    src={item.image_url || PLACEHOLDER}
+                                    alt={item.name}
+                                    loading="lazy"
+                                    onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
+                                />
+                                <div className="pick-meta">
+                                    <div className="pick-name">{item.name}</div>
+                                    <div className="pick-price">
+                                        {Math.round(Number(item.price))} MKD
+                                    </div>
                                 </div>
+                                <button
+                                    className="pick-add"
+                                    aria-label={`Add ${item.name} to order`}
+                                    onClick={() => addToCart(item)}
+                                >
+                                    +
+                                </button>
                             </div>
-                            <button
-                                className="pick-add"
-                                aria-label={`Add ${item.name} to order`}
-                                onClick={() => addToCart(item)}
-                            >
-                                +
-                            </button>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                </>
             )}
 
-            {/* Lists */}
+            {/* Lists (filtered by category + search) */}
             {categoriesToRender.map((cat) => {
                 const filtered = items
                     .filter(
@@ -148,17 +147,7 @@ function Menu({ addToCart, search, category, setCategory }) {
                 );
             })}
 
-            {category && typeof setCategory === "function" && (
-                <div style={{ display: "flex", justifyContent: "center", margin: "10px 0 0" }}>
-                    <button
-                        type="button"
-                        onClick={() => setCategory(null)}
-                        className="back-to-menu-btn"
-                    >
-                        ← Back to Menu
-                    </button>
-                </div>
-            )}
+            {/* No "Back to menu" button anymore (we always keep a category selected) */}
         </div>
     );
 }
