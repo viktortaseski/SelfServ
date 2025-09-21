@@ -29,12 +29,14 @@ function Menu({ addToCart, search, category, setCategory }) {
     // Show only 4 items per category on home; all items when a category is selected
     const perCategoryLimit = category ? 9999 : 4;
 
-    // Simple top picks (first 2 items) shown only on home
-    const topPicks = category
-        ? []
-        : items.slice(0, 2).filter((it) =>
-            it.name.toLowerCase().includes((activeSearch || "").toLowerCase())
-        );
+    // Top Picks (up to 10), home only, filtered by search
+    const topPicks = useMemo(() => {
+        if (category) return [];
+        const q = (activeSearch || "").toLowerCase();
+        return items
+            .filter((it) => it.name.toLowerCase().includes(q))
+            .slice(0, 10);
+    }, [items, category, activeSearch]);
 
     const willRenderAnything = useMemo(() => {
         if (!category && topPicks.length > 0) return true;
@@ -70,11 +72,15 @@ function Menu({ addToCart, search, category, setCategory }) {
                 {category ? titleCase(category) : "Top Picks"}
             </h3>
 
-            {/* HOME: show top picks cards; CATEGORY: skip cards and show list */}
+            {/* HOME: horizontally scrollable Top Picks; CATEGORY: skip cards and show list */}
             {!category && topPicks.length > 0 && (
-                <div className="top-picks-grid">
+                <div
+                    className="top-picks-scroller"
+                    aria-label="Top Picks"
+                    role="region"
+                >
                     {topPicks.map((item) => (
-                        <div key={item.id} className="pick-card">
+                        <div key={item.id} className="pick-card" tabIndex={0}>
                             <img
                                 className="pick-image"
                                 src={item.image_url || PLACEHOLDER}
@@ -84,9 +90,17 @@ function Menu({ addToCart, search, category, setCategory }) {
                             />
                             <div className="pick-meta">
                                 <div className="pick-name">{item.name}</div>
-                                <div className="pick-price">{Math.round(Number(item.price))} MKD</div>
+                                <div className="pick-price">
+                                    {Math.round(Number(item.price))} MKD
+                                </div>
                             </div>
-                            <button className="pick-add" onClick={() => addToCart(item)}>+</button>
+                            <button
+                                className="pick-add"
+                                aria-label={`Add ${item.name} to order`}
+                                onClick={() => addToCart(item)}
+                            >
+                                +
+                            </button>
                         </div>
                     ))}
                 </div>
@@ -117,9 +131,17 @@ function Menu({ addToCart, search, category, setCategory }) {
                                 />
                                 <div className="item-info">
                                     <span className="item-name">{item.name}</span>
-                                    <span className="item-price">{Math.round(Number(item.price))} MKD</span>
+                                    <span className="item-price">
+                                        {Math.round(Number(item.price))} MKD
+                                    </span>
                                 </div>
-                                <button className="add-btn" onClick={() => addToCart(item)}>+</button>
+                                <button
+                                    className="add-btn"
+                                    aria-label={`Add ${item.name} to order`}
+                                    onClick={() => addToCart(item)}
+                                >
+                                    +
+                                </button>
                             </li>
                         ))}
                     </ul>
