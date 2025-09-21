@@ -43,6 +43,40 @@ function App() {
   const lastY = useRef(0);
   const idleTimer = useRef(null);
 
+  // --- Sliding tab indicator refs/state ---
+  const rowRef = useRef(null);
+  const chipRefs = useRef({}); // { coffee: HTMLElement, drinks: HTMLElement, ... }
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+
+  const recalcIndicator = () => {
+    const row = rowRef.current;
+    const activeEl = chipRefs.current[category];
+    if (!row || !activeEl) return;
+
+    const rowBox = row.getBoundingClientRect();
+    const box = activeEl.getBoundingClientRect();
+    const bubbleWidth = box.width * 0.58; // ~rounded width like Figma
+    const left =
+      (box.left - rowBox.left) + (box.width - bubbleWidth) / 2;
+
+    setIndicatorStyle({ left, width: bubbleWidth });
+  };
+
+  useEffect(() => {
+    recalcIndicator();
+  }, [category]);
+
+  useEffect(() => {
+    const onResize = () => recalcIndicator();
+    window.addEventListener("resize", onResize);
+    // small delay to catch layout after images/fonts paint
+    const t = setTimeout(recalcIndicator, 0);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      clearTimeout(t);
+    };
+  }, []);
+
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY || 0;
@@ -172,7 +206,7 @@ function App() {
     [cart]
   );
 
-  // Category chip click — no toggle-to-null (we keep a category selected at all times)
+  // Category chip click — we keep a category selected at all times
   const selectCategory = (cat) => setCategory(cat);
 
   // LOGO click: stay in menu, select Coffee, scroll to top
@@ -218,12 +252,18 @@ function App() {
               />
             </div>
 
-            <div className="category-row category-row--tabs">
+            <div ref={rowRef} className="category-row category-row--tabs">
+              {/* Sliding curved indicator */}
+              <div
+                className="tab-indicator"
+                style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+              />
               {["coffee", "drinks", "food", "desserts"].map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   data-cat={cat}
+                  ref={(el) => (chipRefs.current[cat] = el)}
                   className={`category-chip ${category === cat ? "is-active" : ""}`}
                   onClick={() => selectCategory(cat)}
                 >

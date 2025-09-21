@@ -38,7 +38,7 @@
     color: #111;
     box-shadow: var(--shadow-soft);
     overflow: hidden;
-    /* clip active underline bubble at the bottom */
+    /* clip indicator at the bottom */
     transition: height .2s ease, box-shadow .2s ease;
 }
 
@@ -112,6 +112,8 @@
 
 /* category tabs inside header */
 .category-row--tabs {
+    position: relative;
+    /* for the sliding indicator */
     padding: 6px 8px 0px;
     display: flex;
     align-items: flex-end;
@@ -120,12 +122,24 @@
     border-bottom: 1px solid #f0f0f0;
     transition: padding .18s ease;
     overflow: hidden;
-    /* ensure underline bubble is clipped at the bottom */
+    /* ensures indicator is clipped */
+}
+
+/* Sliding curved indicator (curves DOWN) */
+.tab-indicator {
+    position: absolute;
+    bottom: -4px;
+    /* sit slightly below the row to curve downward */
+    height: 12px;
+    /* thickness */
+    background: #000;
+    border-radius: 0 0 999px 999px;
+    /* downward rounded corners */
+    transition: left .22s ease, width .22s ease;
+    pointer-events: none;
 }
 
 .category-chip {
-    position: relative;
-    /* allow pseudo-element positioning */
     background: transparent;
     border: none;
     width: 25%;
@@ -138,32 +152,12 @@
     color: #2b2b2b;
     font-weight: 600;
     cursor: pointer;
-    /* no border-bottom line anymore */
+    /* No border-bottom underline anymore */
 }
 
-/* Curved, thicker underline bubble (hidden by default) */
-.category-chip::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: -4px;
-    /* hangs slightly below the chip */
-    width: 58%;
-    /* adjust to match your Figma */
-    height: 12px;
-    /* thickness */
-    background: #000;
-    border-radius: 0 0 999px 999px;
-    /* rounded corners curving DOWN */
-    opacity: 0;
-    transition: opacity .18s ease, width .18s ease, bottom .18s ease, height .18s ease;
-    pointer-events: none;
-}
-
-/* Active: reveal the bubble */
-.category-chip.is-active::after {
-    opacity: 1;
+/* (optional) visual emphasis on active label */
+.category-chip.is-active .chip-label {
+    font-weight: 700;
 }
 
 /* PNG icons */
