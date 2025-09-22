@@ -10,13 +10,21 @@ function titleCase(s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function Menu({ addToCart, removeFromCart, cart = [], search, category, setCategory }) {
+function Menu({
+    addToCart,
+    removeFromCart,
+    cart = [],
+    search,
+    category,
+    setCategory,
+}) {
     const [items, setItems] = useState([]);
     const [topPicks, setTopPicks] = useState([]);
 
     const [localSearch, setLocalSearch] = useState("");
     const hasExternalSearch = typeof search === "string";
     const activeSearch = hasExternalSearch ? search : localSearch;
+    const normalizedSearch = (activeSearch || "").trim().toLowerCase();
 
     // Build a quick lookup: id -> quantity in cart
     const qtyById = useMemo(() => {
@@ -51,15 +59,35 @@ function Menu({ addToCart, removeFromCart, cart = [], search, category, setCateg
     // When a category is selected we show *all* items of that category
     const perCategoryLimit = category ? 9999 : 4;
 
+    // --- Search results (GLOBAL, any category) top 3 ---
+    const searchResults = useMemo(() => {
+        if (!normalizedSearch) return [];
+        return items
+            .filter((it) =>
+                it.name.toLowerCase().includes(normalizedSearch)
+            )
+            .slice(0, 3);
+    }, [items, normalizedSearch]);
+
+    // Decide whether to show "No items found." message
     const willRenderAnything = useMemo(() => {
-        return categoriesToRender.some((cat) =>
+        // matches within the selected categories
+        const inSelectedCats = categoriesToRender.some((cat) =>
             items.some(
                 (it) =>
                     it.category === cat &&
-                    it.name.toLowerCase().includes((activeSearch || "").toLowerCase())
+                    it.name.toLowerCase().includes(normalizedSearch)
             )
         );
-    }, [categoriesToRender, items, activeSearch]);
+        // global matches (for the 3-result search box)
+        const globalMatches = normalizedSearch
+            ? items.some((it) =>
+                it.name.toLowerCase().includes(normalizedSearch)
+            )
+            : true;
+
+        return inSelectedCats || globalMatches;
+    }, [categoriesToRender, items, normalizedSearch]);
 
     return (
         <div className="menu-container">
@@ -79,13 +107,17 @@ function Menu({ addToCart, removeFromCart, cart = [], search, category, setCateg
                 <p style={{ padding: "8px 4px", color: "#666" }}>No items found.</p>
             )}
 
-            {/*<h3 className="page-head">{titleCase(category || "Menu")}</h3>*/}
-
             {/* Category-specific Top Picks (horizontal scroller) */}
             {topPicks.length > 0 && (
                 <>
-                    <h3 className="page-head" style={{ marginTop: 0 }}>Top Picks</h3>
-                    <div className="top-picks-scroller" aria-label="Top Picks" role="region">
+                    <h3 className="page-head" style={{ marginTop: 0 }}>
+                        Top Picks
+                    </h3>
+                    <div
+                        className="top-picks-scroller"
+                        aria-label="Top Picks"
+                        role="region"
+                    >
                         {topPicks.map((item) => (
                             <div key={item.id} className="pick-card" tabIndex={0}>
                                 <img
@@ -114,20 +146,79 @@ function Menu({ addToCart, removeFromCart, cart = [], search, category, setCateg
                 </>
             )}
 
-            {/* Lists (filtered by category + search) */}
+            {/* -------- Global search results (top 3) -------- */}
+            {normalizedSearch && searchResults.length > 0 && (
+                <ul className="menu-list menu-list--full">
+                    {searchResults.map((item) => {
+                        const qty = qtyById.get(item.id) || 0;
+                        return (
+                            <li key={`sr-${item.id}`} className="menu-item">
+                                <img
+                                    src={item.image_url || PLACEHOLDER}
+                                    alt={item.name}
+                                    className="thumb"
+                                    loading="lazy"
+                                    onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
+                                />
+                                <div className="item-info">
+                                    <span className="item-name">{item.name}</span>
+                                    <span className="item-price">
+                                        {Math.round(Number(item.price))} MKD
+                                    </span>
+                                </div>
+
+                                {qty > 0 ? (
+                                    <div className="qty-controls" aria-label="Quantity controls">
+                                        <button
+                                            className="qty-btn"
+                                            aria-label={`Remove one ${item.name}`}
+                                            onClick={() => removeFromCart(item)}
+                                        >
+                                            &minus;
+                                        </button>
+                                        <span className="qty-num" aria-live="polite">
+                                            {qty}
+                                        </span>
+                                        <button
+                                            className="qty-btn"
+                                            aria-label={`Add one more ${item.name}`}
+                                            onClick={() => addToCart(item)}
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        className="add-btn"
+                                        aria-label={`Add ${item.name} to order`}
+                                        onClick={() => addToCart(item)}
+                                    >
+                                        +
+                                    </button>
+                                )}
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
+
+            {/* Lists (filtered by category + search within that category) */}
             {categoriesToRender.map((cat) => {
                 const filtered = items
                     .filter(
                         (item) =>
                             item.category === cat &&
-                            item.name.toLowerCase().includes((activeSearch || "").toLowerCase())
+                            item.name.toLowerCase().includes(normalizedSearch)
                     )
                     .slice(0, perCategoryLimit);
 
                 if (filtered.length === 0) return null;
 
                 return (
-                    <ul key={cat} className={`menu-list ${category ? "menu-list--full" : ""}`}>
+                    <ul
+                        key={cat}
+                        className={`menu-list ${category ? "menu-list--full" : ""}`}
+                    >
                         {filtered.map((item) => {
                             const qty = qtyById.get(item.id) || 0;
 
@@ -156,7 +247,9 @@ function Menu({ addToCart, removeFromCart, cart = [], search, category, setCateg
                                             >
                                                 &minus;
                                             </button>
-                                            <span className="qty-num" aria-live="polite">{qty}</span>
+                                            <span className="qty-num" aria-live="polite">
+                                                {qty}
+                                            </span>
                                             <button
                                                 className="qty-btn"
                                                 aria-label={`Add one more ${item.name}`}
@@ -180,8 +273,6 @@ function Menu({ addToCart, removeFromCart, cart = [], search, category, setCateg
                     </ul>
                 );
             })}
-
-            {/* No "Back to menu" button anymore (we always keep a category selected) */}
         </div>
     );
 }
