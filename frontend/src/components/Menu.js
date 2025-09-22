@@ -37,16 +37,16 @@ function Menu({
             const inset = 16; // make dropdown a bit narrower than the input
 
             setDdStyle({
-                position: "absolute", // anchored to the page, not the viewport
+                position: "absolute", // anchored to the page
                 left: r.left + window.scrollX + inset,
                 top: r.bottom + window.scrollY + 6,
                 width: Math.max(240, r.width - inset * 2),
                 zIndex: 2000,
-                background: "transparent", // no background on the wrapper
-                border: "none",
+                background: "transparent", // keep wrapper background removed
+                border: "1px solid #e5e7eb", // <-- border restored
                 boxShadow: "none",
                 borderRadius: 16,
-                padding: 0,
+                padding: "6px", // small inner padding
                 maxHeight: 320,
                 overflowY: "auto",
             });
@@ -54,7 +54,7 @@ function Menu({
 
         update();
         window.addEventListener("resize", update);
-        // NOTE: no scroll listener — we want it to stay put on the page.
+        // no scroll listener — dropdown stays in place relative to the page
         return () => {
             window.removeEventListener("resize", update);
         };
@@ -145,10 +145,15 @@ function Menu({
             {ddStyle && normalizedSearch && searchResults.length > 0 && (
                 <div style={ddStyle} role="listbox" aria-label="Search results">
                     <ul className="menu-list menu-list--full" style={{ margin: 0 }}>
-                        {searchResults.map((item) => {
+                        {searchResults.map((item, idx) => {
                             const qty = qtyById.get(item.id) || 0;
+                            const isLast = idx === searchResults.length - 1;
                             return (
-                                <li key={`sr-${item.id}`} className="menu-item">
+                                <li
+                                    key={`sr-${item.id}`}
+                                    className="menu-item"
+                                    style={{ marginBottom: isLast ? 0 : 8 }} // spacing only for dropdown items
+                                >
                                     <img
                                         src={item.image_url || PLACEHOLDER}
                                         alt={item.name}
