@@ -26,16 +26,13 @@
     scrollbar-width: none;
 }
 
-/* Cards sized for swipe; snap to start
-   (Plain white, no shadow; big image on top) */
+/* Cards sized for swipe; snap to start (Plain white) */
 .pick-card {
     position: relative;
     width: 192px;
     height: 232px;
     padding: 16px;
-    /* gives the 16px left/right we measure from */
     flex: 0 0 auto;
-    /* keep fixed width in the scroller */
     background: #fff;
     border: 1px solid #f0f0f0;
     border-radius: 20px;
@@ -44,7 +41,7 @@
 }
 
 .pick-card:focus-visible {
-    outline: 2px solid rgba(29, 78, 216, 0.25);
+    outline: 2px solid rgba(29, 78, 216, .25);
 }
 
 .pick-image {
@@ -52,14 +49,11 @@
     width: 160px;
     height: 160px;
     margin: 15px auto;
-    /* centers the 160px image inside 192px card */
     object-fit: contain;
     background: transparent;
     border-radius: 16px;
-    /* optional */
 }
 
-/* name + price under the image */
 .pick-meta {
     margin-top: 16px;
 }
@@ -79,12 +73,10 @@
     font-size: 12px;
 }
 
-/* Floating add button (top-right like the design) */
 .pick-add {
     position: absolute;
     right: 12px;
     top: 12px;
-    /* move to top */
     width: 40px;
     height: 40px;
     border: none;
@@ -106,7 +98,6 @@
     margin-top: 6px;
 }
 
-/* Item rows — simple white rows (no shadow) */
 .menu-item {
     display: flex;
     align-items: center;
@@ -146,7 +137,7 @@
     font-size: 14px;
 }
 
-/* Add button forced round */
+/* Original add '+' button for rows with qty = 0 */
 .add-btn {
     width: 32px;
     height: 32px;
@@ -165,6 +156,35 @@
 
 .add-btn:active {
     transform: scale(0.96);
+}
+
+/* Quantity mode (when item is already in cart) */
+.qty-controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.qty-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: #E5E5E5;
+    color: #111;
+    font-size: 22px;
+    line-height: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qty-num {
+    min-width: 18px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 18px;
+    color: #0f172a;
 }
 
 /* (Optional) legacy internal search (unchanged) */

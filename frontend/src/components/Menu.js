@@ -10,13 +10,23 @@ function titleCase(s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function Menu({ addToCart, search, category, setCategory }) {
+function Menu({ addToCart, removeFromCart, cart = [], search, category, setCategory }) {
     const [items, setItems] = useState([]);
     const [topPicks, setTopPicks] = useState([]);
 
     const [localSearch, setLocalSearch] = useState("");
     const hasExternalSearch = typeof search === "string";
     const activeSearch = hasExternalSearch ? search : localSearch;
+
+    // Build a quick lookup: id -> quantity in cart
+    const qtyById = useMemo(() => {
+        const m = new Map();
+        (cart || []).forEach((it) => {
+            const prev = m.get(it.id) || 0;
+            m.set(it.id, prev + (Number(it.quantity) || 0));
+        });
+        return m;
+    }, [cart]);
 
     // Load entire menu once (client filters by category/search)
     useEffect(() => {
@@ -118,30 +128,55 @@ function Menu({ addToCart, search, category, setCategory }) {
 
                 return (
                     <ul key={cat} className={`menu-list ${category ? "menu-list--full" : ""}`}>
-                        {filtered.map((item) => (
-                            <li key={item.id} className="menu-item">
-                                <img
-                                    src={item.image_url || PLACEHOLDER}
-                                    alt={item.name}
-                                    className="thumb"
-                                    loading="lazy"
-                                    onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
-                                />
-                                <div className="item-info">
-                                    <span className="item-name">{item.name}</span>
-                                    <span className="item-price">
-                                        {Math.round(Number(item.price))} MKD
-                                    </span>
-                                </div>
-                                <button
-                                    className="add-btn"
-                                    aria-label={`Add ${item.name} to order`}
-                                    onClick={() => addToCart(item)}
-                                >
-                                    +
-                                </button>
-                            </li>
-                        ))}
+                        {filtered.map((item) => {
+                            const qty = qtyById.get(item.id) || 0;
+
+                            return (
+                                <li key={item.id} className="menu-item">
+                                    <img
+                                        src={item.image_url || PLACEHOLDER}
+                                        alt={item.name}
+                                        className="thumb"
+                                        loading="lazy"
+                                        onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
+                                    />
+                                    <div className="item-info">
+                                        <span className="item-name">{item.name}</span>
+                                        <span className="item-price">
+                                            {Math.round(Number(item.price))} MKD
+                                        </span>
+                                    </div>
+
+                                    {qty > 0 ? (
+                                        <div className="qty-controls" aria-label="Quantity controls">
+                                            <button
+                                                className="qty-btn"
+                                                aria-label={`Remove one ${item.name}`}
+                                                onClick={() => removeFromCart(item)}
+                                            >
+                                                &minus;
+                                            </button>
+                                            <span className="qty-num" aria-live="polite">{qty}</span>
+                                            <button
+                                                className="qty-btn"
+                                                aria-label={`Add one more ${item.name}`}
+                                                onClick={() => addToCart(item)}
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            className="add-btn"
+                                            aria-label={`Add ${item.name} to order`}
+                                            onClick={() => addToCart(item)}
+                                        >
+                                            +
+                                        </button>
+                                    )}
+                                </li>
+                            );
+                        })}
                     </ul>
                 );
             })}

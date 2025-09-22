@@ -207,7 +207,7 @@ function App() {
   // Category chip click — always show the menu when a category is chosen
   const selectCategory = (cat) => {
     setCategory(cat);
-    if (view !== "menu") goto("menu"); // <-- ensures menu is shown from Cart (or anywhere)
+    if (view !== "menu") goto("menu");
   };
 
   // LOGO click: stay in menu, select Coffee, scroll to top
@@ -304,14 +304,10 @@ function App() {
         <>
           {view === "menu" && (
             <>
-              {/*tableName && (
-                <h2 className="table-banner">
-                  {tableName.replace("table", "Table ")}
-                </h2>
-              )*/}
-
               <Menu
                 addToCart={addToCart}
+                removeFromCart={removeFromCart}
+                cart={cart}
                 category={category}
                 setCategory={setCategory}
                 search={searchText}
