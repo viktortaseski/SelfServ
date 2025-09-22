@@ -146,7 +146,7 @@
     border-radius: 32px;
     background: #E5E5E5;
     color: #111;
-    font-size: 22px;
+    font-size: 16px;
     line-height: 0;
     display: inline-flex;
     align-items: center;
@@ -166,13 +166,13 @@
 }
 
 .qty-btn {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     border: none;
-    border-radius: 50%;
+    border-radius: 32px;
     background: #E5E5E5;
     color: #111;
-    font-size: 22px;
+    font-size: 16px;
     line-height: 0;
     display: inline-flex;
     align-items: center;
@@ -180,10 +180,9 @@
 }
 
 .qty-num {
-    min-width: 18px;
     text-align: center;
-    font-weight: 700;
-    font-size: 18px;
+    font-weight: 590;
+    font-size: 16px;
     color: #0f172a;
 }
 
