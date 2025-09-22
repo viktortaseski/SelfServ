@@ -63,9 +63,7 @@ function App() {
     setIndicatorStyle({ left, width: bubbleWidth });
   };
 
-  useEffect(() => {
-    recalcIndicator();
-  }, [category]);
+  useEffect(() => { recalcIndicator(); }, [category]);
 
   useEffect(() => {
     const onResize = () => recalcIndicator();

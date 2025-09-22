@@ -26,37 +26,30 @@ function Menu({
     const activeSearch = hasExternalSearch ? search : localSearch;
     const normalizedSearch = (activeSearch || "").trim().toLowerCase();
 
-    // Dropdown positioning (under header search bar)
-    const [ddStyle, setDdStyle] = useState(null);
+    // Dropdown positioning (under header search bar, anchored to navbar)
+    const [ddBox, setDdBox] = useState(null);
     useEffect(() => {
         const update = () => {
             const el = document.querySelector(".search-wrap");
-            if (!el) return setDdStyle(null);
+            if (!el) return setDdBox(null);
 
             const r = el.getBoundingClientRect();
             const inset = 16; // make dropdown a bit narrower than the input
 
-            setDdStyle({
-                position: "absolute", // anchored to the page
-                left: r.left + window.scrollX + inset,
-                top: r.bottom + window.scrollY + 6,
+            // position is handled via CSS (.search-dd { position: fixed; })
+            setDdBox({
+                left: r.left + inset,
+                top: r.bottom + 6,
                 width: Math.max(240, r.width - inset * 2),
-                zIndex: 2000,
-                background: "transparent", // keep wrapper background removed
-                border: "1px solid #e5e7eb", // <-- border restored
-                boxShadow: "none",
-                borderRadius: 16,
-                padding: "6px", // small inner padding
-                maxHeight: 320,
-                overflowY: "auto",
             });
         };
 
         update();
         window.addEventListener("resize", update);
-        // no scroll listener — dropdown stays in place relative to the page
+        window.addEventListener("scroll", update, { passive: true }); // keep tied to fixed navbar
         return () => {
             window.removeEventListener("resize", update);
+            window.removeEventListener("scroll", update);
         };
     }, []);
 
@@ -142,18 +135,22 @@ function Menu({
             )}
 
             {/* ===== Dropdown with top 3 global search results (any category) ===== */}
-            {ddStyle && normalizedSearch && searchResults.length > 0 && (
-                <div style={ddStyle} role="listbox" aria-label="Search results">
+            {ddBox && normalizedSearch && searchResults.length > 0 && (
+                <div
+                    className="search-dd"
+                    role="listbox"
+                    aria-label="Search results"
+                    style={{
+                        left: ddBox.left,
+                        top: ddBox.top,
+                        width: ddBox.width,
+                    }}
+                >
                     <ul className="menu-list menu-list--full" style={{ margin: 0 }}>
-                        {searchResults.map((item, idx) => {
+                        {searchResults.map((item) => {
                             const qty = qtyById.get(item.id) || 0;
-                            const isLast = idx === searchResults.length - 1;
                             return (
-                                <li
-                                    key={`sr-${item.id}`}
-                                    className="menu-item"
-                                    style={{ marginBottom: isLast ? 0 : 8 }} // spacing only for dropdown items
-                                >
+                                <li key={`sr-${item.id}`} className="menu-item search-menu-item">
                                     <img
                                         src={item.image_url || PLACEHOLDER}
                                         alt={item.name}

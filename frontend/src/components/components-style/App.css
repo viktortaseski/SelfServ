@@ -82,12 +82,11 @@
     color: #111;
 }
 
-/* ====== Search (centered icon + text, no shadow, gray bg) ====== */
+/* ====== Search (centered icon + text, gray bg) ====== */
 .search-wrap {
     position: relative;
     padding: 8px 16px;
     display: flex;
-    /* ensure the input is centered in the row */
     align-items: center;
     justify-content: center;
 }
@@ -97,22 +96,18 @@
     max-width: 100%;
     height: 48px;
     margin: 0 auto;
-    /* visually center inside flex container */
     box-sizing: border-box;
     border-radius: 24px;
     border: none;
     background: #e6e6e6;
-    /* gray background */
     outline: none;
     font-size: 16px;
     text-align: center;
-    /* center typed text */
     box-shadow: none;
-    /* remove shadow */
     color: var(--text);
 }
 
-/* overlayed centered "Search" group (icon + text) shown only when empty) */
+/* overlayed centered "Search" group (icon + text) */
 .search-center {
     position: absolute;
     left: 50%;
@@ -139,7 +134,6 @@
 /* category tabs inside header */
 .category-row--tabs {
     position: relative;
-    /* for the sliding indicator */
     padding: 0px 8px 0px;
     display: flex;
     align-items: flex-end;
@@ -148,19 +142,14 @@
     border-bottom: 1px solid #f0f0f0;
     transition: padding .18s ease;
     overflow: hidden;
-    /* ensures indicator is clipped */
 }
 
-/* Sliding curved indicator (curves DOWN) */
 .tab-indicator {
     position: absolute;
     top: calc(100% - 4px);
-    /* slightly below the row */
     height: 8px;
-    /* thinner line */
     background: #000;
     border-radius: 10px 10px 0 0;
-    /* rounded corners curving downward */
     transition: left .22s ease, width .22s ease;
     pointer-events: none;
 }
@@ -176,17 +165,14 @@
     gap: 6px;
     padding: 6px 0 10px;
     color: #808080;
-    /* INACTIVE label color */
     font-weight: 600;
     cursor: pointer;
 }
 
-/* (optional) visual emphasis on active label) */
 .category-chip.is-active .chip-label {
     font-weight: 700;
 }
 
-/* PNG icons */
 .chip-icon-img {
     width: 48px;
     height: 48px;
@@ -200,23 +186,20 @@
 .chip-label {
     font-size: 14px;
     color: inherit;
-    /* inherit color from chip (inactive #808080, active #000) */
 }
 
-/* ACTIVE color override for chip + label */
 .category-chip.is-active,
 .category-chip.is-active .chip-label {
     color: #000;
 }
 
-/* COLLAPSED STATE (on scroll) ----------------------------------------- */
+/* COLLAPSED STATE (on scroll) */
 .navbar.is-collapsed {
     box-shadow: var(--shadow-soft);
 }
 
 .navbar.is-collapsed .search-wrap {
     padding: 8px 16px;
-    /* keep same size on collapse */
 }
 
 .navbar.is-collapsed .chip-icon-img {
@@ -234,7 +217,7 @@
     background-color: #f2f2f2;
 }
 
-/* ========== Sticky “View Order” pill (reverted to white style) ========== */
+/* ========== Sticky “View Order” pill ========== */
 .view-order-pill {
     position: fixed;
     left: 16px;
@@ -301,4 +284,32 @@
 .logo {
     font-size: 1.3rem;
     cursor: pointer;
+}
+
+/* ======== SEARCH DROPDOWN (styles moved here) ======== */
+.search-dd {
+    position: fixed;
+    /* anchored to viewport (same as navbar) */
+    z-index: 2000;
+    max-height: 320px;
+    overflow-y: auto;
+    background: transparent;
+    /* wrapper transparent */
+    border: 1px solid #e5e7eb;
+    /* border restored */
+    border-radius: 16px;
+    padding: 6px;
+    box-shadow: none;
+}
+
+/* Each result row inside dropdown — glass effect */
+.search-menu-item {
+    background-color: rgba(255, 255, 255, 0.35);
+    /* transparent/glassy */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid #e5e7eb;
+    /* subtle edge to match app */
+    /* No extra margins between results */
+    margin: 0;
 }
