@@ -253,6 +253,18 @@ function App() {
                 <img src={searchIcon} alt="" className="search-center-icon" />
                 <span className="search-center-text">Search</span>
               </div>
+
+              {/* Clear (✕) button when there is text */}
+              {searchText && (
+                <button
+                  type="button"
+                  className="search-clear-btn"
+                  aria-label="Clear search"
+                  onClick={() => setSearchText("")}
+                >
+                  ×
+                </button>
+              )}
             </div>
 
             <div ref={rowRef} className="category-row category-row--tabs">

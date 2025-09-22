@@ -62,7 +62,6 @@
     letter-spacing: .5px;
 }
 
-/* right side: two-line block */
 .powered-by {
     display: flex;
     flex-direction: column;
@@ -105,6 +104,8 @@
     text-align: center;
     box-shadow: none;
     color: var(--text);
+    /* Reserve space for the clear button */
+    padding-right: 44px;
 }
 
 /* overlayed centered "Search" group (icon + text) */
@@ -129,6 +130,27 @@
     height: 18px;
     object-fit: contain;
     display: block;
+}
+
+/* Clear (✕) button like iOS/Twitter */
+.search-clear-btn {
+    position: absolute;
+    right: 26px;
+    height: 28px;
+    width: 28px;
+    border: none;
+    border-radius: 14px;
+    display: inline-grid;
+    place-items: center;
+    font-size: 18px;
+    line-height: 1;
+    background: rgba(0, 0, 0, .08);
+    color: #111;
+    cursor: pointer;
+}
+
+.search-clear-btn:active {
+    transform: scale(.96);
 }
 
 /* category tabs inside header */
@@ -255,9 +277,8 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-grid;
+    place-items: center;
     font-weight: 800;
     font-size: 16px;
 }
@@ -302,14 +323,13 @@
     box-shadow: none;
 }
 
-/* Each result row inside dropdown — glass effect */
+/* Each result row inside dropdown — slightly softer glass effect */
 .search-menu-item {
-    background-color: rgba(255, 255, 255, 0.35);
-    /* transparent/glassy */
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background-color: rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     border: 1px solid #e5e7eb;
-    /* subtle edge to match app */
-    /* No extra margins between results */
+    /* subtle edge */
     margin: 0;
+    /* no gaps between results */
 }

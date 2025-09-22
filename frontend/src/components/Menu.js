@@ -30,17 +30,14 @@ function Menu({
     const [ddBox, setDdBox] = useState(null);
     useEffect(() => {
         const update = () => {
-            const el = document.querySelector(".search-wrap");
-            if (!el) return setDdBox(null);
+            const input = document.querySelector(".search-wrap .search-input");
+            if (!input) return setDdBox(null);
 
-            const r = el.getBoundingClientRect();
-            const inset = 16; // make dropdown a bit narrower than the input
-
-            // position is handled via CSS (.search-dd { position: fixed; })
+            const r = input.getBoundingClientRect(); // match width EXACTLY to the input
             setDdBox({
-                left: r.left + inset,
+                left: r.left,
                 top: r.bottom + 6,
-                width: Math.max(240, r.width - inset * 2),
+                width: r.width,
             });
         };
 
