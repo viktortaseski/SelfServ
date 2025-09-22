@@ -26,34 +26,37 @@ function Menu({
     const activeSearch = hasExternalSearch ? search : localSearch;
     const normalizedSearch = (activeSearch || "").trim().toLowerCase();
 
-    // Positioning for the dropdown under the actual header search bar
+    // Dropdown positioning (under header search bar)
     const [ddStyle, setDdStyle] = useState(null);
     useEffect(() => {
         const update = () => {
             const el = document.querySelector(".search-wrap");
             if (!el) return setDdStyle(null);
+
             const r = el.getBoundingClientRect();
+            const inset = 16; // make dropdown a bit narrower than the input
+
             setDdStyle({
-                position: "fixed",
-                left: r.left + window.scrollX,
+                position: "absolute", // anchored to the page, not the viewport
+                left: r.left + window.scrollX + inset,
                 top: r.bottom + window.scrollY + 6,
-                width: r.width,
+                width: Math.max(240, r.width - inset * 2),
                 zIndex: 2000,
-                background: "#fff",
-                border: "1px solid #e5e7eb",
-                boxShadow: "0 10px 24px rgba(0,0,0,.12)",
+                background: "transparent", // no background on the wrapper
+                border: "none",
+                boxShadow: "none",
                 borderRadius: 16,
-                padding: "6px 6px",
+                padding: 0,
                 maxHeight: 320,
                 overflowY: "auto",
             });
         };
+
         update();
         window.addEventListener("resize", update);
-        window.addEventListener("scroll", update, { passive: true });
+        // NOTE: no scroll listener — we want it to stay put on the page.
         return () => {
             window.removeEventListener("resize", update);
-            window.removeEventListener("scroll", update);
         };
     }, []);
 
@@ -99,16 +102,15 @@ function Menu({
     }, [items, normalizedSearch]);
 
     // The normal menu should NOT change when using the header search
-    // (we still allow filtering if the internal Menu search is used)
     const normalizedForMenu = hasExternalSearch ? "" : normalizedSearch;
 
-    // Decide whether to show "No items found." (only if no menu or search results)
+    // Decide whether to show "No items found."
     const willRenderAnything = useMemo(() => {
         const inSelectedCats = categoriesToRender.some((cat) =>
             items.some(
                 (it) =>
                     it.category === cat &&
-                    it.name.toLowerCase().includes((normalizedForMenu || ""))
+                    it.name.toLowerCase().includes(normalizedForMenu || "")
             )
         );
         const hasGlobal = searchResults.length > 0 || !normalizedSearch;
