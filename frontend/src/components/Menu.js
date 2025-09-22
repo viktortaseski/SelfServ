@@ -213,7 +213,7 @@ function Menu({
                         role="region"
                     >
                         {topPicks.map((item) => (
-                            <div key={item.id} className="pick-card" tabIndex={0}>
+                            <div key={item.id} className="pick-card" tabIndex={0} onClick={() => addToCart(item)}>
                                 <img
                                     className="pick-image"
                                     src={item.image_url || PLACEHOLDER}

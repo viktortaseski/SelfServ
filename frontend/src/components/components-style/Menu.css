@@ -54,7 +54,8 @@
 }
 
 .pick-meta {
-    margin-top: 16px;
+    margin-top: 20px;
+    margin-left: 4px;
 }
 
 .pick-name {
@@ -143,14 +144,14 @@
 /* Buttons (perfect centering on phones) */
 .add-btn,
 .qty-btn {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     aspect-ratio: 1 / 1;
     border: none;
-    border-radius: 32px;
+    border-radius: 50%;
     background: #E5E5E5;
     color: #111;
-    font-size: 18px;
+    font-size: 22px;
     display: inline-grid;
     /* makes centering perfect on phones */
     place-items: center;
