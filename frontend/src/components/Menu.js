@@ -37,7 +37,7 @@ function Menu({
             setDdBox({
                 left: r.left,
                 top: r.bottom + 6,
-                width: r.width,
+                width: 385,
             });
         };
 
