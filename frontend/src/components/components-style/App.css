@@ -86,15 +86,23 @@
 .search-wrap {
     position: relative;
     padding: 8px 16px;
+    display: flex;
+    /* ensure the input is centered in the row */
+    align-items: center;
+    justify-content: center;
 }
 
 .search-input {
     width: 100%;
+    max-width: 100%;
     height: 48px;
+    margin: 0 auto;
+    /* visually center inside flex container */
+    box-sizing: border-box;
     border-radius: 24px;
     border: none;
     background: #e6e6e6;
-    /* new gray background */
+    /* gray background */
     outline: none;
     font-size: 16px;
     text-align: center;
@@ -208,6 +216,7 @@
 
 .navbar.is-collapsed .search-wrap {
     padding: 8px 16px;
+    /* keep same size on collapse */
 }
 
 .navbar.is-collapsed .chip-icon-img {
