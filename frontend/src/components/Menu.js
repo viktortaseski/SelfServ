@@ -33,11 +33,15 @@ function Menu({
             const input = document.querySelector(".search-wrap .search-input");
             if (!input) return setDdBox(null);
 
-            const r = input.getBoundingClientRect(); // match width EXACTLY to the input
+            const r = input.getBoundingClientRect();
+
+            // Set CSS variable for width so styling lives in CSS
+            document.documentElement.style.setProperty("--search-dd-width", `${r.width}px`);
+
             setDdBox({
                 left: r.left,
                 top: r.bottom + 6,
-                width: 385,
+                // width is handled by CSS via --search-dd-width
             });
         };
 
@@ -140,7 +144,6 @@ function Menu({
                     style={{
                         left: ddBox.left,
                         top: ddBox.top,
-                        width: ddBox.width,
                     }}
                 >
                     <ul className="menu-list menu-list--full" style={{ margin: 0 }}>

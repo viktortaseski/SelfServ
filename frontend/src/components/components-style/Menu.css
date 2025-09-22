@@ -140,7 +140,7 @@
     font-size: 14px;
 }
 
-/* Original add '+' button for rows with qty = 0 */
+/* Buttons (perfect centering on phones) */
 .add-btn,
 .qty-btn {
     width: 32px;
