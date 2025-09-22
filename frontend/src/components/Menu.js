@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/Menu.css";
 
@@ -25,6 +25,37 @@ function Menu({
     const hasExternalSearch = typeof search === "string";
     const activeSearch = hasExternalSearch ? search : localSearch;
     const normalizedSearch = (activeSearch || "").trim().toLowerCase();
+
+    // Positioning for the dropdown under the actual header search bar
+    const [ddStyle, setDdStyle] = useState(null);
+    useEffect(() => {
+        const update = () => {
+            const el = document.querySelector(".search-wrap");
+            if (!el) return setDdStyle(null);
+            const r = el.getBoundingClientRect();
+            setDdStyle({
+                position: "fixed",
+                left: r.left + window.scrollX,
+                top: r.bottom + window.scrollY + 6,
+                width: r.width,
+                zIndex: 2000,
+                background: "#fff",
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 10px 24px rgba(0,0,0,.12)",
+                borderRadius: 16,
+                padding: "6px 6px",
+                maxHeight: 320,
+                overflowY: "auto",
+            });
+        };
+        update();
+        window.addEventListener("resize", update);
+        window.addEventListener("scroll", update, { passive: true });
+        return () => {
+            window.removeEventListener("resize", update);
+            window.removeEventListener("scroll", update);
+        };
+    }, []);
 
     // Build a quick lookup: id -> quantity in cart
     const qtyById = useMemo(() => {
@@ -63,31 +94,32 @@ function Menu({
     const searchResults = useMemo(() => {
         if (!normalizedSearch) return [];
         return items
-            .filter((it) =>
-                it.name.toLowerCase().includes(normalizedSearch)
-            )
+            .filter((it) => it.name.toLowerCase().includes(normalizedSearch))
             .slice(0, 3);
     }, [items, normalizedSearch]);
 
-    // Decide whether to show "No items found." message
+    // The normal menu should NOT change when using the header search
+    // (we still allow filtering if the internal Menu search is used)
+    const normalizedForMenu = hasExternalSearch ? "" : normalizedSearch;
+
+    // Decide whether to show "No items found." (only if no menu or search results)
     const willRenderAnything = useMemo(() => {
-        // matches within the selected categories
         const inSelectedCats = categoriesToRender.some((cat) =>
             items.some(
                 (it) =>
                     it.category === cat &&
-                    it.name.toLowerCase().includes(normalizedSearch)
+                    it.name.toLowerCase().includes((normalizedForMenu || ""))
             )
         );
-        // global matches (for the 3-result search box)
-        const globalMatches = normalizedSearch
-            ? items.some((it) =>
-                it.name.toLowerCase().includes(normalizedSearch)
-            )
-            : true;
-
-        return inSelectedCats || globalMatches;
-    }, [categoriesToRender, items, normalizedSearch]);
+        const hasGlobal = searchResults.length > 0 || !normalizedSearch;
+        return inSelectedCats || hasGlobal;
+    }, [
+        categoriesToRender,
+        items,
+        normalizedForMenu,
+        searchResults.length,
+        normalizedSearch,
+    ]);
 
     return (
         <div className="menu-container">
@@ -107,7 +139,65 @@ function Menu({
                 <p style={{ padding: "8px 4px", color: "#666" }}>No items found.</p>
             )}
 
-            {/* Category-specific Top Picks (horizontal scroller) */}
+            {/* ===== Dropdown with top 3 global search results (any category) ===== */}
+            {ddStyle && normalizedSearch && searchResults.length > 0 && (
+                <div style={ddStyle} role="listbox" aria-label="Search results">
+                    <ul className="menu-list menu-list--full" style={{ margin: 0 }}>
+                        {searchResults.map((item) => {
+                            const qty = qtyById.get(item.id) || 0;
+                            return (
+                                <li key={`sr-${item.id}`} className="menu-item">
+                                    <img
+                                        src={item.image_url || PLACEHOLDER}
+                                        alt={item.name}
+                                        className="thumb"
+                                        loading="lazy"
+                                        onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
+                                    />
+                                    <div className="item-info">
+                                        <span className="item-name">{item.name}</span>
+                                        <span className="item-price">
+                                            {Math.round(Number(item.price))} MKD
+                                        </span>
+                                    </div>
+
+                                    {qty > 0 ? (
+                                        <div className="qty-controls" aria-label="Quantity controls">
+                                            <button
+                                                className="qty-btn"
+                                                aria-label={`Remove one ${item.name}`}
+                                                onClick={() => removeFromCart(item)}
+                                            >
+                                                &minus;
+                                            </button>
+                                            <span className="qty-num" aria-live="polite">
+                                                {qty}
+                                            </span>
+                                            <button
+                                                className="qty-btn"
+                                                aria-label={`Add one more ${item.name}`}
+                                                onClick={() => addToCart(item)}
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            className="add-btn"
+                                            aria-label={`Add ${item.name} to order`}
+                                            onClick={() => addToCart(item)}
+                                        >
+                                            +
+                                        </button>
+                                    )}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
+            )}
+
+            {/* ===== Category-specific Top Picks (horizontal scroller) ===== */}
             {topPicks.length > 0 && (
                 <>
                     <h3 className="page-head" style={{ marginTop: 0 }}>
@@ -146,69 +236,13 @@ function Menu({
                 </>
             )}
 
-            {/* -------- Global search results (top 3) -------- */}
-            {normalizedSearch && searchResults.length > 0 && (
-                <ul className="menu-list menu-list--full">
-                    {searchResults.map((item) => {
-                        const qty = qtyById.get(item.id) || 0;
-                        return (
-                            <li key={`sr-${item.id}`} className="menu-item">
-                                <img
-                                    src={item.image_url || PLACEHOLDER}
-                                    alt={item.name}
-                                    className="thumb"
-                                    loading="lazy"
-                                    onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
-                                />
-                                <div className="item-info">
-                                    <span className="item-name">{item.name}</span>
-                                    <span className="item-price">
-                                        {Math.round(Number(item.price))} MKD
-                                    </span>
-                                </div>
-
-                                {qty > 0 ? (
-                                    <div className="qty-controls" aria-label="Quantity controls">
-                                        <button
-                                            className="qty-btn"
-                                            aria-label={`Remove one ${item.name}`}
-                                            onClick={() => removeFromCart(item)}
-                                        >
-                                            &minus;
-                                        </button>
-                                        <span className="qty-num" aria-live="polite">
-                                            {qty}
-                                        </span>
-                                        <button
-                                            className="qty-btn"
-                                            aria-label={`Add one more ${item.name}`}
-                                            onClick={() => addToCart(item)}
-                                        >
-                                            +
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        className="add-btn"
-                                        aria-label={`Add ${item.name} to order`}
-                                        onClick={() => addToCart(item)}
-                                    >
-                                        +
-                                    </button>
-                                )}
-                            </li>
-                        );
-                    })}
-                </ul>
-            )}
-
-            {/* Lists (filtered by category + search within that category) */}
+            {/* ===== Normal menu (unchanged by external search) ===== */}
             {categoriesToRender.map((cat) => {
                 const filtered = items
                     .filter(
                         (item) =>
                             item.category === cat &&
-                            item.name.toLowerCase().includes(normalizedSearch)
+                            item.name.toLowerCase().includes(normalizedForMenu)
                     )
                     .slice(0, perCategoryLimit);
 
