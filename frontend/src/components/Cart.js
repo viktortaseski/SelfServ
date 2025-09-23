@@ -1,25 +1,29 @@
 // src/components/Cart.js
 import React, { useMemo, useState } from "react";
 import api from "../api";
-import "./components-style/App.css";
-import "./components-style/cart.css";
+import "./components-style/App.css";   // global + navbar + pill
+import "./components-style/cart.css";  // cart-only tweaks (no navbar overrides)
+
+const PLACEHOLDER = "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
 
 function Cart({
-    cart,
+    cart = [],
     tableToken,
     addToCart,
     removeFromCart,
     isWaiter,
-    onBackToMenu, // optional: () => setView("menu")
-    clearCart,    // optional: () => setCart([])
 }) {
-    // Tip selection (percent)
-    const [tipPercent, setTipPercent] = useState(0);
+    const TIP_PRESETS = [0, 50, 100];
+    const [tipAmount, setTipAmount] = useState(0);
+    const [note, setNote] = useState("");
 
-    // Currency formatter (display as whole MKD, e.g., "200 MKD")
     const fmtMKD = (n) => `${Math.round(Number(n || 0))} MKD`;
 
-    // Calculate money parts
+    const itemsCount = useMemo(
+        () => cart.reduce((s, it) => s + (Number(it.quantity) || 0), 0),
+        [cart]
+    );
+
     const subtotal = useMemo(
         () =>
             (cart || []).reduce(
@@ -29,23 +33,34 @@ function Cart({
             ),
         [cart]
     );
-    const tipAmount = useMemo(() => (subtotal * tipPercent) / 100, [subtotal, tipPercent]);
-    const total = useMemo(() => subtotal + tipAmount, [subtotal, tipAmount]);
+
+    const total = useMemo(() => subtotal + (Number(tipAmount) || 0), [subtotal, tipAmount]);
+
+    const handleCustomTip = () => {
+        const raw = window.prompt("Enter tip amount (MKD):", String(tipAmount || 0));
+        if (raw == null) return;
+        const v = Math.max(0, Math.round(Number(raw) || 0));
+        setTipAmount(v);
+    };
 
     const handleCheckout = async () => {
+        if (!cart.length) return;
+        if (!tableToken) {
+            alert("Missing table token. Please scan the table QR again.");
+            return;
+        }
+
         try {
-            let res;
-            if (isWaiter) {
-                // waiter path (session cookie sent by axios via withCredentials=true in api.js)
-                res = await api.post(
-                    "/orders/waiter",
-                    { tableToken, items: cart },
-                    { withCredentials: true }
-                );
-            } else {
-                // customer path
-                res = await api.post("/orders/customer", { tableToken, items: cart });
-            }
+            const payload = {
+                tableToken,
+                items: cart,
+                tip: Math.round(Number(tipAmount) || 0),
+                note: note || "",
+            };
+
+            const res = await (isWaiter
+                ? api.post("/orders/waiter", payload, { withCredentials: true })
+                : api.post("/orders/customer", payload));
 
             const { orderId } = res.data || {};
             alert(orderId ? `Order placed! ID: ${orderId}` : "Order placed!");
@@ -56,67 +71,44 @@ function Cart({
         }
     };
 
-    const handleBackToMenu = () => {
-        if (typeof onBackToMenu === "function") {
-            onBackToMenu();
-        } else {
-            window.location.hash = "/"; // fallback to menu
-        }
-    };
-
-    const handleClearCart = () => {
-        if (!cart || cart.length === 0) return;
-        const ok = window.confirm("Empty the entire cart?");
-        if (!ok) return;
-
-        if (typeof clearCart === "function") {
-            clearCart();
-            return;
-        }
-
-        // Fallback: brute-force clear via remove calls
-        cart.forEach((item) => {
-            const times = Number(item.quantity) || 1;
-            for (let i = 0; i < times; i++) removeFromCart(item);
-        });
-    };
-
-    const disabled = (cart?.length || 0) === 0 || !tableToken;
-
     return (
-        <div className="cart-container">
-            <h2 className="cart-title">Your Cart</h2>
+        // Use SAME container rhythm as the Menu view
+        <div className="menu-container cart-container">
+            <h3 className="page-head" style={{ marginTop: 0 }}>Your Order</h3>
 
             {(!cart || cart.length === 0) && (
                 <p className="empty-cart">Your cart is empty</p>
             )}
 
-            <ul className="cart-list">
-                {cart.map((item, i) => (
-                    <li key={i} className="cart-item">
-                        <div className="cart-item-left">
-                            <span className="cart-item-name">{item.name}</span>
-                            <span className="cart-item-price">
-                                {fmtMKD(item.price)}
-                            </span>
+            {/* Order items — EXACT same item styles as menu */}
+            <ul className="menu-list menu-list--full">
+                {cart.map((item) => (
+                    <li key={item.id} className="menu-item">
+                        <img
+                            src={item.image_url || PLACEHOLDER}
+                            alt={item.name}
+                            className="thumb"
+                            loading="lazy"
+                        />
+                        <div className="item-info" onClick={() => addToCart(item)}>
+                            <span className="item-name">{item.name}</span>
+                            <span className="item-price">{fmtMKD(item.price)}</span>
                         </div>
 
-                        <div className="cart-controls">
+                        <div className="qty-controls" aria-label="Quantity controls">
                             <button
-                                type="button"
-                                aria-label={`Remove one ${item.name}`}
                                 className="qty-btn"
+                                aria-label={`Remove one ${item.name}`}
                                 onClick={() => removeFromCart(item)}
                             >
                                 &minus;
                             </button>
-                            <span className="cart-qty" aria-live="polite">
+                            <span className="qty-num" aria-live="polite">
                                 {item.quantity}
                             </span>
                             <button
-                                type="button"
-                                aria-label={`Add one ${item.name}`}
                                 className="qty-btn"
+                                aria-label={`Add one more ${item.name}`}
                                 onClick={() => addToCart(item)}
                             >
                                 +
@@ -126,68 +118,56 @@ function Cart({
                 ))}
             </ul>
 
-            {/* Tip selector + totals */}
             {cart.length > 0 && (
-                <div className="cart-summary">
-                    <div className="tip-selector">
-                        <div className="tip-label">Tip</div>
+                <>
+                    {/* Inline total, left-aligned like the mock */}
+                    <div className="total-row">
+                        <span className="total-label">Total</span>
+                        <span className="total-amount">{fmtMKD(total)}</span>
+                    </div>
+
+                    {/* Tip */}
+                    <div className="block">
+                        <div className="block-title">Add Tip</div>
                         <div className="tip-buttons">
-                            {[0, 5, 10, 15, 25].map((p) => (
+                            {TIP_PRESETS.map((amt) => (
                                 <button
-                                    key={p}
+                                    key={amt}
                                     type="button"
-                                    onClick={() => setTipPercent(p)}
-                                    className={`tip-btn ${tipPercent === p ? "is-active" : ""}`}
+                                    className={`tip-chip ${tipAmount === amt ? "is-active" : ""}`}
+                                    onClick={() => setTipAmount(amt)}
                                 >
-                                    {p}%
+                                    {amt} MKD
                                 </button>
                             ))}
+                            <button type="button" className="tip-chip" onClick={handleCustomTip}>
+                                Custom
+                            </button>
                         </div>
                     </div>
 
-                    <div className="money-rows">
-                        <Row label="Subtotal" value={subtotal} fmt={fmtMKD} />
-                        <Row label={`Tip (${tipPercent}%)`} value={tipAmount} fmt={fmtMKD} />
-                        <Row label="Total" value={total} bold fmt={fmtMKD} />
+                    {/* Note */}
+                    <div className="block">
+                        <div className="block-title">Add Note</div>
+                        <input
+                            className="note-input"
+                            type="text"
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            placeholder="Message for the waiter"
+                        />
                     </div>
 
-                    {/* Navigation & destructive actions */}
-                    <div className="cart-actions">
-                        <button
-                            type="button"
-                            onClick={handleBackToMenu}
-                            className="btn btn-secondary"
-                        >
-                            ← Back to Menu
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={handleClearCart}
-                            className="btn btn-danger"
-                        >
-                            Empty Cart
-                        </button>
-                    </div>
-                </div>
+                    {/* Bottom action pill — SAME component/styles as menu pill */}
+                    <button className="view-order-pill" onClick={handleCheckout}>
+                        <span className="pill-left">
+                            <span className="pill-count">{itemsCount}</span>
+                            <span className="pill-text">Place Order</span>
+                        </span>
+                        <span className="pill-total">{fmtMKD(total)}</span>
+                    </button>
+                </>
             )}
-
-            <button
-                className="checkout-btn"
-                onClick={handleCheckout}
-                disabled={disabled}
-            >
-                {isWaiter ? "Place Order (No Payment)" : "Place Order"}
-            </button>
-        </div>
-    );
-}
-
-function Row({ label, value, bold, fmt = (n) => n }) {
-    return (
-        <div className={`money-row ${bold ? "money-row--bold" : ""}`}>
-            <span>{label}</span>
-            <span>{fmt(value)}</span>
         </div>
     );
 }

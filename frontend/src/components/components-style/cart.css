@@ -1,203 +1,91 @@
-/* ===== CART LAYOUT ===== */
+/* ===== CART (reuses menu/app styles) ===== */
+
+/* Match Menu’s container spacing & background.
+   Keep extra bottom padding so fixed pill never overlaps content. */
 .cart-container {
-    padding: 12px 16px 120px;
-    /* room for sticky pill in app */
+    padding-bottom: 140px;
+    /* space for the fixed .view-order-pill */
+    background-color: #f2f2f2;
+    /* same as .menu-container */
 }
 
-.cart-title {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text);
-    margin: 4px 2px 12px;
-}
-
+/* Empty state text alignment like other section texts */
 .empty-cart {
     color: #6b7280;
-    padding: 12px 4px;
+    padding: 12px 6px;
+    /* align with page-head’s 6px rhythm */
 }
 
-/* ===== LIST ===== */
-.cart-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-.cart-item {
+/* ---------- Totals ---------- */
+.total-row {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    background: #fff;
-    border: 1px solid #f0f0f0;
-    border-radius: 16px;
-    padding: 12px 14px;
-    margin-bottom: 10px;
-    box-shadow: none;
+    align-items: baseline;
+    gap: 10px;
+    justify-content: flex-start;
+    margin: 10px 6px 6px;
+    /* align with page-head left offset */
 }
 
-.cart-item-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.cart-item-name {
-    font-weight: 700;
-    font-size: 16px;
-    color: #0f172a;
-}
-
-.cart-item-price {
-    color: #6b7280;
-    font-weight: 600;
-    font-size: 13px;
-}
-
-/* ===== QUANTITY CONTROLS ===== */
-.cart-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.cart-qty {
-    min-width: 22px;
-    text-align: center;
-    font-weight: 600;
-    color: #0f172a;
-}
-
-/* Reuse the same feel as menu buttons; ensure perfect centering */
-.qty-btn {
-    width: 40px;
-    height: 40px;
-    aspect-ratio: 1 / 1;
-    border: none;
-    border-radius: 50%;
-    background: #E5E5E5;
-    color: #111;
+.total-label {
     font-size: 22px;
-    display: inline-grid;
-    place-items: center;
-    /* perfect centering */
-    line-height: 1;
-    padding: 0;
-    cursor: pointer;
-    transition: transform .08s ease;
-}
-
-.qty-btn:active {
-    transform: scale(0.96);
-}
-
-/* ===== SUMMARY ===== */
-.cart-summary {
-    margin-top: 16px;
-    background: #fff;
-    border: 1px solid #f0f0f0;
-    border-radius: 16px;
-    padding: 12px 14px;
-}
-
-/* Tip selector */
-.tip-selector {
-    margin-bottom: 12px;
-}
-
-.tip-label {
-    margin-bottom: 6px;
-    font-weight: 600;
+    font-weight: 800;
     color: #0f172a;
 }
 
+.total-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: #9aa1ac;
+}
+
+/* ---------- Blocks (Tip, Note) ---------- */
+.block {
+    margin-top: 12px;
+    padding: 0 6px;
+    /* same left/right rhythm as headers */
+}
+
+.block-title {
+    font-weight: 700;
+    color: #0f172a;
+    margin: 10px 0 8px;
+}
+
+/* Tip chips — visually consistent with the app */
 .tip-buttons {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
 }
 
-.tip-btn {
-    padding: 6px 10px;
-    border-radius: 8px;
-    border: 1px solid #d0d0d0;
-    background: #fff;
-    font-weight: 500;
+.tip-chip {
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid #d0d4da;
+    background: #f5f6f8;
+    font-weight: 700;
+    color: #0f172a;
     cursor: pointer;
 }
 
-.tip-btn.is-active {
-    background: #e8f2ff;
-    border-color: #b7d3ff;
-    font-weight: 700;
-}
-
-/* Money rows */
-.money-rows {
-    margin-bottom: 12px;
-}
-
-.money-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 0;
-    font-weight: 500;
-    color: #0f172a;
-}
-
-.money-row--bold {
-    font-weight: 800;
-}
-
-/* ===== ACTIONS ===== */
-.cart-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 8px;
-}
-
-.btn {
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-weight: 700;
-    cursor: pointer;
-    border: 1px solid transparent;
-}
-
-.btn-secondary {
-    background: #f1f5f9;
-    color: #0f172a;
-    border-color: #cbd5e1;
-}
-
-.btn-danger {
-    background: #dc3545;
-    color: #fff;
-}
-
-/* ===== CHECKOUT BUTTON ===== */
-.checkout-btn {
-    position: fixed;
-    left: 16px;
-    right: 16px;
-    bottom: 76px;
-    /* leave room above the sticky order pill */
-    z-index: 998;
+.tip-chip.is-active {
     background: #000;
     color: #fff;
-    border: none;
-    cursor: pointer;
-    display: block;
-    width: calc(100% - 32px);
-    padding: 14px 18px;
-    border-radius: 28px;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, .12);
-    font-weight: 800;
-    transition: transform .12s ease, opacity .12s ease;
+    border-color: #000;
 }
 
-.checkout-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+/* Note input — prevent horizontal overflow */
+.note-input {
+    width: 100%;
+    box-sizing: border-box;
+    /* avoids overflow inside padded .block */
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 22px;
+    border: none;
+    outline: none;
+    background: #e9eaee;
+    color: #0f172a;
 }
+
+/* No pill overrides here; we use .view-order-pill from App.css exactly */
