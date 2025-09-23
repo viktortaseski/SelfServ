@@ -256,7 +256,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 14px 18px;
-    border-radius: 28px;
+    border-radius: 1000px;
     box-shadow: 0 10px 24px rgba(0, 0, 0, .12);
     transition: transform .18s ease, opacity .18s ease;
 }

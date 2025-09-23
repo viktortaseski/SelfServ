@@ -209,13 +209,14 @@ function Menu({
                         role="region"
                     >
                         {topPicks.map((item) => (
-                            <div key={item.id} className="pick-card" tabIndex={0} onClick={() => addToCart(item)}>
+                            <div key={item.id} className="pick-card" tabIndex={0} >
                                 <img
                                     className="pick-image"
                                     src={item.image_url || PLACEHOLDER}
                                     alt={item.name}
                                     loading="lazy"
                                     onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
+                                    onClick={() => addToCart(item)}
                                 />
                                 <div className="pick-meta">
                                     <div className="pick-name">{item.name}</div>
@@ -265,7 +266,7 @@ function Menu({
                                         loading="lazy"
                                         onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
                                     />
-                                    <div className="item-info">
+                                    <div className="item-info" onClick={() => addToCart(item)}>
                                         <span className="item-name">{item.name}</span>
                                         <span className="item-price">
                                             {Math.round(Number(item.price))} MKD

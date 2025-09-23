@@ -219,6 +219,21 @@ function App() {
     }
   };
 
+  // Scroll to top whenever we enter the cart view
+  useEffect(() => {
+    if (view === "cart") {
+      // robust cross-browser reset
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      try {
+        window.scrollTo({ top: 0, behavior: "auto" });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+    }
+  }, [view]);
+
+
   return (
     <div className="app-container">
       {/* ===== One fixed header: navbar + search + categories ===== */}
