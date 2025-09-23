@@ -13,8 +13,9 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x mandatory;
-    padding: 2px 8px 10px 16px;
-    margin: 0 0 8px 6px;
+    padding: 2px 16px 10px 16px;
+    margin: 0 0 8px 0px;
+    scroll-padding-inline: 16px;
 }
 
 .top-picks-scroller::-webkit-scrollbar {
