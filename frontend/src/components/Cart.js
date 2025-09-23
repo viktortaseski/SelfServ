@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/App.css";
+import "./components-style/cart.css";
 
 function Cart({
     cart,
@@ -9,28 +10,26 @@ function Cart({
     addToCart,
     removeFromCart,
     isWaiter,
-    // NEW (optional) callbacks. If you pass them, UX is nicer.
-    onBackToMenu,   // e.g. () => setView("menu")
-    clearCart,      // e.g. () => setCart([])
+    onBackToMenu, // optional: () => setView("menu")
+    clearCart,    // optional: () => setCart([])
 }) {
     // Tip selection (percent)
     const [tipPercent, setTipPercent] = useState(0);
+
+    // Currency formatter (display as whole MKD, e.g., "200 MKD")
+    const fmtMKD = (n) => `${Math.round(Number(n || 0))} MKD`;
 
     // Calculate money parts
     const subtotal = useMemo(
         () =>
             (cart || []).reduce(
                 (sum, item) =>
-                    sum +
-                    (Number(item.price) || 0) * (Number(item.quantity) || 0),
+                    sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
                 0
             ),
         [cart]
     );
-    const tipAmount = useMemo(
-        () => (subtotal * tipPercent) / 100,
-        [subtotal, tipPercent]
-    );
+    const tipAmount = useMemo(() => (subtotal * tipPercent) / 100, [subtotal, tipPercent]);
     const total = useMemo(() => subtotal + tipAmount, [subtotal, tipAmount]);
 
     const handleCheckout = async () => {
@@ -51,8 +50,7 @@ function Cart({
             const { orderId } = res.data || {};
             alert(orderId ? `Order placed! ID: ${orderId}` : "Order placed!");
         } catch (err) {
-            const msg =
-                err?.response?.data?.error || err?.message || "Something went wrong";
+            const msg = err?.response?.data?.error || err?.message || "Something went wrong";
             console.error(err);
             alert(msg);
         }
@@ -62,8 +60,7 @@ function Cart({
         if (typeof onBackToMenu === "function") {
             onBackToMenu();
         } else {
-            // graceful fallback if parent didn’t wire it
-            window.location.hash = "/"; // defaults your app back to menu view
+            window.location.hash = "/"; // fallback to menu
         }
     };
 
@@ -77,7 +74,7 @@ function Cart({
             return;
         }
 
-        // Fallback: brute-force clear via remove calls (works without parent changes)
+        // Fallback: brute-force clear via remove calls
         cart.forEach((item) => {
             const times = Number(item.quantity) || 1;
             for (let i = 0; i < times; i++) removeFromCart(item);
@@ -97,25 +94,33 @@ function Cart({
             <ul className="cart-list">
                 {cart.map((item, i) => (
                     <li key={i} className="cart-item">
-                        <div
-                            className="cart-item-left"
-                            style={{ display: "flex", alignItems: "center", gap: 8 }}
-                        >
+                        <div className="cart-item-left">
                             <span className="cart-item-name">{item.name}</span>
                             <span className="cart-item-price">
-                                €{Number(item.price || 0).toFixed(2)}
+                                {fmtMKD(item.price)}
                             </span>
                         </div>
 
                         <div className="cart-controls">
-                            <button onClick={() => removeFromCart(item)}>-</button>
-                            <span
-                                className="cart-qty"
-                                style={{ minWidth: 18, textAlign: "center" }}
+                            <button
+                                type="button"
+                                aria-label={`Remove one ${item.name}`}
+                                className="qty-btn"
+                                onClick={() => removeFromCart(item)}
                             >
+                                &minus;
+                            </button>
+                            <span className="cart-qty" aria-live="polite">
                                 {item.quantity}
                             </span>
-                            <button onClick={() => addToCart(item)}>+</button>
+                            <button
+                                type="button"
+                                aria-label={`Add one ${item.name}`}
+                                className="qty-btn"
+                                onClick={() => addToCart(item)}
+                            >
+                                +
+                            </button>
                         </div>
                     </li>
                 ))}
@@ -123,53 +128,35 @@ function Cart({
 
             {/* Tip selector + totals */}
             {cart.length > 0 && (
-                <div className="cart-summary" style={{ marginTop: 16 }}>
-                    <div className="tip-selector" style={{ marginBottom: 12 }}>
-                        <div style={{ marginBottom: 6, fontWeight: 600 }}>Tip</div>
-                        {[0, 5, 10, 15, 25].map((p) => (
-                            <button
-                                key={p}
-                                type="button"
-                                onClick={() => setTipPercent(p)}
-                                className={`tip-btn${tipPercent === p ? " tip-btn--active" : ""}`}
-                                style={{
-                                    marginRight: 8,
-                                    padding: "6px 10px",
-                                    borderRadius: 8,
-                                    border: "1px solid #d0d0d0",
-                                    background: tipPercent === p ? "#e8f2ff" : "#fff",
-                                    fontWeight: tipPercent === p ? 700 : 500,
-                                    cursor: "pointer",
-                                }}
-                            >
-                                {p}%
-                            </button>
-                        ))}
+                <div className="cart-summary">
+                    <div className="tip-selector">
+                        <div className="tip-label">Tip</div>
+                        <div className="tip-buttons">
+                            {[0, 5, 10, 15, 25].map((p) => (
+                                <button
+                                    key={p}
+                                    type="button"
+                                    onClick={() => setTipPercent(p)}
+                                    className={`tip-btn ${tipPercent === p ? "is-active" : ""}`}
+                                >
+                                    {p}%
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
-                    <div className="money-rows" style={{ marginBottom: 12 }}>
-                        <Row label="Subtotal" value={subtotal} />
-                        <Row label={`Tip (${tipPercent}%)`} value={tipAmount} />
-                        <Row label="Total" value={total} bold />
+                    <div className="money-rows">
+                        <Row label="Subtotal" value={subtotal} fmt={fmtMKD} />
+                        <Row label={`Tip (${tipPercent}%)`} value={tipAmount} fmt={fmtMKD} />
+                        <Row label="Total" value={total} bold fmt={fmtMKD} />
                     </div>
 
                     {/* Navigation & destructive actions */}
-                    <div
-                        className="cart-actions"
-                        style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}
-                    >
+                    <div className="cart-actions">
                         <button
                             type="button"
                             onClick={handleBackToMenu}
-                            style={{
-                                background: "#f1f5f9",
-                                color: "#0f172a",
-                                border: "1px solid #cbd5e1",
-                                borderRadius: 8,
-                                padding: "10px 14px",
-                                fontWeight: 600,
-                                cursor: "pointer",
-                            }}
+                            className="btn btn-secondary"
                         >
                             ← Back to Menu
                         </button>
@@ -177,15 +164,7 @@ function Cart({
                         <button
                             type="button"
                             onClick={handleClearCart}
-                            style={{
-                                background: "#dc3545",
-                                color: "#fff",
-                                border: "none",
-                                borderRadius: 8,
-                                padding: "10px 14px",
-                                fontWeight: 700,
-                                cursor: "pointer",
-                            }}
+                            className="btn btn-danger"
                         >
                             Empty Cart
                         </button>
@@ -204,18 +183,11 @@ function Cart({
     );
 }
 
-function Row({ label, value, bold }) {
+function Row({ label, value, bold, fmt = (n) => n }) {
     return (
-        <div
-            style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "6px 0",
-                fontWeight: bold ? 700 : 500,
-            }}
-        >
+        <div className={`money-row ${bold ? "money-row--bold" : ""}`}>
             <span>{label}</span>
-            <span>€{Number(value || 0).toFixed(2)}</span>
+            <span>{fmt(value)}</span>
         </div>
     );
 }

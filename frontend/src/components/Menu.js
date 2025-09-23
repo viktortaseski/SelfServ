@@ -5,10 +5,6 @@ import "./components-style/Menu.css";
 const PLACEHOLDER =
     "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
 
-function titleCase(s) {
-    if (!s) return "";
-    return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 function Menu({
     addToCart,
@@ -78,11 +74,11 @@ function Menu({
             .catch(() => setTopPicks([]));
     }, [category]);
 
-    const allCategories = ["coffee", "drinks", "food", "desserts"];
     const categoriesToRender = useMemo(
-        () => (category ? [category] : allCategories),
+        () => (category ? [category] : ["coffee", "drinks", "food", "desserts"]),
         [category]
     );
+
 
     // When a category is selected we show *all* items of that category
     const perCategoryLimit = category ? 9999 : 4;
@@ -142,7 +138,7 @@ function Menu({
                     role="listbox"
                     aria-label="Search results"
                     style={{
-                        left: ddBox.left,
+                        left: ddBox.left - 6,
                         top: ddBox.top,
                     }}
                 >
@@ -158,7 +154,7 @@ function Menu({
                                         loading="lazy"
                                         onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
                                     />
-                                    <div className="item-info">
+                                    <div className="item-info" onClick={() => addToCart(item)}>
                                         <span className="item-name">{item.name}</span>
                                         <span className="item-price">
                                             {Math.round(Number(item.price))} MKD
