@@ -24,6 +24,10 @@
     padding-bottom: 110px;
 }
 
+.app-container.is-searching {
+    padding-top: 130px;
+}
+
 /* ========== Fixed header (navbar + search + categories) ========== */
 .navbar {
     position: fixed;

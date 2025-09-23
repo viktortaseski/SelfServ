@@ -63,7 +63,8 @@ function App() {
     setIndicatorStyle({ left, width: bubbleWidth });
   };
 
-  useEffect(() => { recalcIndicator(); }, [category]);
+  // Recalc when category changes or when search toggles (row mounts/unmounts)
+  useEffect(() => { recalcIndicator(); }, [category, searchText]);
 
   useEffect(() => {
     const onResize = () => recalcIndicator();
@@ -235,7 +236,7 @@ function App() {
 
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${searchText ? "is-searching" : ""}`}>
       {/* ===== One fixed header: navbar + search + categories ===== */}
       <nav className={`navbar ${isCollapsed ? "is-collapsed" : ""}`}>
         <div className="nav-top">
@@ -282,33 +283,36 @@ function App() {
               )}
             </div>
 
-            <div ref={rowRef} className="category-row category-row--tabs">
-              {/* Sliding curved indicator */}
-              <div
-                className="tab-indicator"
-                style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
-              />
-              {["coffee", "drinks", "food", "desserts"].map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  data-cat={cat}
-                  ref={(el) => (chipRefs.current[cat] = el)}
-                  className={`category-chip ${category === cat ? "is-active" : ""}`}
-                  onClick={() => selectCategory(cat)}
-                >
-                  <img
-                    src={ICONS[cat]}
-                    alt=""
-                    className="chip-icon-img"
-                    draggable="false"
-                  />
-                  <span className="chip-label" style={{ textTransform: "capitalize" }}>
-                    {cat}
-                  </span>
-                </button>
-              ))}
-            </div>
+            {/* Hide category chips while searching */}
+            {!searchText && (
+              <div ref={rowRef} className="category-row category-row--tabs">
+                {/* Sliding curved indicator */}
+                <div
+                  className="tab-indicator"
+                  style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+                />
+                {["coffee", "drinks", "food", "desserts"].map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    data-cat={cat}
+                    ref={(el) => (chipRefs.current[cat] = el)}
+                    className={`category-chip ${category === cat ? "is-active" : ""}`}
+                    onClick={() => selectCategory(cat)}
+                  >
+                    <img
+                      src={ICONS[cat]}
+                      alt=""
+                      className="chip-icon-img"
+                      draggable="false"
+                    />
+                    <span className="chip-label" style={{ textTransform: "capitalize" }}>
+                      {cat}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
       </nav>

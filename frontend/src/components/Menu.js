@@ -92,7 +92,7 @@ function Menu({
             )}
 
             {!willRenderAnything && (
-                <p style={{ padding: "8px 4px", color: "#666" }}>No items found.</p>
+                <p style={{ textAlign: "center", padding: "8px 4px", color: "#666" }}>No items found.</p>
             )}
 
             {/* ===== When searching: show matching items inline, no dropdown, no Top Picks ===== */}
