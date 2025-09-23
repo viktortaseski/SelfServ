@@ -4,6 +4,7 @@
    Keep extra bottom padding so fixed pill never overlaps content. */
 .cart-container {
     padding-bottom: 140px;
+    padding: 16px;
     /* space for the fixed .view-order-pill */
     background-color: #f2f2f2;
     /* same as .menu-container */
@@ -22,7 +23,7 @@
     align-items: baseline;
     gap: 10px;
     justify-content: flex-start;
-    margin: 10px 6px 6px;
+    margin: 10px 6px 30px;
     /* align with page-head left offset */
 }
 
