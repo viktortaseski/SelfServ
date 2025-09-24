@@ -162,31 +162,35 @@ function Menu({
                         aria-label="Top Picks"
                         role="region"
                     >
-                        {topPicks.map((item) => (
-                            <div key={item.id} className="pick-card" tabIndex={0}>
-                                <img
-                                    className="pick-image"
-                                    src={item.image_url || PLACEHOLDER}
-                                    alt={item.name}
-                                    loading="lazy"
-                                    onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
-                                    onClick={() => addToCart(item)}
-                                />
-                                <div className="pick-meta">
-                                    <div className="pick-name">{item.name}</div>
-                                    <div className="pick-price">
-                                        {Math.round(Number(item.price))} MKD
+                        {topPicks.map((item) => {
+                            const isLongName = (item.name || "").length > 18; // tweak threshold as you like
+                            return (
+                                <div key={item.id} className="pick-card" tabIndex={0}>
+                                    <img
+                                        className={`pick-image ${isLongName ? "pick-image--tight" : ""}`}
+                                        src={item.image_url || PLACEHOLDER}
+                                        alt={item.name}
+                                        loading="lazy"
+                                        onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
+                                        onClick={() => addToCart(item)}
+                                    />
+                                    <div className={`pick-meta ${isLongName ? "pick-meta--tight" : ""}`}>
+                                        <div className="pick-name">{item.name}</div>
+                                        <div className="pick-price">
+                                            {Math.round(Number(item.price))} MKD
+                                        </div>
                                     </div>
+                                    <button
+                                        className="pick-add"
+                                        aria-label={`Add ${item.name} to order`}
+                                        onClick={() => addToCart(item)}
+                                    >
+                                        +
+                                    </button>
                                 </div>
-                                <button
-                                    className="pick-add"
-                                    aria-label={`Add ${item.name} to order`}
-                                    onClick={() => addToCart(item)}
-                                >
-                                    +
-                                </button>
-                            </div>
-                        ))}
+                            );
+                        })}
+
                     </div>
                 </>
             )}

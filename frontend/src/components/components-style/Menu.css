@@ -54,10 +54,21 @@
     border-radius: 16px;
 }
 
+/* Long-name cards: reduce bottom gap under the image */
+.pick-card .pick-image.pick-image--tight {
+    margin: 15px auto 0 !important;
+    /* override margin shorthand */
+}
+
 .pick-meta {
     margin-top: 20px;
     margin-left: 4px;
 }
+
+.pick-card .pick-meta.pick-meta--tight {
+    margin-top: 0 !important;
+}
+
 
 .pick-name {
     color: #0f172a;
