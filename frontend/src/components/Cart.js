@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/App.css";   // global + navbar + pill
 import "./components-style/cart.css";  // cart-only tweaks (no navbar overrides)
+import binIcon from "../assets/other-images/bin.png";
 
 const PLACEHOLDER = "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
 
@@ -12,6 +13,7 @@ function Cart({
     addToCart,
     removeFromCart,
     isWaiter,
+    clearCart, // <-- pass from parent if available (preferred)
 }) {
     const TIP_PRESETS = [0, 50, 100];
     const [tipAmount, setTipAmount] = useState(0);
@@ -34,13 +36,32 @@ function Cart({
         [cart]
     );
 
-    const total = useMemo(() => subtotal + (Number(tipAmount) || 0), [subtotal, tipAmount]);
+    const total = useMemo(
+        () => subtotal + (Number(tipAmount) || 0),
+        [subtotal, tipAmount]
+    );
 
     const handleCustomTip = () => {
         const raw = window.prompt("Enter tip amount (MKD):", String(tipAmount || 0));
         if (raw == null) return;
         const v = Math.max(0, Math.round(Number(raw) || 0));
         setTipAmount(v);
+    };
+
+    const handleClearAll = () => {
+        if (!cart.length) return;
+        const ok = window.confirm("Clear all items from your order?");
+        if (!ok) return;
+
+        if (typeof clearCart === "function") {
+            clearCart();
+            return;
+        }
+        // Fallback if clearCart not provided
+        cart.forEach((item) => {
+            const q = Number(item.quantity) || 0;
+            for (let i = 0; i < q; i++) removeFromCart(item);
+        });
     };
 
     const handleCheckout = async () => {
@@ -72,15 +93,34 @@ function Cart({
     };
 
     return (
-        // Use SAME container rhythm as the Menu view
         <div className="menu-container cart-container">
-            <h3 className="page-head" style={{ marginTop: 0 }}>Your Order</h3>
+            {/* Header row: title + Clear All */}
+            <div className="cart-header-row">
+                <h3 className="page-head" style={{ margin: 0 }}>Your Order</h3>
+
+                {/* Surrounding DIV (96x32, #E5E5E5, radius 24px) */}
+                <div className="clear-all-wrap">
+                    <button
+                        type="button"
+                        className="clear-all-btn"
+                        onClick={handleClearAll}
+                        aria-label="Clear all items in the order"
+                    >
+                        <img
+                            src={binIcon}
+                            alt=""
+                            className="clear-all-icon"
+                            draggable="false"
+                        />
+                        <span>Clear All</span>
+                    </button>
+                </div>
+            </div>
 
             {(!cart || cart.length === 0) && (
                 <p className="empty-cart">Your cart is empty</p>
             )}
 
-            {/* Order items — EXACT same item styles as menu */}
             <ul className="menu-list menu-list--full">
                 {cart.map((item) => (
                     <li key={item.id} className="menu-item">
@@ -120,13 +160,11 @@ function Cart({
 
             {cart.length > 0 && (
                 <>
-                    {/* Inline total, left-aligned like the mock */}
                     <div className="total-row">
                         <span className="total-label">Total</span>
                         <span className="total-amount">{fmtMKD(total)}</span>
                     </div>
 
-                    {/* Tip */}
                     <div className="block">
                         <div className="block-title">Add Tip</div>
                         <div className="tip-buttons">
@@ -146,7 +184,6 @@ function Cart({
                         </div>
                     </div>
 
-                    {/* Note */}
                     <div className="block">
                         <div className="block-title">Add Note</div>
                         <input
@@ -158,7 +195,6 @@ function Cart({
                         />
                     </div>
 
-                    {/* Bottom action pill — SAME component/styles as menu pill */}
                     <button className="view-order-pill" onClick={handleCheckout}>
                         <span className="pill-left">
                             <span className="pill-count">{itemsCount}</span>
