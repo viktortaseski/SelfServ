@@ -16,7 +16,8 @@
     max-width: 430px;
     margin: 0 auto;
     background: var(--bg);
-    min-height: fit;
+    min-height: fit-content;
+    /* fix: was 'fit' */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     background-color: #f2f2f2;
     /* space for expanded header (logo + search + categories) */
@@ -159,7 +160,6 @@
     transform: scale(.96);
 }
 
-/* category tabs inside header */
 .category-row--tabs {
     position: relative;
     padding: 0px 8px 0px;
@@ -175,10 +175,14 @@
 .tab-indicator {
     position: absolute;
     top: calc(100% - 4px);
+    left: 0;
+    /* ✅ anchor the indicator to the left edge */
     height: 8px;
     background: #000;
     border-radius: 10px 10px 0 0;
-    transition: left .22s ease, width .22s ease;
+    transition: transform .22s ease, width .22s ease;
+    /* move with transform */
+    will-change: transform, width;
     pointer-events: none;
 }
 
