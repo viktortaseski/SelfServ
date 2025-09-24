@@ -17,7 +17,6 @@
     margin: 0 auto;
     background: var(--bg);
     min-height: fit-content;
-    /* fix: was 'fit' */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     background-color: #f2f2f2;
     /* space for expanded header (logo + search + categories) */
@@ -169,27 +168,15 @@
     gap: 4px;
     border-bottom: 1px solid #f0f0f0;
     transition: padding .18s ease;
-    overflow: hidden;
+    /* IMPORTANT: allow the indicator pseudo-element to extend to the border line */
+    overflow: visible;
 }
 
-/* (existing styles above) */
+/* OLD .tab-indicator is no longer used (JS-driven). You can keep or remove it.
+.tab-indicator { display: none; }
+*/
 
-.tab-indicator {
-    position: absolute;
-    top: calc(100% - 4px);
-    left: 0;
-    /* anchor left; movement via transform */
-    height: 8px;
-    background: #000;
-    border-radius: 10px 10px 0 0;
-    transition: transform .22s ease, width .22s ease;
-    will-change: transform, width;
-    pointer-events: none;
-}
-
-/* (rest of your CSS unchanged) */
-
-
+/* Each chip */
 .category-chip {
     background: transparent;
     border: none;
@@ -199,7 +186,7 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 6px 0 10px;
+    padding: 6px 0 0px;
     color: #808080;
     font-weight: 600;
     cursor: pointer;
@@ -209,6 +196,49 @@
     font-weight: 700;
 }
 
+/* Make label a positioning context for the indicator */
+.chip-label {
+    font-size: 14px;
+    color: inherit;
+    position: relative;
+    display: inline-block;
+    line-height: 1.1;
+    padding-bottom: 14px;
+    /* space for the indicator curve */
+}
+
+/* THE INDICATOR under the active label */
+.category-chip.is-active .chip-label::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    /* sits at the bottom of the label block */
+    transform: translateX(-50%);
+    width: 64px;
+    /* matches previous JS bubbleWidth ratio */
+    height: 5px;
+    background: #000;
+    border-radius: 10px 10px 0 0;
+    transition: width .22s ease, transform .22s ease, opacity .18s ease;
+    opacity: 1;
+}
+
+/* Optional: smooth hide on non-active chips (keeps layout consistent) */
+.category-chip:not(.is-active) .chip-label::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 0;
+    height: 8px;
+    background: #000;
+    border-radius: 10px 10px 0 0;
+    opacity: 0;
+}
+
+/* Icons */
 .chip-icon-img {
     width: 48px;
     height: 48px;
@@ -219,11 +249,7 @@
     transition: opacity .18s ease, transform .18s ease, height .18s ease, margin .18s ease;
 }
 
-.chip-label {
-    font-size: 14px;
-    color: inherit;
-}
-
+/* Active color */
 .category-chip.is-active,
 .category-chip.is-active .chip-label {
     color: #000;
@@ -331,5 +357,3 @@
     font-size: 1.3rem;
     cursor: pointer;
 }
-
-/* (Removed old dropdown styles: search-dd & search-menu-item) */

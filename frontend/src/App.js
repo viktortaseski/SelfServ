@@ -57,17 +57,8 @@ function App() {
   const lastY = useRef(0);
   const idleTimer = useRef(null);
 
-  // --- Sliding tab indicator refs/state ---
-  const rowRef = useRef(null);
-  const chipRefs = useRef({}); // { coffee: HTMLElement, drinks: HTMLElement, ... }
-  const [indicatorStyle, setIndicatorStyle] = useState({ x: 0, width: 0 });
-
-  // Guards / state for scroll-driven changes
-  const userLockUntil = useRef(0);           // after a tap, block scroll updates briefly
-  const restoringRef = useRef(true);         // true only during very first paint
-  const rafRecalc = useRef(0);
-  const scrollDir = useRef(0);               // +1 down, -1 up, 0 unknown
-  const proposedCat = useRef({ cat: null, ts: 0 }); // hysteresis window
+  // Guards for scroll-driven changes
+  const userLockUntil = useRef(0);
 
   // Helper: scroll positions
   const getScrollY = () =>
@@ -95,104 +86,18 @@ function App() {
     });
   };
 
-  const recalcIndicator = () => {
-    const row = rowRef.current;
-    const activeEl = chipRefs.current[category];
-    if (!row || !activeEl) return;
-
-    const rowBox = row.getBoundingClientRect();
-    const box = activeEl.getBoundingClientRect();
-
-    // keep a minimum width so we never collapse to 0 during fonts/icon swaps
-    const bubbleWidth = Math.max(box.width * 0.7, 16);
-    const x = (box.left - rowBox.left) + (box.width - bubbleWidth) / 2;
-
-    setIndicatorStyle({ x, width: bubbleWidth });
-  };
-
-  // Recalc on category change
-  useEffect(() => {
-    if (rafRecalc.current) cancelAnimationFrame(rafRecalc.current);
-    rafRecalc.current = requestAnimationFrame(() => {
-      recalcIndicator();
-    });
-    return () => {
-      if (rafRecalc.current) cancelAnimationFrame(rafRecalc.current);
-    };
-  }, [category]);
-
-  // Recalc on resize / collapsed state / orientation
-  useEffect(() => {
-    const onResize = () => recalcIndicator();
-    window.addEventListener("resize", onResize);
-    window.addEventListener("orientationchange", onResize);
-
-    // initial double RAF to stabilize after first paint
-    const a = requestAnimationFrame(() => {
-      const b = requestAnimationFrame(() => recalcIndicator());
-      rafRecalc.current = b;
-    });
-
-    return () => {
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("orientationchange", onResize);
-      cancelAnimationFrame(a);
-      if (rafRecalc.current) cancelAnimationFrame(rafRecalc.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    recalcIndicator();
-  }, [isCollapsed]);
-
-  // Observe row size changes (fonts/icons/viewport UI changes)
-  useEffect(() => {
-    if (!rowRef.current) return;
-    const ro = new ResizeObserver(() => recalcIndicator());
-    ro.observe(rowRef.current);
-    return () => ro.disconnect();
-  }, []);
-
-  // Recalc on visibility return (BFCache / tab restore)
-  useEffect(() => {
-    const onShow = () => {
-      try {
-        const stored = sessionStorage.getItem(ACTIVE_CAT_KEY);
-        if (CATS.includes(stored)) {
-          _setCategory((prev) => (prev === stored ? prev : stored));
-        }
-      } catch { }
-      recalcIndicator();
-    };
-    window.addEventListener("pageshow", onShow);
-    document.addEventListener("visibilitychange", onShow);
-    return () => {
-      window.removeEventListener("pageshow", onShow);
-      document.removeEventListener("visibilitychange", onShow);
-    };
-  }, []);
-
   // Scroll bookkeeping (direction + header collapse + pill visibility)
   useEffect(() => {
     const onScroll = () => {
       const y = getScrollY();
       setIsCollapsed(y > 8);
 
-      const dy = y - (lastY.current || 0);
-      if (dy > 2) {
-        scrollDir.current = 1;
-        setPillHidden(true);
-      } else if (dy < -2) {
-        scrollDir.current = -1;
-        setPillHidden(false);
-      }
+      if (y > lastY.current + 4) setPillHidden(true);
+      else if (y < lastY.current - 4) setPillHidden(false);
       lastY.current = y;
 
       if (idleTimer.current) clearTimeout(idleTimer.current);
-      idleTimer.current = setTimeout(() => {
-        scrollDir.current = 0;
-        setPillHidden(false);
-      }, 280);
+      idleTimer.current = setTimeout(() => setPillHidden(false), 250);
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -318,62 +223,23 @@ function App() {
     setCategory(cat);
     // lock out scroll-sourced changes for a short period after a tap
     userLockUntil.current = performance.now() + 700;
-    proposedCat.current = { cat: null, ts: 0 }; // reset hysteresis proposals
     if (view !== "menu") goto("menu");
   };
 
-  // ***** STRONG GUARD ***** for scroll-driven updates from <Menu />
+  // ONLY FOR SCROLL-DRIVEN updates coming from <Menu />
   const setCategoryFromScroll = (cat) => {
-    if (!CATS.includes(cat)) return;
-
-    // ignore during first restore / paint
-    if (restoringRef.current) return;
-
     // respect user lock (they just tapped a tab)
     if (performance.now() < userLockUntil.current) return;
 
-    // suppress flips caused by rubber-banding at edges
+    // ignore noisy flips at top/bottom edges
     if ((isAtTop() && cat === FIRST_CAT && category !== FIRST_CAT) ||
       (isAtBottom() && cat === LAST_CAT && category !== LAST_CAT)) {
       return;
     }
 
-    // If nothing changes, bail early
-    if (cat === category) return;
-
-    // Direction-aware small guard (optional but helps flicker)
-    // If we're scrolling up, we're less likely to move to later categories instantly, and vice versa
-    const dir = scrollDir.current; // -1 up, +1 down, 0 unknown
-    const currIdx = CATS.indexOf(category);
-    const nextIdx = CATS.indexOf(cat);
-    if (dir === -1 && nextIdx > currIdx) return; // scrolling up but trying to go forward → ignore
-    if (dir === 1 && nextIdx < currIdx) return;  // scrolling down but trying to go backward → ignore
-
-    // Hysteresis: require a small stability window before committing
-    const now = performance.now();
-    const windowMs = 140; // tweakable
-    if (proposedCat.current.cat !== cat) {
-      proposedCat.current = { cat, ts: now };
-      return;
-    }
-    if (now - proposedCat.current.ts < windowMs) return;
-
-    // Commit
+    if (category === cat) return;
     setCategory(cat);
-    proposedCat.current = { cat: null, ts: 0 };
   };
-
-  // Finish initial restore after first stable paint
-  useEffect(() => {
-    const a = requestAnimationFrame(() => {
-      const b = requestAnimationFrame(() => {
-        restoringRef.current = false;
-        recalcIndicator();
-      });
-      rafRecalc.current = b;
-    });
-    return () => cancelAnimationFrame(a);
-  }, []);
 
   // Scroll to top whenever we enter the cart view
   useEffect(() => {
@@ -436,21 +302,13 @@ function App() {
               )}
             </div>
 
-            <div ref={rowRef} className="category-row category-row--tabs">
-              {/* Sliding curved indicator */}
-              <div
-                className="tab-indicator"
-                style={{
-                  transform: `translateX(${indicatorStyle.x}px)`,
-                  width: indicatorStyle.width,
-                }}
-              />
+            <div className="category-row category-row--tabs">
+              {/* CSS-only indicator now lives under the active chip’s label */}
               {CATS.map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   data-cat={cat}
-                  ref={(el) => (chipRefs.current[cat] = el)}
                   className={`category-chip ${category === cat ? "is-active" : ""}`}
                   onClick={() => selectCategory(cat)}
                 >
@@ -459,7 +317,6 @@ function App() {
                     alt=""
                     className="chip-icon-img"
                     draggable="false"
-                    onLoad={recalcIndicator}
                   />
                   <span className="chip-label" style={{ textTransform: "capitalize" }}>
                     {cat}
