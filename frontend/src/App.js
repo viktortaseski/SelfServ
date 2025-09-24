@@ -22,12 +22,26 @@ const ICONS = {
   desserts: dessertsIcon,
 };
 
+const CATS = ["coffee", "drinks", "food", "desserts"];
+const FIRST_CAT = CATS[0];
+const LAST_CAT = CATS[CATS.length - 1];
+
+// Key used to persist active tab between reloads
+const ACTIVE_CAT_KEY = "activeCategory";
+
 function App() {
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
 
-  // Start with Coffee selected (no home page)
-  const [category, setCategory] = useState("coffee");
+  // Restore last active category from sessionStorage; fallback to coffee
+  const [category, _setCategory] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(ACTIVE_CAT_KEY);
+      return CATS.includes(saved) ? saved : "coffee";
+    } catch {
+      return "coffee";
+    }
+  });
 
   const [searchText, setSearchText] = useState("");
   const [notice, setNotice] = useState(null);
@@ -46,7 +60,40 @@ function App() {
   // --- Sliding tab indicator refs/state ---
   const rowRef = useRef(null);
   const chipRefs = useRef({}); // { coffee: HTMLElement, drinks: HTMLElement, ... }
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const [indicatorStyle, setIndicatorStyle] = useState({ x: 0, width: 0 });
+
+  // Guards / state for scroll-driven changes
+  const userLockUntil = useRef(0);           // after a tap, block scroll updates briefly
+  const restoringRef = useRef(true);         // true only during very first paint
+  const rafRecalc = useRef(0);
+  const scrollDir = useRef(0);               // +1 down, -1 up, 0 unknown
+  const proposedCat = useRef({ cat: null, ts: 0 }); // hysteresis window
+
+  // Helper: scroll positions
+  const getScrollY = () =>
+    window.scrollY ??
+    document.documentElement.scrollTop ??
+    document.body.scrollTop ??
+    0;
+
+  const getMaxScroll = () =>
+    (document.documentElement.scrollHeight || 0) - window.innerHeight;
+
+  // Helper: are we near the top/bottom rubber-band zones?
+  const isAtTop = () => getScrollY() <= 2;
+  const isAtBottom = () => Math.abs(getScrollY() - getMaxScroll()) <= 2;
+
+  // Unified internal setter: keeps storage in sync
+  const setCategory = (cat) => {
+    if (!CATS.includes(cat)) return;
+    _setCategory((prev) => {
+      if (prev === cat) return prev;
+      try {
+        sessionStorage.setItem(ACTIVE_CAT_KEY, cat);
+      } catch { }
+      return cat;
+    });
+  };
 
   const recalcIndicator = () => {
     const row = rowRef.current;
@@ -56,36 +103,96 @@ function App() {
     const rowBox = row.getBoundingClientRect();
     const box = activeEl.getBoundingClientRect();
 
-    // A little wider look (also stays centered)
-    const bubbleWidth = box.width * 0.7;
-    const left = (box.left - rowBox.left) + (box.width - bubbleWidth) / 2;
+    // keep a minimum width so we never collapse to 0 during fonts/icon swaps
+    const bubbleWidth = Math.max(box.width * 0.7, 16);
+    const x = (box.left - rowBox.left) + (box.width - bubbleWidth) / 2;
 
-    setIndicatorStyle({ left, width: bubbleWidth });
+    setIndicatorStyle({ x, width: bubbleWidth });
   };
 
-  useEffect(() => { recalcIndicator(); }, [category]);
+  // Recalc on category change
+  useEffect(() => {
+    if (rafRecalc.current) cancelAnimationFrame(rafRecalc.current);
+    rafRecalc.current = requestAnimationFrame(() => {
+      recalcIndicator();
+    });
+    return () => {
+      if (rafRecalc.current) cancelAnimationFrame(rafRecalc.current);
+    };
+  }, [category]);
 
+  // Recalc on resize / collapsed state / orientation
   useEffect(() => {
     const onResize = () => recalcIndicator();
     window.addEventListener("resize", onResize);
-    const t = setTimeout(recalcIndicator, 0);
+    window.addEventListener("orientationchange", onResize);
+
+    // initial double RAF to stabilize after first paint
+    const a = requestAnimationFrame(() => {
+      const b = requestAnimationFrame(() => recalcIndicator());
+      rafRecalc.current = b;
+    });
+
     return () => {
       window.removeEventListener("resize", onResize);
-      clearTimeout(t);
+      window.removeEventListener("orientationchange", onResize);
+      cancelAnimationFrame(a);
+      if (rafRecalc.current) cancelAnimationFrame(rafRecalc.current);
     };
   }, []);
 
   useEffect(() => {
+    recalcIndicator();
+  }, [isCollapsed]);
+
+  // Observe row size changes (fonts/icons/viewport UI changes)
+  useEffect(() => {
+    if (!rowRef.current) return;
+    const ro = new ResizeObserver(() => recalcIndicator());
+    ro.observe(rowRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // Recalc on visibility return (BFCache / tab restore)
+  useEffect(() => {
+    const onShow = () => {
+      try {
+        const stored = sessionStorage.getItem(ACTIVE_CAT_KEY);
+        if (CATS.includes(stored)) {
+          _setCategory((prev) => (prev === stored ? prev : stored));
+        }
+      } catch { }
+      recalcIndicator();
+    };
+    window.addEventListener("pageshow", onShow);
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      window.removeEventListener("pageshow", onShow);
+      document.removeEventListener("visibilitychange", onShow);
+    };
+  }, []);
+
+  // Scroll bookkeeping (direction + header collapse + pill visibility)
+  useEffect(() => {
     const onScroll = () => {
-      const y = window.scrollY || 0;
+      const y = getScrollY();
       setIsCollapsed(y > 8);
 
-      if (y > lastY.current + 4) setPillHidden(true);
-      else if (y < lastY.current - 4) setPillHidden(false);
+      const dy = y - (lastY.current || 0);
+      if (dy > 2) {
+        scrollDir.current = 1;
+        setPillHidden(true);
+      } else if (dy < -2) {
+        scrollDir.current = -1;
+        setPillHidden(false);
+      }
       lastY.current = y;
 
       if (idleTimer.current) clearTimeout(idleTimer.current);
-      idleTimer.current = setTimeout(() => setPillHidden(false), 250);
+      idleTimer.current = setTimeout(() => {
+        scrollDir.current = 0;
+        setPillHidden(false);
+      }, 280);
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -123,12 +230,12 @@ function App() {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) setCart(parsed);
       }
-    } catch { /* ignore */ }
+    } catch { }
   }, []);
   useEffect(() => {
     try {
       sessionStorage.setItem("cart", JSON.stringify(cart));
-    } catch { /* ignore */ }
+    } catch { }
   }, [cart]);
 
   // ---------- Token / waiter detection ----------
@@ -165,7 +272,9 @@ function App() {
       if (existing) {
         const newQty = (existing.quantity || 0) + 1;
         toast(`${item.name} added. ${newQty} in order.`);
-        return prev.map((i) => (i.id === item.id ? { ...i, quantity: newQty } : i));
+        return prev.map((i) =>
+          i.id === item.id ? { ...i, quantity: newQty } : i
+        );
       }
       toast(`${item.name} added. 1 in order.`);
       return [...prev, { ...item, quantity: 1 }];
@@ -182,7 +291,9 @@ function App() {
       }
       const newQty = existing.quantity - 1;
       toast(`${item.name} removed. ${newQty} left.`);
-      return prev.map((i) => (i.id === item.id ? { ...i, quantity: newQty } : i));
+      return prev.map((i) =>
+        i.id === item.id ? { ...i, quantity: newQty } : i
+      );
     });
   };
 
@@ -205,24 +316,68 @@ function App() {
   // Category chip click — always show the menu when a category is chosen
   const selectCategory = (cat) => {
     setCategory(cat);
+    // lock out scroll-sourced changes for a short period after a tap
+    userLockUntil.current = performance.now() + 700;
+    proposedCat.current = { cat: null, ts: 0 }; // reset hysteresis proposals
     if (view !== "menu") goto("menu");
   };
 
-  // LOGO click: stay in menu, select Coffee, scroll to top
-  const onLogoClick = () => {
-    setCategory("coffee");
-    goto("menu");
-    try {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch {
-      window.scrollTo(0, 0);
+  // ***** STRONG GUARD ***** for scroll-driven updates from <Menu />
+  const setCategoryFromScroll = (cat) => {
+    if (!CATS.includes(cat)) return;
+
+    // ignore during first restore / paint
+    if (restoringRef.current) return;
+
+    // respect user lock (they just tapped a tab)
+    if (performance.now() < userLockUntil.current) return;
+
+    // suppress flips caused by rubber-banding at edges
+    if ((isAtTop() && cat === FIRST_CAT && category !== FIRST_CAT) ||
+      (isAtBottom() && cat === LAST_CAT && category !== LAST_CAT)) {
+      return;
     }
+
+    // If nothing changes, bail early
+    if (cat === category) return;
+
+    // Direction-aware small guard (optional but helps flicker)
+    // If we're scrolling up, we're less likely to move to later categories instantly, and vice versa
+    const dir = scrollDir.current; // -1 up, +1 down, 0 unknown
+    const currIdx = CATS.indexOf(category);
+    const nextIdx = CATS.indexOf(cat);
+    if (dir === -1 && nextIdx > currIdx) return; // scrolling up but trying to go forward → ignore
+    if (dir === 1 && nextIdx < currIdx) return;  // scrolling down but trying to go backward → ignore
+
+    // Hysteresis: require a small stability window before committing
+    const now = performance.now();
+    const windowMs = 140; // tweakable
+    if (proposedCat.current.cat !== cat) {
+      proposedCat.current = { cat, ts: now };
+      return;
+    }
+    if (now - proposedCat.current.ts < windowMs) return;
+
+    // Commit
+    setCategory(cat);
+    proposedCat.current = { cat: null, ts: 0 };
   };
+
+  // Finish initial restore after first stable paint
+  useEffect(() => {
+    const a = requestAnimationFrame(() => {
+      const b = requestAnimationFrame(() => {
+        restoringRef.current = false;
+        recalcIndicator();
+      });
+      rafRecalc.current = b;
+    });
+    return () => cancelAnimationFrame(a);
+  }, []);
 
   // Scroll to top whenever we enter the cart view
   useEffect(() => {
     if (view === "cart") {
-      // robust cross-browser reset
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
       try {
@@ -232,7 +387,6 @@ function App() {
       }
     }
   }, [view]);
-
 
   return (
     <div className="app-container">
@@ -286,9 +440,12 @@ function App() {
               {/* Sliding curved indicator */}
               <div
                 className="tab-indicator"
-                style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+                style={{
+                  transform: `translateX(${indicatorStyle.x}px)`,
+                  width: indicatorStyle.width,
+                }}
               />
-              {["coffee", "drinks", "food", "desserts"].map((cat) => (
+              {CATS.map((cat) => (
                 <button
                   key={cat}
                   type="button"
@@ -302,6 +459,7 @@ function App() {
                     alt=""
                     className="chip-icon-img"
                     draggable="false"
+                    onLoad={recalcIndicator}
                   />
                   <span className="chip-label" style={{ textTransform: "capitalize" }}>
                     {cat}
@@ -328,16 +486,15 @@ function App() {
       ) : (
         <>
           {view === "menu" && (
-            <>
-              <Menu
-                addToCart={addToCart}
-                removeFromCart={removeFromCart}
-                cart={cart}
-                category={category}
-                setCategory={setCategory}
-                search={searchText}
-              />
-            </>
+            <Menu
+              addToCart={addToCart}
+              removeFromCart={removeFromCart}
+              cart={cart}
+              category={category}
+              // IMPORTANT: pass the guarded setter to Menu (used for scroll-driven changes)
+              setCategory={setCategoryFromScroll}
+              search={searchText}
+            />
           )}
 
           {view === "cart" && (
@@ -376,6 +533,17 @@ function App() {
       />
     </div>
   );
+
+  // LOGO click: stay in menu, select Coffee, scroll to top
+  function onLogoClick() {
+    setCategory("coffee");
+    goto("menu");
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }
 }
 
 export default App;

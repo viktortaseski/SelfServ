@@ -92,7 +92,9 @@ function Menu({
             )}
 
             {!willRenderAnything && (
-                <p style={{ textAlign: "center", padding: "8px 4px", color: "#666" }}>No items found.</p>
+                <p style={{ textAlign: "center", padding: "8px 4px", color: "#666" }}>
+                    No items found.
+                </p>
             )}
 
             {/* ===== When searching: show matching items inline, no dropdown, no Top Picks ===== */}
@@ -157,13 +159,9 @@ function Menu({
                     <h3 className="page-head" style={{ marginTop: 0 }}>
                         Top Picks
                     </h3>
-                    <div
-                        className="top-picks-scroller"
-                        aria-label="Top Picks"
-                        role="region"
-                    >
+                    <div className="top-picks-scroller" aria-label="Top Picks" role="region">
                         {topPicks.map((item) => {
-                            const isLongName = (item.name || "").length > 18; // tweak threshold as you like
+                            const isLongName = (item.name || "").length > 18;
                             return (
                                 <div key={item.id} className="pick-card" tabIndex={0}>
                                     <img
@@ -190,7 +188,6 @@ function Menu({
                                 </div>
                             );
                         })}
-
                     </div>
                 </>
             )}

@@ -172,19 +172,23 @@
     overflow: hidden;
 }
 
+/* (existing styles above) */
+
 .tab-indicator {
     position: absolute;
     top: calc(100% - 4px);
     left: 0;
-    /* ✅ anchor the indicator to the left edge */
+    /* anchor left; movement via transform */
     height: 8px;
     background: #000;
     border-radius: 10px 10px 0 0;
     transition: transform .22s ease, width .22s ease;
-    /* move with transform */
     will-change: transform, width;
     pointer-events: none;
 }
+
+/* (rest of your CSS unchanged) */
+
 
 .category-chip {
     background: transparent;
