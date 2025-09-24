@@ -16,7 +16,7 @@
     max-width: 430px;
     margin: 0 auto;
     background: var(--bg);
-    min-height: fit-content;
+    min-height: fit;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     background-color: #f2f2f2;
     /* space for expanded header (logo + search + categories) */
