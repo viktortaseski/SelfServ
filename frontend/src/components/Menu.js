@@ -12,6 +12,7 @@ function Menu({
     search,
     category,
     setCategory,
+    notify, // <-- NEW (optional) callback to show a toast
 }) {
     const [items, setItems] = useState([]);
     const [topPicks, setTopPicks] = useState([]);
@@ -30,6 +31,26 @@ function Menu({
         });
         return m;
     }, [cart]);
+
+    // Helpers to emit toasts
+    const show = (msg) => {
+        if (typeof notify === "function") notify(msg);
+    };
+
+    const handleAdd = (item) => {
+        const prevQty = qtyById.get(item.id) || 0;
+        addToCart(item);
+        const nextQty = prevQty + 1;
+        show(`${item.name} added. ${nextQty} in order.`);
+    };
+
+    const handleRemove = (item) => {
+        const prevQty = qtyById.get(item.id) || 0;
+        if (prevQty <= 0) return;
+        removeFromCart(item);
+        const nextQty = prevQty - 1;
+        show(nextQty > 0 ? `${item.name} removed. ${nextQty} left.` : `${item.name} removed from order.`);
+    };
 
     // Load entire menu once (client filters by category/search)
     useEffect(() => {
@@ -56,9 +77,7 @@ function Menu({
     // --- Search results (GLOBAL, any category) shown inline as normal menu items ---
     const searchResultsAll = useMemo(() => {
         if (!normalizedSearch) return [];
-        return items.filter((it) =>
-            it.name.toLowerCase().includes(normalizedSearch)
-        );
+        return items.filter((it) => it.name.toLowerCase().includes(normalizedSearch));
     }, [items, normalizedSearch]);
 
     // The normal menu should NOT change when using the header search
@@ -75,7 +94,13 @@ function Menu({
             )
         );
         return inSelectedCats || !normalizedSearch;
-    }, [normalizedSearch, searchResultsAll.length, categoriesToRender, items, normalizedForMenu]);
+    }, [
+        normalizedSearch,
+        searchResultsAll.length,
+        categoriesToRender,
+        items,
+        normalizedForMenu,
+    ]);
 
     return (
         <div className="menu-container">
@@ -111,7 +136,7 @@ function Menu({
                                     loading="lazy"
                                     onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
                                 />
-                                <div className="item-info" onClick={() => addToCart(item)}>
+                                <div className="item-info" onClick={() => handleAdd(item)}>
                                     <span className="item-name">{item.name}</span>
                                     <span className="item-price">
                                         {Math.round(Number(item.price))} MKD
@@ -123,7 +148,7 @@ function Menu({
                                         <button
                                             className="qty-btn"
                                             aria-label={`Remove one ${item.name}`}
-                                            onClick={() => removeFromCart(item)}
+                                            onClick={() => handleRemove(item)}
                                         >
                                             &minus;
                                         </button>
@@ -133,7 +158,7 @@ function Menu({
                                         <button
                                             className="qty-btn"
                                             aria-label={`Add one more ${item.name}`}
-                                            onClick={() => addToCart(item)}
+                                            onClick={() => handleAdd(item)}
                                         >
                                             +
                                         </button>
@@ -142,7 +167,7 @@ function Menu({
                                     <button
                                         className="add-btn"
                                         aria-label={`Add ${item.name} to order`}
-                                        onClick={() => addToCart(item)}
+                                        onClick={() => handleAdd(item)}
                                     >
                                         +
                                     </button>
@@ -170,7 +195,7 @@ function Menu({
                                         alt={item.name}
                                         loading="lazy"
                                         onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
-                                        onClick={() => addToCart(item)}
+                                        onClick={() => handleAdd(item)}
                                     />
                                     <div className={`pick-meta ${isLongName ? "pick-meta--tight" : ""}`}>
                                         <div className="pick-name">{item.name}</div>
@@ -181,7 +206,7 @@ function Menu({
                                     <button
                                         className="pick-add"
                                         aria-label={`Add ${item.name} to order`}
-                                        onClick={() => addToCart(item)}
+                                        onClick={() => handleAdd(item)}
                                     >
                                         +
                                     </button>
@@ -222,7 +247,7 @@ function Menu({
                                             loading="lazy"
                                             onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
                                         />
-                                        <div className="item-info" onClick={() => addToCart(item)}>
+                                        <div className="item-info" onClick={() => handleAdd(item)}>
                                             <span className="item-name">{item.name}</span>
                                             <span className="item-price">
                                                 {Math.round(Number(item.price))} MKD
@@ -234,7 +259,7 @@ function Menu({
                                                 <button
                                                     className="qty-btn"
                                                     aria-label={`Remove one ${item.name}`}
-                                                    onClick={() => removeFromCart(item)}
+                                                    onClick={() => handleRemove(item)}
                                                 >
                                                     &minus;
                                                 </button>
@@ -244,7 +269,7 @@ function Menu({
                                                 <button
                                                     className="qty-btn"
                                                     aria-label={`Add one more ${item.name}`}
-                                                    onClick={() => addToCart(item)}
+                                                    onClick={() => handleAdd(item)}
                                                 >
                                                     +
                                                 </button>
@@ -253,7 +278,7 @@ function Menu({
                                             <button
                                                 className="add-btn"
                                                 aria-label={`Add ${item.name} to order`}
-                                                onClick={() => addToCart(item)}
+                                                onClick={() => handleAdd(item)}
                                             >
                                                 +
                                             </button>

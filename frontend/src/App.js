@@ -363,6 +363,7 @@ function App() {
               isWaiter={false}
               clearCart={() => setCart([])}
               onBackToMenu={() => goto("menu")}
+              notify={toast}
             />
           )}
         </>
@@ -384,8 +385,10 @@ function App() {
 
       {/* Toast */}
       <Notification
+        key={notice?.id}
         message={notice?.text || ""}
         id={notice?.id || 0}
+        duration={4000}
         onClose={() => setNotice(null)}
       />
     </div>

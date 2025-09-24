@@ -1,47 +1,96 @@
 .notification {
     position: fixed;
-    top: 20px;
+    top: 76px;
     left: 50%;
     transform: translateX(-50%);
-    background: #333;
-    color: white;
-    padding: 12px 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    font-size: 0.95rem;
-    display: flex;
-    align-items: center;
-    gap: 10px;
     z-index: 9999;
 
-    /* Animation */
-    animation: slideDown 0.3s ease, fadeOut 0.3s ease 1.7s forwards;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 8px 10px 8px 8px;
+    max-width: min(92vw, 380px);
+
+    background: var(--card, #ffffff);
+    color: var(--text, #0f172a);
+    border: 1px solid #f0f0f0;
+    border-radius: 24px;
+    box-shadow: var(--shadow-soft, 0 2px 6px rgba(0, 0, 0, .06));
+
+    font-size: 14px;
+    line-height: 1.2;
+
+    /* Use a CSS var for when to start fading out; set from JS */
+    --notif-fade-delay: 1750ms;
+
+    animation:
+        notif-slide-in 0.22s ease,
+        notif-fade-out 0.25s ease var(--notif-fade-delay) forwards;
 }
 
-.close-btn {
-    background: transparent;
-    border: none;
+.notif-icon {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-grid;
+    place-items: center;
+    background: #000;
     color: #fff;
-    font-weight: bold;
+    font-weight: 800;
+    font-size: 14px;
+    line-height: 1;
+    user-select: none;
+}
+
+.notif-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.notif-btn {
+    flex: 0 0 auto;
+    height: 28px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 14px;
+    background: #000;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    line-height: 28px;
     cursor: pointer;
-    font-size: 0.9rem;
 }
 
-@keyframes slideDown {
+.notif-btn:active {
+    transform: scale(0.98);
+}
+
+@keyframes notif-slide-in {
     from {
-        transform: translate(-50%, -100%);
         opacity: 0;
+        transform: translate(-50%, -10px);
     }
 
     to {
-        transform: translate(-50%, 0);
         opacity: 1;
+        transform: translate(-50%, 0);
     }
 }
 
-@keyframes fadeOut {
+@keyframes notif-fade-out {
     to {
         opacity: 0;
-        transform: translate(-50%, -50%);
+        transform: translate(-50%, -8px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .notification {
+        animation: none;
     }
 }

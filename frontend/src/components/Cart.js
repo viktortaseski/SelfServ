@@ -14,6 +14,7 @@ function Cart({
     removeFromCart,
     isWaiter,
     clearCart, // <-- pass from parent if available (preferred)
+    notify,
 }) {
     const TIP_PRESETS = [0, 50, 100];
     const [tipAmount, setTipAmount] = useState(0);
@@ -55,14 +56,19 @@ function Cart({
 
         if (typeof clearCart === "function") {
             clearCart();
-            return;
+        } else {
+            // fallback if clearCart not provided
+            cart.forEach((item) => {
+                const q = Number(item.quantity) || 0;
+                for (let i = 0; i < q; i++) removeFromCart(item);
+            });
         }
-        // Fallback if clearCart not provided
-        cart.forEach((item) => {
-            const q = Number(item.quantity) || 0;
-            for (let i = 0; i < q; i++) removeFromCart(item);
-        });
+
+        // show toast
+        if (typeof notify === "function") notify("All items cleared.");
     };
+
+
 
     const handleCheckout = async () => {
         if (!cart.length) return;
