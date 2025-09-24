@@ -203,7 +203,7 @@
     position: relative;
     display: inline-block;
     line-height: 1.1;
-    padding-bottom: 14px;
+    padding-bottom: 9px;
     /* space for the indicator curve */
 }
 
@@ -215,7 +215,7 @@
     bottom: 0;
     /* sits at the bottom of the label block */
     transform: translateX(-50%);
-    width: 64px;
+    width: 74px;
     /* matches previous JS bubbleWidth ratio */
     height: 5px;
     background: #000;

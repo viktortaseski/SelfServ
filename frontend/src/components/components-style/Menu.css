@@ -29,8 +29,8 @@
 /* Cards sized for swipe; snap to start (Plain white) */
 .pick-card {
     position: relative;
-    width: 192px;
-    height: 232px;
+    width: 160px;
+    height: 192px;
     padding: 16px;
     flex: 0 0 auto;
     background: #fff;
@@ -46,8 +46,8 @@
 
 .pick-image {
     display: block;
-    width: 160px;
-    height: 160px;
+    width: 128px;
+    height: 128px;
     margin: 15px auto;
     object-fit: contain;
     background: transparent;
