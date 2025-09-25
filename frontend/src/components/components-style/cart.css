@@ -122,6 +122,7 @@
 .note-input {
     width: 100%;
     box-sizing: border-box;
+    font-size: 16px;
     height: 44px;
     padding: 0 14px;
     border-radius: 22px;
@@ -129,4 +130,16 @@
     outline: none;
     background: #e9eaee;
     color: #0f172a;
+}
+
+.note-input::placeholder,
+.note-input::-webkit-input-placeholder {
+    font-size: 16px;
+}
+
+/* Extra-sure on iOS Safari */
+@supports (-webkit-touch-callout: none) {
+    .note-input {
+        font-size: 16px;
+    }
 }
