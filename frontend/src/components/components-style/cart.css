@@ -1,5 +1,9 @@
 /* ===== CART (reuses menu/app styles) ===== */
 
+.menu-item-cart {
+    padding: 12px 0;
+}
+
 .cart-container {
     padding-bottom: 140px;
     padding: 16px;

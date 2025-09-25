@@ -1,4 +1,3 @@
-// src/components/Cart.js
 import React, { useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/App.css";   // global + navbar + pill
@@ -68,8 +67,6 @@ function Cart({
         if (typeof notify === "function") notify("All items cleared.");
     };
 
-
-
     const handleCheckout = async () => {
         if (!cart.length) return;
         if (!tableToken) {
@@ -78,11 +75,16 @@ function Cart({
         }
 
         try {
+            // Normalize note -> message (trim, respect 200 char limit)
+            const trimmed = (note || "").trim();
+            const message = trimmed.length ? trimmed.slice(0, 200) : null;
+
             const payload = {
                 tableToken,
                 items: cart,
                 tip: Math.round(Number(tipAmount) || 0),
-                note: note || "",
+                // send as `message` (backend now supports/validates this field)
+                message,
             };
 
             const res = await (isWaiter
@@ -129,7 +131,7 @@ function Cart({
 
             <ul className="menu-list menu-list--full">
                 {cart.map((item) => (
-                    <li key={item.id} className="menu-item">
+                    <li key={item.id} className="menu-item menu-item-cart">
                         <img
                             src={item.image_url || PLACEHOLDER}
                             alt={item.name}
@@ -198,6 +200,7 @@ function Cart({
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
                             placeholder="Message for the waiter"
+                            maxLength={200}     // <— enforce 200 chars on the client, too
                         />
                     </div>
 
