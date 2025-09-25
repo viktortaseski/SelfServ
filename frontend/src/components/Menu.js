@@ -197,7 +197,7 @@ function Menu({
                                         onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
                                         onClick={() => handleAdd(item)}
                                     />
-                                    <div className={`pick-meta ${isLongName ? "pick-meta--tight" : ""}`}>
+                                    <div className={`pick-meta ${isLongName ? "pick-meta--tight" : ""}`} onClick={() => handleAdd(item)}>
                                         <div className="pick-name">{item.name}</div>
                                         <div className="pick-price">
                                             {Math.round(Number(item.price))} MKD

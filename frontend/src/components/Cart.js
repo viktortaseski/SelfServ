@@ -64,7 +64,7 @@ function Cart({
         }
 
         // show toast
-        if (typeof notify === "function") notify("All items cleared.");
+        if (typeof notify === "function") notify("All items removed.");
     };
 
     const handleCheckout = async () => {
@@ -75,7 +75,6 @@ function Cart({
         }
 
         try {
-            // Normalize note -> message (trim, respect 200 char limit)
             const trimmed = (note || "").trim();
             const message = trimmed.length ? trimmed.slice(0, 200) : null;
 
@@ -83,7 +82,6 @@ function Cart({
                 tableToken,
                 items: cart,
                 tip: Math.round(Number(tipAmount) || 0),
-                // send as `message` (backend now supports/validates this field)
                 message,
             };
 
@@ -92,13 +90,31 @@ function Cart({
                 : api.post("/orders/customer", payload));
 
             const { orderId } = res.data || {};
-            alert(orderId ? `Order placed! ID: ${orderId}` : "Order placed!");
+
+            // ---- NEW: empty the cart on success ----
+            if (typeof clearCart === "function") clearCart();
+
+            // ---- NEW: long-lived toast with order ID ----
+            const text = orderId ? `Order placed! ID: ${orderId}` : "Order placed!";
+            if (typeof notify === "function") {
+                notify(text, 8000); // 8 seconds
+            } else {
+                // fallback if no notify passed
+                alert(text);
+            }
+
+            // Optionally clear the note and tip after placing the order
+            setNote("");
+            setTipAmount(0);
         } catch (err) {
             const msg = err?.response?.data?.error || err?.message || "Something went wrong";
             console.error(err);
-            alert(msg);
+            if (typeof notify === "function") notify(msg, 6000);
+            else alert(msg);
         }
     };
+
+
 
     return (
         <div className="menu-container cart-container">

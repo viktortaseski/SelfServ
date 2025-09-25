@@ -168,7 +168,8 @@ function App() {
   }, []);
 
   // ---------- Notifications ----------
-  const toast = (text) => setNotice({ id: Date.now() + Math.random(), text });
+  const toast = (text, duration) =>
+    setNotice({ id: Date.now() + Math.random(), text, duration });
 
   // ---------- Cart ops ----------
   const addToCart = (item) => {
@@ -388,7 +389,7 @@ function App() {
         key={notice?.id}
         message={notice?.text || ""}
         id={notice?.id || 0}
-        duration={4000}
+        duration={notice?.duration ?? 4000}
         onClose={() => setNotice(null)}
       />
     </div>
