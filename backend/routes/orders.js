@@ -1,4 +1,4 @@
-// routes/orders.js
+// backend/routes/orders.js
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
@@ -17,55 +17,56 @@ async function insertOrderItems(client, orderId, items) {
     }
 }
 
-// Normalize/validate message: return {value|null} or throw 400-friendly error upstream
-function normalizeMessage(raw) {
-    if (raw == null) return null;           // missing is fine
-    const msg = String(raw).trim();
-    if (msg.length === 0) return null;      // empty → store NULL
-    if (msg.length > 200) {
-        const err = new Error("Message must be at most 200 characters.");
-        err.status = 400;
-        throw err;
-    }
-    return msg;                              // valid string (1..200)
+// --- Helper to validate short-lived single-use token ---
+async function consumeAccessToken(client, accessToken) {
+    const q = `
+    SELECT tat.table_id
+    FROM table_access_tokens tat
+    WHERE tat.token = $1
+      AND tat.used_at IS NULL
+      AND tat.expires_at > NOW()
+    FOR UPDATE
+  `;
+    const res = await client.query(q, [accessToken]);
+    if (res.rowCount === 0) return null;
+
+    const tableId = res.rows[0].table_id;
+    await client.query(
+        "UPDATE table_access_tokens SET used_at = NOW() WHERE token = $1",
+        [accessToken]
+    );
+    return tableId;
 }
 
 // POST /api/orders/customer (no auth)
+// Body: { accessToken, items, tip, message }
 router.post("/customer", async (req, res) => {
-    const { tableToken, items, message } = req.body;
+    const { accessToken, items, tip, message } = req.body;
 
-    if (!tableToken) {
-        return res.status(400).json({ error: "Missing table token" });
+    if (!accessToken) {
+        return res.status(400).json({ error: "Missing accessToken" });
     }
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: "Cart is empty" });
     }
 
-    let msg;
-    try {
-        msg = normalizeMessage(message);
-    } catch (e) {
-        return res.status(e.status || 400).json({ error: e.message });
-    }
-
     const client = await pool.connect();
     try {
-        const tRes = await client.query(
-            "SELECT id FROM restaurant_tables WHERE token = $1",
-            [tableToken]
-        );
-        if (tRes.rowCount === 0) {
-            return res.status(400).json({ error: "Invalid table token" });
-        }
-        const tableId = tRes.rows[0].id;
-
         await client.query("BEGIN");
+
+        const tableId = await consumeAccessToken(client, accessToken);
+        if (!tableId) {
+            await client.query("ROLLBACK");
+            return res
+                .status(400)
+                .json({ error: "Expired or already used token. Please rescan the QR." });
+        }
 
         const oRes = await client.query(
             `INSERT INTO orders (table_id, created_by_role, status, message)
-       VALUES ($1, 'customer', 'pending', $2)
+       VALUES ($1, 'customer', 'pending', LEFT($2, 200))
        RETURNING id`,
-            [tableId, msg]
+            [tableId, message || null]
         );
         const orderId = oRes.rows[0].id;
 
@@ -83,41 +84,34 @@ router.post("/customer", async (req, res) => {
 });
 
 // POST /api/orders/waiter (auth required)
+// Body: { accessToken, items, tip, message }
 router.post("/waiter", auth(["waiter", "admin"]), async (req, res) => {
-    const { tableToken, items, message } = req.body;
+    const { accessToken, items, tip, message } = req.body;
 
-    if (!tableToken) {
-        return res.status(400).json({ error: "Missing table token" });
+    if (!accessToken) {
+        return res.status(400).json({ error: "Missing accessToken" });
     }
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: "Cart is empty" });
     }
 
-    let msg;
-    try {
-        msg = normalizeMessage(message);
-    } catch (e) {
-        return res.status(e.status || 400).json({ error: e.message });
-    }
-
     const client = await pool.connect();
     try {
-        const tRes = await client.query(
-            "SELECT id FROM restaurant_tables WHERE token = $1",
-            [tableToken]
-        );
-        if (tRes.rowCount === 0) {
-            return res.status(400).json({ error: "Invalid table token" });
-        }
-        const tableId = tRes.rows[0].id;
-
         await client.query("BEGIN");
+
+        const tableId = await consumeAccessToken(client, accessToken);
+        if (!tableId) {
+            await client.query("ROLLBACK");
+            return res
+                .status(400)
+                .json({ error: "Expired or already used token. Please rescan the QR." });
+        }
 
         const oRes = await client.query(
             `INSERT INTO orders (table_id, created_by_role, status, waiter_id, message)
-       VALUES ($1, 'waiter', 'pending', $2, $3)
+       VALUES ($1, 'waiter', 'pending', $2, LEFT($3, 200))
        RETURNING id`,
-            [tableId, req.user.id, msg]
+            [tableId, req.user.id, message || null]
         );
         const orderId = oRes.rows[0].id;
 

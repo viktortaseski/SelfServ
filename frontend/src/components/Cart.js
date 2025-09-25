@@ -1,18 +1,19 @@
+// src/components/Cart.js
 import React, { useMemo, useState } from "react";
 import api from "../api";
-import "./components-style/App.css";   // global + navbar + pill
-import "./components-style/cart.css";  // cart-only tweaks (no navbar overrides)
+import "./components-style/App.css";
+import "./components-style/cart.css";
 import binIcon from "../assets/other-images/bin.png";
 
 const PLACEHOLDER = "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
 
 function Cart({
     cart = [],
-    tableToken,
+    tableToken,          // NOW the short-lived access token
     addToCart,
     removeFromCart,
     isWaiter,
-    clearCart, // <-- pass from parent if available (preferred)
+    clearCart,
     notify,
 }) {
     const TIP_PRESETS = [0, 50, 100];
@@ -29,17 +30,13 @@ function Cart({
     const subtotal = useMemo(
         () =>
             (cart || []).reduce(
-                (sum, item) =>
-                    sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
+                (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
                 0
             ),
         [cart]
     );
 
-    const total = useMemo(
-        () => subtotal + (Number(tipAmount) || 0),
-        [subtotal, tipAmount]
-    );
+    const total = useMemo(() => subtotal + (Number(tipAmount) || 0), [subtotal, tipAmount]);
 
     const handleCustomTip = () => {
         const raw = window.prompt("Enter tip amount (MKD):", String(tipAmount || 0));
@@ -53,24 +50,20 @@ function Cart({
         const ok = window.confirm("Clear all items from your order?");
         if (!ok) return;
 
-        if (typeof clearCart === "function") {
-            clearCart();
-        } else {
-            // fallback if clearCart not provided
+        if (typeof clearCart === "function") clearCart();
+        else {
             cart.forEach((item) => {
                 const q = Number(item.quantity) || 0;
                 for (let i = 0; i < q; i++) removeFromCart(item);
             });
         }
-
-        // show toast
         if (typeof notify === "function") notify("All items removed.");
     };
 
     const handleCheckout = async () => {
         if (!cart.length) return;
         if (!tableToken) {
-            alert("Missing table token. Please scan the table QR again.");
+            alert("Missing or expired access token. Please scan the table QR again.");
             return;
         }
 
@@ -79,7 +72,7 @@ function Cart({
             const message = trimmed.length ? trimmed.slice(0, 200) : null;
 
             const payload = {
-                tableToken,
+                accessToken: tableToken,   // <-- short-lived token
                 items: cart,
                 tip: Math.round(Number(tipAmount) || 0),
                 message,
@@ -91,21 +84,17 @@ function Cart({
 
             const { orderId } = res.data || {};
 
-            // ---- NEW: empty the cart on success ----
             if (typeof clearCart === "function") clearCart();
 
-            // ---- NEW: long-lived toast with order ID ----
             const text = orderId ? `Order placed! ID: ${orderId}` : "Order placed!";
-            if (typeof notify === "function") {
-                notify(text, 8000); // 8 seconds
-            } else {
-                // fallback if no notify passed
-                alert(text);
-            }
+            if (typeof notify === "function") notify(text, 8000);
+            else alert(text);
 
-            // Optionally clear the note and tip after placing the order
             setNote("");
             setTipAmount(0);
+
+            // Once used, remove cached token to force rescan next time
+            localStorage.removeItem("accessToken");
         } catch (err) {
             const msg = err?.response?.data?.error || err?.message || "Something went wrong";
             console.error(err);
@@ -114,15 +103,10 @@ function Cart({
         }
     };
 
-
-
     return (
         <div className="menu-container cart-container">
-            {/* Header row: title + Clear All */}
             <div className="cart-header-row">
                 <h3 className="page-head" style={{ margin: 0 }}>Your Order</h3>
-
-                {/* Surrounding DIV (96x32, #E5E5E5, radius 24px) */}
                 <div className="clear-all-wrap">
                     <button
                         type="button"
@@ -130,12 +114,7 @@ function Cart({
                         onClick={handleClearAll}
                         aria-label="Clear all items in the order"
                     >
-                        <img
-                            src={binIcon}
-                            alt=""
-                            className="clear-all-icon"
-                            draggable="false"
-                        />
+                        <img src={binIcon} alt="" className="clear-all-icon" draggable="false" />
                         <span>Clear All</span>
                     </button>
                 </div>
@@ -192,7 +171,7 @@ function Cart({
                     <div className="block">
                         <div className="block-title">Add Tip</div>
                         <div className="tip-buttons">
-                            {TIP_PRESETS.map((amt) => (
+                            {[0, 50, 100].map((amt) => (
                                 <button
                                     key={amt}
                                     type="button"
@@ -216,7 +195,8 @@ function Cart({
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
                             placeholder="Message for the waiter"
-                            maxLength={200}     // <— enforce 200 chars on the client, too
+                            maxLength={200}
+                            inputMode="text"
                         />
                     </div>
 
