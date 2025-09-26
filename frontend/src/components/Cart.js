@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/App.css";
 import "./components-style/cart.css";
-import binIcon from "../assets/other-images/bin.png";
+import binIcon from "../assets/other-images/bin.svg";
 
 const PLACEHOLDER =
     "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";

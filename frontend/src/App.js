@@ -70,7 +70,7 @@ function App() {
   useEffect(() => {
     const onScroll = () => {
       const y = getScrollY();
-      setIsCollapsed(y > 8);
+      setIsCollapsed(y > 30);
       if (y > lastY.current + 4) setPillHidden(true);
       else if (y < lastY.current - 4) setPillHidden(false);
       lastY.current = y;
