@@ -155,7 +155,7 @@ function Cart({
                     className="table-banner"
                     style={{ padding: "6px 0", marginBottom: "6px", textTransform: "capitalize" }}
                 >
-                    {tableName}
+                    Ordering for {tableName}
                 </div>
             )}
 
