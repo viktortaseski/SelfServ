@@ -26,7 +26,7 @@ function Notification({ message, id, onClose, duration = 4000 }) {
             aria-live="polite"
             onKeyDown={onKeyDown}
             tabIndex={0}
-            style={{ ["--notif-fade-delay"]: `${fadeDelayMs}ms` }}
+            style={{ "--notif-fade-delay": `${fadeDelayMs}ms` }}
         >
             <span className="notif-icon" aria-hidden="true">✓</span>
             <span className="notif-text">{message}</span>

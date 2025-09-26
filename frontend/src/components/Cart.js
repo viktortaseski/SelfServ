@@ -36,10 +36,9 @@ function Cart({
     const [tipAmount, setTipAmount] = useState(0);
     const [note, setNote] = useState("");
 
-    // NEW: pending (optimistic) and final summaries
+    // single summary that is shown immediately (optimistic), then finalized
     const [isPlacing, setIsPlacing] = useState(false);
-    const [pendingSummary, setPendingSummary] = useState(null); // shown while waiting
-    const [orderSummary, setOrderSummary] = useState(null);     // final, with orderId
+    const [orderSummary, setOrderSummary] = useState(null);
 
     // suggestions
     const [suggestions, setSuggestions] = useState([]);
@@ -126,7 +125,7 @@ function Cart({
             return;
         }
 
-        // Build the optimistic summary immediately (instant UI feedback)
+        // Build and show the summary immediately
         const purchasedItems = (cart || []).map((i) => ({
             id: i.id,
             name: i.name,
@@ -139,8 +138,8 @@ function Cart({
         const totalVal = sub + tipVal;
 
         setIsPlacing(true);
-        setPendingSummary({
-            orderId: null,                 // unknown until server responds
+        setOrderSummary({
+            orderId: null, // unknown yet
             tableName: tableName || null,
             items: purchasedItems,
             subtotal: sub,
@@ -165,13 +164,15 @@ function Cart({
 
             const { orderId } = res.data || {};
 
-            // Promote the pending summary to final
-            setOrderSummary((prev) => ({
-                ...(prev || pendingSummary || {}),
-                ...(pendingSummary || {}),
-                orderId: orderId || null,
-            }));
-            setPendingSummary(null);
+            // Finalize summary (fill in Order ID)
+            setOrderSummary((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        orderId: orderId || null,
+                    }
+                    : prev
+            );
 
             if (typeof clearCart === "function") clearCart();
 
@@ -184,8 +185,8 @@ function Cart({
             setTipAmount(0);
             localStorage.removeItem("accessToken"); // force rescan next time
         } catch (err) {
-            // If it failed, drop the pending screen and show the cart again
-            setPendingSummary(null);
+            // Keep showing the summary so there is never a blank screen.
+            // Also surface the error so the user knows what happened.
             const msg =
                 err?.response?.data?.error || err?.message || "Something went wrong";
             console.error(err);
@@ -198,67 +199,7 @@ function Cart({
 
     // ---------- RENDER ----------
 
-    // Pending (optimistic) view: shown immediately after tapping "Place Order"
-    if (pendingSummary && !orderSummary) {
-        const { tableName: tbl, items, subtotal, tip, total } = pendingSummary;
-        return (
-            <div className="menu-container cart-container">
-                <div className="order-card">
-                    <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
-                        Submitting order…
-                    </h3>
-
-                    <div className="order-header">
-                        {tbl && (
-                            <div className="order-header__cell">
-                                Table: <strong>{tableNum(tbl)}</strong>
-                            </div>
-                        )}
-                        <div className="order-header__cell">Please wait</div>
-                    </div>
-
-                    <ul className="menu-list menu-list--full">
-                        {items.map((it) => (
-                            <li key={`pending-${it.id}`} className="menu-item">
-                                <img
-                                    src={it.image_url || PLACEHOLDER}
-                                    alt={it.name}
-                                    className="thumb"
-                                    loading="lazy"
-                                />
-                                <div className="item-info">
-                                    <span className="item-name">{it.name}</span>
-                                    <span className="item-price">
-                                        {it.quantity} × {fmtMKD(it.price)}
-                                    </span>
-                                </div>
-                                <div className="line-total">
-                                    {fmtMKD(it.price * it.quantity)}
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-
-                    <div className="summary">
-                        <div className="summary-row">
-                            <span>Subtotal</span>
-                            <span>{fmtMKD(subtotal)}</span>
-                        </div>
-                        <div className="summary-row">
-                            <span>Tip</span>
-                            <span>{fmtMKD(tip)}</span>
-                        </div>
-                        <div className="summary-row summary-row--total">
-                            <span>Total</span>
-                            <span>{fmtMKD(total)}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Final summary after success
+    // Single summary view: used both while submitting (no orderId yet) and after success.
     if (orderSummary) {
         const { orderId, tableName: tbl, items, subtotal, tip, total } = orderSummary;
 
@@ -266,7 +207,7 @@ function Cart({
             <div className="menu-container cart-container">
                 <div className="order-card">
                     <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
-                        Order Confirmed
+                        {isPlacing ? "Submitting order…" : "Order Confirmed"}
                     </h3>
 
                     <div className="order-header">
@@ -281,7 +222,7 @@ function Cart({
                                     Order ID: <strong>{orderId}</strong>
                                 </>
                             ) : (
-                                "Order submitted"
+                                "Awaiting confirmation"
                             )}
                         </div>
                     </div>
