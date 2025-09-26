@@ -1,4 +1,3 @@
-// src/components/Cart.js
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/App.css";
@@ -8,13 +7,12 @@ import binIcon from "../assets/other-images/bin.svg";
 const PLACEHOLDER =
     "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
 
-// helper names we want as suggestions
 const SUGGESTION_NAMES = ["Water", "Brownie", "Ice Cream"];
 
 function Cart({
     cart = [],
-    tableToken,          // short-lived access token
-    tableName,           // shown above "Your Order"
+    tableToken,
+    tableName,
     addToCart,
     removeFromCart,
     isWaiter,
@@ -25,10 +23,12 @@ function Cart({
     const [tipAmount, setTipAmount] = useState(0);
     const [note, setNote] = useState("");
 
-    // suggestions state
+    // NEW: order summary after successful checkout
+    const [orderSummary, setOrderSummary] = useState(null);
+
+    // suggestions
     const [suggestions, setSuggestions] = useState([]);
 
-    // quantity lookup for showing qty controls on suggestions
     const qtyById = useMemo(() => {
         const m = new Map();
         (cart || []).forEach((it) => {
@@ -38,7 +38,6 @@ function Cart({
         return m;
     }, [cart]);
 
-    // fetch menu once and pick the 3 suggestions by name
     useEffect(() => {
         let mounted = true;
         api
@@ -46,10 +45,11 @@ function Cart({
             .then((res) => {
                 if (!mounted) return;
                 const all = Array.isArray(res.data) ? res.data : [];
-                // pick by exact names; fall back gracefully if a name is missing
                 const picked = [];
                 for (const name of SUGGESTION_NAMES) {
-                    const it = all.find((x) => (x.name || "").toLowerCase() === name.toLowerCase());
+                    const it = all.find(
+                        (x) => (x.name || "").toLowerCase() === name.toLowerCase()
+                    );
                     if (it) picked.push(it);
                 }
                 setSuggestions(picked.slice(0, 3));
@@ -94,9 +94,8 @@ function Cart({
         const ok = window.confirm("Clear all items from your order?");
         if (!ok) return;
 
-        if (typeof clearCart === "function") {
-            clearCart();
-        } else {
+        if (typeof clearCart === "function") clearCart();
+        else {
             cart.forEach((item) => {
                 const q = Number(item.quantity) || 0;
                 for (let i = 0; i < q; i++) removeFromCart(item);
@@ -117,7 +116,7 @@ function Cart({
             const message = trimmed.length ? trimmed.slice(0, 200) : null;
 
             const payload = {
-                accessToken: tableToken, // short-lived token
+                accessToken: tableToken,
                 items: cart,
                 tip: Math.round(Number(tipAmount) || 0),
                 message,
@@ -129,15 +128,40 @@ function Cart({
 
             const { orderId } = res.data || {};
 
+            // build summary BEFORE clearing the cart
+            const purchasedItems = (cart || []).map((i) => ({
+                id: i.id,
+                name: i.name,
+                price: Number(i.price) || 0,
+                quantity: Number(i.quantity) || 0,
+                image_url: i.image_url,
+            }));
+            const sub = purchasedItems.reduce(
+                (s, it) => s + it.price * it.quantity,
+                0
+            );
+            const tipVal = Math.round(Number(tipAmount) || 0);
+            const totalVal = sub + tipVal;
+
+            setOrderSummary({
+                orderId: orderId || null,
+                tableName: tableName || null,
+                items: purchasedItems,
+                subtotal: sub,
+                tip: tipVal,
+                total: totalVal,
+            });
+
             if (typeof clearCart === "function") clearCart();
 
-            const text = orderId ? `Order placed! ID: ${orderId}` : "Order placed!";
-            if (typeof notify === "function") notify(text, 8000);
-            else alert(text);
+            if (typeof notify === "function") {
+                const text = orderId ? `Order placed! ID: ${orderId}` : "Order placed!";
+                notify(text, 6000);
+            }
 
             setNote("");
             setTipAmount(0);
-            localStorage.removeItem("accessToken"); // force rescan next time
+            localStorage.removeItem("accessToken");
         } catch (err) {
             const msg =
                 err?.response?.data?.error || err?.message || "Something went wrong";
@@ -147,9 +171,79 @@ function Cart({
         }
     };
 
+    // ---------- RENDER ----------
+    // If an order was just placed, show the confirmation view instead of the cart.
+    if (orderSummary) {
+        const { orderId, tableName: tbl, items, subtotal, tip, total } =
+            orderSummary;
+
+        return (
+            <div className="menu-container cart-container">
+                {tbl && (
+                    <div
+                        className="table-banner"
+                        style={{ padding: "6px 0", marginBottom: "6px", textTransform: "capitalize" }}
+                    >
+                        Table: {tbl}
+                    </div>
+                )}
+
+                <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
+                    Order Confirmed
+                </h3>
+
+                <div className="order-meta">
+                    <span className="order-meta__id">
+                        {orderId ? `Order ID: ${orderId}` : "Order submitted"}
+                    </span>
+                </div>
+
+                <ul className="menu-list menu-list--full">
+                    {items.map((it) => (
+                        <li key={`conf-${it.id}`} className="menu-item">
+                            <img
+                                src={it.image_url || PLACEHOLDER}
+                                alt={it.name}
+                                className="thumb"
+                                loading="lazy"
+                            />
+                            <div className="item-info">
+                                <span className="item-name">{it.name}</span>
+                                <span className="item-price">
+                                    {it.quantity} × {fmtMKD(it.price)}
+                                </span>
+                            </div>
+                            <div className="line-total">{fmtMKD(it.price * it.quantity)}</div>
+                        </li>
+                    ))}
+                </ul>
+
+                <div className="summary">
+                    <div className="summary-row">
+                        <span>Subtotal</span>
+                        <span>{fmtMKD(subtotal)}</span>
+                    </div>
+                    <div className="summary-row">
+                        <span>Tip</span>
+                        <span>{fmtMKD(tip)}</span>
+                    </div>
+                    <div className="summary-row summary-row--total">
+                        <span>Total</span>
+                        <span>{fmtMKD(total)}</span>
+                    </div>
+                </div>
+
+                {/* Optional: back to menu */}
+                <a className="summary-back" href="#/">
+                    Add more items
+                </a>
+            </div>
+        );
+    }
+
+    // Default cart UI
     return (
         <div className="menu-container cart-container">
-            {/* Centered table name banner */}
             {tableName && (
                 <div
                     className="table-banner"
@@ -159,7 +253,6 @@ function Cart({
                 </div>
             )}
 
-            {/* Header row: title + Clear All */}
             <div className="cart-header-row">
                 <h3 className="page-head" style={{ margin: 0 }}>
                     Your Order
@@ -181,7 +274,6 @@ function Cart({
                 <p className="empty-cart">Your cart is empty</p>
             )}
 
-            {/* Cart items */}
             <ul className="menu-list menu-list--full">
                 {cart.map((item) => (
                     <li key={item.id} className="menu-item menu-item-cart">
@@ -221,13 +313,11 @@ function Cart({
 
             {cart.length > 0 && (
                 <>
-                    {/* Totals */}
                     <div className="total-row">
                         <span className="total-label">Total</span>
                         <span className="total-amount">{fmtMKD(total)}</span>
                     </div>
 
-                    {/* Tip */}
                     <div className="block">
                         <div className="block-title">Add Tip</div>
                         <div className="tip-buttons">
@@ -247,7 +337,6 @@ function Cart({
                         </div>
                     </div>
 
-                    {/* Note */}
                     <div className="block">
                         <div className="block-title">Add Note</div>
                         <input
@@ -261,7 +350,6 @@ function Cart({
                         />
                     </div>
 
-                    {/* ---- Suggestions ---- */}
                     {suggestions.length > 0 && (
                         <div className="block">
                             <div className="block-title">You also may like</div>
@@ -317,7 +405,6 @@ function Cart({
                         </div>
                     )}
 
-                    {/* Place order */}
                     <button className="view-order-pill" onClick={handleCheckout}>
                         <span className="pill-left">
                             <span className="pill-count">{itemsCount}</span>

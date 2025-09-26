@@ -144,3 +144,47 @@
         font-size: 16px;
     }
 }
+
+/* ---------- Confirmation summary ---------- */
+.order-meta {
+    margin: 2px 6px 10px;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.line-total {
+    margin-left: auto;
+    font-weight: 700;
+    font-size: 14px;
+    color: #0f172a;
+}
+
+.summary {
+    margin: 12px 6px 0;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 2px;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.summary-row--total {
+    margin-top: 2px;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.summary-back {
+    display: inline-block;
+    margin: 16px 6px 0;
+    font-weight: 700;
+    text-decoration: none;
+    color: #111;
+}
