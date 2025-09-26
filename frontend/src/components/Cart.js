@@ -1,3 +1,4 @@
+// src/components/Cart.js
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/App.css";
@@ -8,6 +9,18 @@ const PLACEHOLDER =
     "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
 
 const SUGGESTION_NAMES = ["Water", "Brownie", "Ice Cream"];
+
+// --- helpers to format table names ---
+// extracts the numeric part and pads to 2 digits (e.g., "table3" -> "03")
+const tableNum = (name) => {
+    const m = String(name || "").match(/\d+/);
+    return m ? m[0].padStart(2, "0") : null;
+};
+// returns "Table 03" (for the banner)
+const tableLabel = (name) => {
+    const num = tableNum(name);
+    return num ? `Table ${num}` : null;
+};
 
 function Cart({
     cart = [],
@@ -23,8 +36,10 @@ function Cart({
     const [tipAmount, setTipAmount] = useState(0);
     const [note, setNote] = useState("");
 
-    // NEW: order summary after successful checkout
-    const [orderSummary, setOrderSummary] = useState(null);
+    // NEW: pending (optimistic) and final summaries
+    const [isPlacing, setIsPlacing] = useState(false);
+    const [pendingSummary, setPendingSummary] = useState(null); // shown while waiting
+    const [orderSummary, setOrderSummary] = useState(null);     // final, with orderId
 
     // suggestions
     const [suggestions, setSuggestions] = useState([]);
@@ -111,6 +126,28 @@ function Cart({
             return;
         }
 
+        // Build the optimistic summary immediately (instant UI feedback)
+        const purchasedItems = (cart || []).map((i) => ({
+            id: i.id,
+            name: i.name,
+            price: Number(i.price) || 0,
+            quantity: Number(i.quantity) || 0,
+            image_url: i.image_url,
+        }));
+        const sub = purchasedItems.reduce((s, it) => s + it.price * it.quantity, 0);
+        const tipVal = Math.round(Number(tipAmount) || 0);
+        const totalVal = sub + tipVal;
+
+        setIsPlacing(true);
+        setPendingSummary({
+            orderId: null,                 // unknown until server responds
+            tableName: tableName || null,
+            items: purchasedItems,
+            subtotal: sub,
+            tip: tipVal,
+            total: totalVal,
+        });
+
         try {
             const trimmed = (note || "").trim();
             const message = trimmed.length ? trimmed.slice(0, 200) : null;
@@ -118,7 +155,7 @@ function Cart({
             const payload = {
                 accessToken: tableToken,
                 items: cart,
-                tip: Math.round(Number(tipAmount) || 0),
+                tip: tipVal,
                 message,
             };
 
@@ -128,29 +165,13 @@ function Cart({
 
             const { orderId } = res.data || {};
 
-            // build summary BEFORE clearing the cart
-            const purchasedItems = (cart || []).map((i) => ({
-                id: i.id,
-                name: i.name,
-                price: Number(i.price) || 0,
-                quantity: Number(i.quantity) || 0,
-                image_url: i.image_url,
-            }));
-            const sub = purchasedItems.reduce(
-                (s, it) => s + it.price * it.quantity,
-                0
-            );
-            const tipVal = Math.round(Number(tipAmount) || 0);
-            const totalVal = sub + tipVal;
-
-            setOrderSummary({
+            // Promote the pending summary to final
+            setOrderSummary((prev) => ({
+                ...(prev || pendingSummary || {}),
+                ...(pendingSummary || {}),
                 orderId: orderId || null,
-                tableName: tableName || null,
-                items: purchasedItems,
-                subtotal: sub,
-                tip: tipVal,
-                total: totalVal,
-            });
+            }));
+            setPendingSummary(null);
 
             if (typeof clearCart === "function") clearCart();
 
@@ -161,18 +182,83 @@ function Cart({
 
             setNote("");
             setTipAmount(0);
-            localStorage.removeItem("accessToken");
+            localStorage.removeItem("accessToken"); // force rescan next time
         } catch (err) {
+            // If it failed, drop the pending screen and show the cart again
+            setPendingSummary(null);
             const msg =
                 err?.response?.data?.error || err?.message || "Something went wrong";
             console.error(err);
             if (typeof notify === "function") notify(msg, 6000);
             else alert(msg);
+        } finally {
+            setIsPlacing(false);
         }
     };
 
     // ---------- RENDER ----------
-    // If an order was just placed, show the confirmation view instead of the cart.
+
+    // Pending (optimistic) view: shown immediately after tapping "Place Order"
+    if (pendingSummary && !orderSummary) {
+        const { tableName: tbl, items, subtotal, tip, total } = pendingSummary;
+        return (
+            <div className="menu-container cart-container">
+                <div className="order-card">
+                    <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
+                        Submitting order…
+                    </h3>
+
+                    <div className="order-header">
+                        {tbl && (
+                            <div className="order-header__cell">
+                                Table: <strong>{tableNum(tbl)}</strong>
+                            </div>
+                        )}
+                        <div className="order-header__cell">Please wait</div>
+                    </div>
+
+                    <ul className="menu-list menu-list--full">
+                        {items.map((it) => (
+                            <li key={`pending-${it.id}`} className="menu-item">
+                                <img
+                                    src={it.image_url || PLACEHOLDER}
+                                    alt={it.name}
+                                    className="thumb"
+                                    loading="lazy"
+                                />
+                                <div className="item-info">
+                                    <span className="item-name">{it.name}</span>
+                                    <span className="item-price">
+                                        {it.quantity} × {fmtMKD(it.price)}
+                                    </span>
+                                </div>
+                                <div className="line-total">
+                                    {fmtMKD(it.price * it.quantity)}
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+
+                    <div className="summary">
+                        <div className="summary-row">
+                            <span>Subtotal</span>
+                            <span>{fmtMKD(subtotal)}</span>
+                        </div>
+                        <div className="summary-row">
+                            <span>Tip</span>
+                            <span>{fmtMKD(tip)}</span>
+                        </div>
+                        <div className="summary-row summary-row--total">
+                            <span>Total</span>
+                            <span>{fmtMKD(total)}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Final summary after success
     if (orderSummary) {
         const { orderId, tableName: tbl, items, subtotal, tip, total } = orderSummary;
 
@@ -184,9 +270,19 @@ function Cart({
                     </h3>
 
                     <div className="order-header">
-                        {tbl && <div className="order-header__cell">Table: <strong>{tbl}</strong></div>}
+                        {tbl && (
+                            <div className="order-header__cell">
+                                Table: <strong>{tableNum(tbl)}</strong>
+                            </div>
+                        )}
                         <div className="order-header__cell">
-                            {orderId ? <>Order ID: <strong>{orderId}</strong></> : "Order submitted"}
+                            {orderId ? (
+                                <>
+                                    Order ID: <strong>{orderId}</strong>
+                                </>
+                            ) : (
+                                "Order submitted"
+                            )}
                         </div>
                     </div>
 
@@ -229,7 +325,6 @@ function Cart({
         );
     }
 
-
     // Default cart UI
     return (
         <div className="menu-container cart-container">
@@ -238,7 +333,7 @@ function Cart({
                     className="table-banner"
                     style={{ padding: "6px 0", marginBottom: "6px", textTransform: "capitalize" }}
                 >
-                    Ordering for {tableName}
+                    Ordering for {tableLabel(tableName)}
                 </div>
             )}
 
@@ -339,6 +434,7 @@ function Cart({
                         />
                     </div>
 
+                    {/* Suggestions (optional) */}
                     {suggestions.length > 0 && (
                         <div className="block">
                             <div className="block-title">You also may like</div>
@@ -394,10 +490,17 @@ function Cart({
                         </div>
                     )}
 
-                    <button className="view-order-pill" onClick={handleCheckout}>
+                    <button
+                        className="view-order-pill"
+                        onClick={handleCheckout}
+                        disabled={isPlacing}
+                        aria-disabled={isPlacing}
+                    >
                         <span className="pill-left">
                             <span className="pill-count">{itemsCount}</span>
-                            <span className="pill-text">Place Order</span>
+                            <span className="pill-text">
+                                {isPlacing ? "Placing…" : "Place Order"}
+                            </span>
                         </span>
                         <span className="pill-total">{fmtMKD(total)}</span>
                     </button>
