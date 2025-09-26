@@ -174,72 +174,61 @@ function Cart({
     // ---------- RENDER ----------
     // If an order was just placed, show the confirmation view instead of the cart.
     if (orderSummary) {
-        const { orderId, tableName: tbl, items, subtotal, tip, total } =
-            orderSummary;
+        const { orderId, tableName: tbl, items, subtotal, tip, total } = orderSummary;
 
         return (
             <div className="menu-container cart-container">
-                {tbl && (
-                    <div
-                        className="table-banner"
-                        style={{ padding: "6px 0", marginBottom: "6px", textTransform: "capitalize" }}
-                    >
-                        Table: {tbl}
+                <div className="order-card">
+                    <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
+                        Order Confirmed
+                    </h3>
+
+                    <div className="order-header">
+                        {tbl && <div className="order-header__cell">Table: <strong>{tbl}</strong></div>}
+                        <div className="order-header__cell">
+                            {orderId ? <>Order ID: <strong>{orderId}</strong></> : "Order submitted"}
+                        </div>
                     </div>
-                )}
 
-                <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
-                    Order Confirmed
-                </h3>
+                    <ul className="menu-list menu-list--full">
+                        {items.map((it) => (
+                            <li key={`conf-${it.id}`} className="menu-item">
+                                <img
+                                    src={it.image_url || PLACEHOLDER}
+                                    alt={it.name}
+                                    className="thumb"
+                                    loading="lazy"
+                                />
+                                <div className="item-info">
+                                    <span className="item-name">{it.name}</span>
+                                    <span className="item-price">
+                                        {it.quantity} × {fmtMKD(it.price)}
+                                    </span>
+                                </div>
+                                <div className="line-total">{fmtMKD(it.price * it.quantity)}</div>
+                            </li>
+                        ))}
+                    </ul>
 
-                <div className="order-meta">
-                    <span className="order-meta__id">
-                        {orderId ? `Order ID: ${orderId}` : "Order submitted"}
-                    </span>
-                </div>
-
-                <ul className="menu-list menu-list--full">
-                    {items.map((it) => (
-                        <li key={`conf-${it.id}`} className="menu-item">
-                            <img
-                                src={it.image_url || PLACEHOLDER}
-                                alt={it.name}
-                                className="thumb"
-                                loading="lazy"
-                            />
-                            <div className="item-info">
-                                <span className="item-name">{it.name}</span>
-                                <span className="item-price">
-                                    {it.quantity} × {fmtMKD(it.price)}
-                                </span>
-                            </div>
-                            <div className="line-total">{fmtMKD(it.price * it.quantity)}</div>
-                        </li>
-                    ))}
-                </ul>
-
-                <div className="summary">
-                    <div className="summary-row">
-                        <span>Subtotal</span>
-                        <span>{fmtMKD(subtotal)}</span>
-                    </div>
-                    <div className="summary-row">
-                        <span>Tip</span>
-                        <span>{fmtMKD(tip)}</span>
-                    </div>
-                    <div className="summary-row summary-row--total">
-                        <span>Total</span>
-                        <span>{fmtMKD(total)}</span>
+                    <div className="summary">
+                        <div className="summary-row">
+                            <span>Subtotal</span>
+                            <span>{fmtMKD(subtotal)}</span>
+                        </div>
+                        <div className="summary-row">
+                            <span>Tip</span>
+                            <span>{fmtMKD(tip)}</span>
+                        </div>
+                        <div className="summary-row summary-row--total">
+                            <span>Total</span>
+                            <span>{fmtMKD(total)}</span>
+                        </div>
                     </div>
                 </div>
-
-                {/* Optional: back to menu */}
-                <a className="summary-back" href="#/">
-                    Add more items
-                </a>
             </div>
         );
     }
+
 
     // Default cart UI
     return (
