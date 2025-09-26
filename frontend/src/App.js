@@ -320,6 +320,7 @@ function App() {
               addToCart={addToCart}
               removeFromCart={removeFromCart}
               tableToken={accessToken}
+              tableName={tableName}
               isWaiter={false}
               clearCart={() => setCart([])}
               onBackToMenu={() => goto("menu")}
