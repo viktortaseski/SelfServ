@@ -22,6 +22,25 @@ const tableLabel = (name) => {
     return num ? `Table ${num}` : null;
 };
 
+// ---- local storage helpers for "My Orders" history ----
+const MY_ORDERS_KEY = "myOrders";
+
+function loadMyOrders() {
+    try {
+        const raw = localStorage.getItem(MY_ORDERS_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+    } catch {
+        return [];
+    }
+}
+
+function persistMyOrders(list) {
+    try {
+        localStorage.setItem(MY_ORDERS_KEY, JSON.stringify(list));
+    } catch { }
+}
+
 function Cart({
     cart = [],
     tableToken,
@@ -39,6 +58,10 @@ function Cart({
     // single summary that is shown immediately (optimistic), then finalized
     const [isPlacing, setIsPlacing] = useState(false);
     const [orderSummary, setOrderSummary] = useState(null);
+
+    // "My Orders" view + data
+    const [showMyOrders, setShowMyOrders] = useState(false);
+    const [myOrders, setMyOrders] = useState(() => loadMyOrders());
 
     // suggestions
     const [suggestions, setSuggestions] = useState([]);
@@ -75,6 +98,14 @@ function Cart({
     }, []);
 
     const fmtMKD = (n) => `${Math.round(Number(n || 0))} MKD`;
+    const fmtDT = (iso) => {
+        try {
+            const d = new Date(iso);
+            return d.toLocaleString();
+        } catch {
+            return "";
+        }
+    };
 
     const itemsCount = useMemo(
         () => cart.reduce((s, it) => s + (Number(it.quantity) || 0), 0),
@@ -164,15 +195,26 @@ function Cart({
 
             const { orderId } = res.data || {};
 
-            // Finalize summary (fill in Order ID)
-            setOrderSummary((prev) =>
-                prev
-                    ? {
-                        ...prev,
-                        orderId: orderId || null,
-                    }
-                    : prev
-            );
+            // Finalize summary (fill in Order ID) and persist to "My Orders"
+            const finalSummary = {
+                orderId: orderId || null,
+                tableName: tableName || null,
+                items: purchasedItems,
+                subtotal: sub,
+                tip: tipVal,
+                total: totalVal,
+                createdAt: new Date().toISOString(),
+            };
+            setOrderSummary(finalSummary);
+
+            if (orderId) {
+                setMyOrders((prev) => {
+                    // keep most recent first, cap to last 20
+                    const updated = [finalSummary, ...(prev || [])].slice(0, 20);
+                    persistMyOrders(updated);
+                    return updated;
+                });
+            }
 
             if (typeof clearCart === "function") clearCart();
 
@@ -198,6 +240,94 @@ function Cart({
     };
 
     // ---------- RENDER ----------
+
+    // "My Orders" history view
+    if (showMyOrders) {
+        return (
+            <div className="menu-container cart-container">
+                <div className="cart-header-row">
+                    <h3 className="page-head" style={{ margin: 0 }}>My Orders</h3>
+                    <div className="header-actions">
+                        <div className="pill-wrap">
+                            <button
+                                type="button"
+                                className="pill-btn"
+                                onClick={() => setShowMyOrders(false)}
+                                aria-label="Back to View Order"
+                            >
+                                ← Back
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {(!myOrders || myOrders.length === 0) && (
+                    <p className="empty-cart">No previous orders yet.</p>
+                )}
+
+                {myOrders.map((ord, idx) => (
+                    <div key={`${ord.orderId || "pending"}-${idx}`} className="order-card">
+                        <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
+                            {ord.orderId ? "Order Confirmed" : "Awaiting confirmation"}
+                        </h3>
+
+                        <div className="order-header">
+                            {ord.tableName && (
+                                <div className="order-header__cell">
+                                    Table: <strong>{tableNum(ord.tableName)}</strong>
+                                </div>
+                            )}
+                            {!!ord.orderId && (
+                                <div className="order-header__cell">
+                                    Order ID: <strong>{ord.orderId}</strong>
+                                </div>
+                            )}
+                            {ord.createdAt && (
+                                <div className="order-header__cell">
+                                    {fmtDT(ord.createdAt)}
+                                </div>
+                            )}
+                        </div>
+
+                        <ul className="menu-list menu-list--full">
+                            {ord.items.map((it) => (
+                                <li key={`hist-${ord.createdAt}-${it.id}`} className="menu-item">
+                                    <img
+                                        src={it.image_url || PLACEHOLDER}
+                                        alt={it.name}
+                                        className="thumb"
+                                        loading="lazy"
+                                    />
+                                    <div className="item-info">
+                                        <span className="item-name">{it.name}</span>
+                                        <span className="item-price">
+                                            {it.quantity} × {fmtMKD(it.price)}
+                                        </span>
+                                    </div>
+                                    <div className="line-total">{fmtMKD(it.price * it.quantity)}</div>
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="summary">
+                            <div className="summary-row">
+                                <span>Subtotal</span>
+                                <span>{fmtMKD(ord.subtotal)}</span>
+                            </div>
+                            <div className="summary-row">
+                                <span>Tip</span>
+                                <span>{fmtMKD(ord.tip)}</span>
+                            </div>
+                            <div className="summary-row summary-row--total">
+                                <span>Total</span>
+                                <span>{fmtMKD(ord.total)}</span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
 
     // Single summary view: used both while submitting (no orderId yet) and after success.
     if (orderSummary) {
@@ -272,7 +402,7 @@ function Cart({
             {tableName && (
                 <div
                     className="table-banner"
-                    style={{ padding: "6px 0", marginBottom: "6px", textTransform: "capitalize" }}
+                    style={{ paddingBottom: "", marginBottom: "6px", textTransform: "capitalize" }}
                 >
                     Ordering for {tableLabel(tableName)}
                 </div>
@@ -282,16 +412,29 @@ function Cart({
                 <h3 className="page-head" style={{ margin: 0 }}>
                     Your Order
                 </h3>
-                <div className="clear-all-wrap">
-                    <button
-                        type="button"
-                        className="clear-all-btn"
-                        onClick={handleClearAll}
-                        aria-label="Clear all items in the order"
-                    >
-                        <img src={binIcon} alt="" className="clear-all-icon" draggable="false" />
-                        <span>Clear All</span>
-                    </button>
+                <div className="header-actions">
+                    <div className="pill-wrap">
+                        <button
+                            type="button"
+                            className="pill-btn"
+                            onClick={() => setShowMyOrders(true)}
+                            aria-label="Open My Orders"
+                        >
+                            My Orders
+                        </button>
+                    </div>
+
+                    <div className="clear-all-wrap">
+                        <button
+                            type="button"
+                            className="clear-all-btn"
+                            onClick={handleClearAll}
+                            aria-label="Clear all items in the order"
+                        >
+                            <img src={binIcon} alt="" className="clear-all-icon" draggable="false" />
+                            <span>Clear All</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 

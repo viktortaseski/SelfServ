@@ -1,3 +1,4 @@
+/* src/components/components-style/cart.css */
 /* ===== CART (reuses menu/app styles) ===== */
 
 .menu-item-cart {
@@ -10,7 +11,7 @@
     background-color: #f2f2f2;
 }
 
-/* Header row: "Your Order" + Clear All */
+/* Header row: "Your Order" + actions */
 .cart-header-row {
     display: flex;
     align-items: center;
@@ -18,6 +19,38 @@
     gap: 8px;
     margin-top: 0;
     margin-bottom: 6px;
+}
+
+/* Right-side actions container (My Orders + Clear All) */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Generic small pill (used for My Orders & Back) */
+.pill-wrap {
+    min-width: 96px;
+    height: 32px;
+    background: #E5E5E5;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+}
+
+.pill-btn {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    color: #111;
+    font-weight: 700;
+    font-size: 12px;
+    line-height: 100%;
+    letter-spacing: -0.24px;
 }
 
 /* Surrounding pill for Clear All (exact specs) */
