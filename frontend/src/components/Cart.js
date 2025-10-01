@@ -4,19 +4,19 @@ import api from "../api";
 import "./components-style/App.css";
 import "./components-style/cart.css";
 import binIcon from "../assets/other-images/bin.svg";
-
-const PLACEHOLDER =
-    "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
+import OrderSummary from "./cart/OrderSummary";
+import MyOrders from "./cart/MyOrders";
+import MenuItem from "./menu/MenuItem";
+import ViewOrderPill from "./common/ViewOrderPill";
+import { fmtMKD } from "./common/format";
 
 const SUGGESTION_NAMES = ["Water", "Brownie", "Ice Cream"];
 
 // --- helpers to format table names ---
-// extracts the numeric part and pads to 2 digits (e.g., "table3" -> "03")
 const tableNum = (name) => {
     const m = String(name || "").match(/\d+/);
     return m ? m[0].padStart(2, "0") : null;
 };
-// returns "Table 03" (for the banner)
 const tableLabel = (name) => {
     const num = tableNum(name);
     return num ? `Table ${num}` : null;
@@ -96,16 +96,6 @@ function Cart({
             mounted = false;
         };
     }, []);
-
-    const fmtMKD = (n) => `${Math.round(Number(n || 0))} MKD`;
-    const fmtDT = (iso) => {
-        try {
-            const d = new Date(iso);
-            return d.toLocaleString();
-        } catch {
-            return "";
-        }
-    };
 
     const itemsCount = useMemo(
         () => cart.reduce((s, it) => s + (Number(it.quantity) || 0), 0),
@@ -209,7 +199,6 @@ function Cart({
 
             if (orderId) {
                 setMyOrders((prev) => {
-                    // keep most recent first, cap to last 20
                     const updated = [finalSummary, ...(prev || [])].slice(0, 20);
                     persistMyOrders(updated);
                     return updated;
@@ -227,8 +216,6 @@ function Cart({
             setTipAmount(0);
             localStorage.removeItem("accessToken"); // force rescan next time
         } catch (err) {
-            // Keep showing the summary so there is never a blank screen.
-            // Also surface the error so the user knows what happened.
             const msg =
                 err?.response?.data?.error || err?.message || "Something went wrong";
             console.error(err);
@@ -241,158 +228,21 @@ function Cart({
 
     // ---------- RENDER ----------
 
-    // "My Orders" history view
     if (showMyOrders) {
         return (
-            <div className="menu-container cart-container">
-                <div className="cart-header-row">
-                    <h3 className="page-head" style={{ margin: 0 }}>My Orders</h3>
-                    <div className="header-actions">
-                        <div className="pill-wrap">
-                            <button
-                                type="button"
-                                className="pill-btn"
-                                onClick={() => setShowMyOrders(false)}
-                                aria-label="Back to View Order"
-                            >
-                                ← Back
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {(!myOrders || myOrders.length === 0) && (
-                    <p className="empty-cart">No previous orders yet.</p>
-                )}
-
-                {myOrders.map((ord, idx) => (
-                    <div key={`${ord.orderId || "pending"}-${idx}`} className="order-card">
-                        <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
-                            {ord.orderId ? "Order Confirmed" : "Awaiting confirmation"}
-                        </h3>
-
-                        <div className="order-header">
-                            {ord.tableName && (
-                                <div className="order-header__cell">
-                                    Table: <strong>{tableNum(ord.tableName)}</strong>
-                                </div>
-                            )}
-                            {!!ord.orderId && (
-                                <div className="order-header__cell">
-                                    Order ID: <strong>{ord.orderId}</strong>
-                                </div>
-                            )}
-                            {ord.createdAt && (
-                                <div className="order-header__cell">
-                                    {fmtDT(ord.createdAt)}
-                                </div>
-                            )}
-                        </div>
-
-                        <ul className="menu-list menu-list--full">
-                            {ord.items.map((it) => (
-                                <li key={`hist-${ord.createdAt}-${it.id}`} className="menu-item">
-                                    <img
-                                        src={it.image_url || PLACEHOLDER}
-                                        alt={it.name}
-                                        className="thumb"
-                                        loading="lazy"
-                                    />
-                                    <div className="item-info">
-                                        <span className="item-name">{it.name}</span>
-                                        <span className="item-price">
-                                            {it.quantity} × {fmtMKD(it.price)}
-                                        </span>
-                                    </div>
-                                    <div className="line-total">{fmtMKD(it.price * it.quantity)}</div>
-                                </li>
-                            ))}
-                        </ul>
-
-                        <div className="summary">
-                            <div className="summary-row">
-                                <span>Subtotal</span>
-                                <span>{fmtMKD(ord.subtotal)}</span>
-                            </div>
-                            <div className="summary-row">
-                                <span>Tip</span>
-                                <span>{fmtMKD(ord.tip)}</span>
-                            </div>
-                            <div className="summary-row summary-row--total">
-                                <span>Total</span>
-                                <span>{fmtMKD(ord.total)}</span>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            <MyOrders
+                orders={myOrders}
+                onBack={() => setShowMyOrders(false)}
+            />
         );
     }
 
-    // Single summary view: used both while submitting (no orderId yet) and after success.
     if (orderSummary) {
-        const { orderId, tableName: tbl, items, subtotal, tip, total } = orderSummary;
-
         return (
-            <div className="menu-container cart-container">
-                <div className="order-card">
-                    <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
-                        {isPlacing ? "Submitting order…" : "Order Confirmed"}
-                    </h3>
-
-                    <div className="order-header">
-                        {tbl && (
-                            <div className="order-header__cell">
-                                Table: <strong>{tableNum(tbl)}</strong>
-                            </div>
-                        )}
-                        <div className="order-header__cell">
-                            {orderId ? (
-                                <>
-                                    Order ID: <strong>{orderId}</strong>
-                                </>
-                            ) : (
-                                "Awaiting confirmation"
-                            )}
-                        </div>
-                    </div>
-
-                    <ul className="menu-list menu-list--full">
-                        {items.map((it) => (
-                            <li key={`conf-${it.id}`} className="menu-item">
-                                <img
-                                    src={it.image_url || PLACEHOLDER}
-                                    alt={it.name}
-                                    className="thumb"
-                                    loading="lazy"
-                                />
-                                <div className="item-info">
-                                    <span className="item-name">{it.name}</span>
-                                    <span className="item-price">
-                                        {it.quantity} × {fmtMKD(it.price)}
-                                    </span>
-                                </div>
-                                <div className="line-total">{fmtMKD(it.price * it.quantity)}</div>
-                            </li>
-                        ))}
-                    </ul>
-
-                    <div className="summary">
-                        <div className="summary-row">
-                            <span>Subtotal</span>
-                            <span>{fmtMKD(subtotal)}</span>
-                        </div>
-                        <div className="summary-row">
-                            <span>Tip</span>
-                            <span>{fmtMKD(tip)}</span>
-                        </div>
-                        <div className="summary-row summary-row--total">
-                            <span>Total</span>
-                            <span>{fmtMKD(total)}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <OrderSummary
+                orderSummary={orderSummary}
+                isPlacing={isPlacing}
+            />
         );
     }
 
@@ -410,7 +260,7 @@ function Cart({
 
             <div className="cart-header-row">
                 <h3 className="page-head" style={{ margin: 0 }}>
-                    Your Order
+                    Current Order
                 </h3>
                 <div className="header-actions">
                     <div className="pill-wrap">
@@ -444,38 +294,14 @@ function Cart({
 
             <ul className="menu-list menu-list--full">
                 {cart.map((item) => (
-                    <li key={item.id} className="menu-item menu-item-cart">
-                        <img
-                            src={item.image_url || PLACEHOLDER}
-                            alt={item.name}
-                            className="thumb"
-                            loading="lazy"
-                        />
-                        <div className="item-info" onClick={() => addToCart(item)}>
-                            <span className="item-name">{item.name}</span>
-                            <span className="item-price">{fmtMKD(item.price)}</span>
-                        </div>
-
-                        <div className="qty-controls" aria-label="Quantity controls">
-                            <button
-                                className="qty-btn"
-                                aria-label={`Remove one ${item.name}`}
-                                onClick={() => removeFromCart(item)}
-                            >
-                                &minus;
-                            </button>
-                            <span className="qty-num" aria-live="polite">
-                                {item.quantity}
-                            </span>
-                            <button
-                                className="qty-btn"
-                                aria-label={`Add one more ${item.name}`}
-                                onClick={() => addToCart(item)}
-                            >
-                                +
-                            </button>
-                        </div>
-                    </li>
+                    <MenuItem
+                        key={item.id}
+                        item={item}
+                        qty={Number(item.quantity) || 0}
+                        onAdd={addToCart}
+                        onRemove={removeFromCart}
+                        className="menu-item-cart"
+                    />
                 ))}
             </ul>
 
@@ -518,7 +344,6 @@ function Cart({
                         />
                     </div>
 
-                    {/* Suggestions (optional) */}
                     {suggestions.length > 0 && (
                         <div className="block">
                             <div className="block-title">You also may like</div>
@@ -526,68 +351,27 @@ function Cart({
                                 {suggestions.map((item) => {
                                     const qty = qtyById.get(item.id) || 0;
                                     return (
-                                        <li key={`s-${item.id}`} className="menu-item menu-item-cart">
-                                            <img
-                                                src={item.image_url || PLACEHOLDER}
-                                                alt={item.name}
-                                                className="thumb"
-                                                loading="lazy"
-                                            />
-                                            <div className="item-info" onClick={() => addToCart(item)}>
-                                                <span className="item-name">{item.name}</span>
-                                                <span className="item-price">{fmtMKD(item.price)}</span>
-                                            </div>
-
-                                            {qty > 0 ? (
-                                                <div className="qty-controls" aria-label="Quantity controls">
-                                                    <button
-                                                        className="qty-btn"
-                                                        aria-label={`Remove one ${item.name}`}
-                                                        onClick={() => removeFromCart(item)}
-                                                    >
-                                                        &minus;
-                                                    </button>
-                                                    <span className="qty-num" aria-live="polite">
-                                                        {qty}
-                                                    </span>
-                                                    <button
-                                                        className="qty-btn"
-                                                        aria-label={`Add one more ${item.name}`}
-                                                        onClick={() => addToCart(item)}
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    className="add-btn"
-                                                    aria-label={`Add ${item.name} to order`}
-                                                    onClick={() => addToCart(item)}
-                                                >
-                                                    +
-                                                </button>
-                                            )}
-                                        </li>
+                                        <MenuItem
+                                            key={`s-${item.id}`}
+                                            item={item}
+                                            qty={qty}
+                                            onAdd={addToCart}
+                                            onRemove={removeFromCart}
+                                            className="menu-item-cart"
+                                        />
                                     );
                                 })}
                             </ul>
                         </div>
                     )}
 
-                    <button
-                        className="view-order-pill"
+                    <ViewOrderPill
+                        count={itemsCount}
+                        text={isPlacing ? "Placing…" : "Place Order"}
+                        totalText={fmtMKD(total)}
                         onClick={handleCheckout}
                         disabled={isPlacing}
-                        aria-disabled={isPlacing}
-                    >
-                        <span className="pill-left">
-                            <span className="pill-count">{itemsCount}</span>
-                            <span className="pill-text">
-                                {isPlacing ? "Placing…" : "Place Order"}
-                            </span>
-                        </span>
-                        <span className="pill-total">{fmtMKD(total)}</span>
-                    </button>
+                    />
                 </>
             )}
         </div>

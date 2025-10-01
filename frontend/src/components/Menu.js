@@ -1,9 +1,9 @@
+// src/components/Menu.js
 import { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/Menu.css";
-
-const PLACEHOLDER =
-    "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
+import MenuItem from "./menu/MenuItem";
+import { fmtMKD, PLACEHOLDER } from "./common/format";
 
 function Menu({
     addToCart,
@@ -12,7 +12,7 @@ function Menu({
     search,
     category,
     setCategory,
-    notify, // <-- NEW (optional) callback to show a toast
+    notify, // optional toast
 }) {
     const [items, setItems] = useState([]);
     const [topPicks, setTopPicks] = useState([]);
@@ -22,7 +22,6 @@ function Menu({
     const activeSearch = hasExternalSearch ? search : localSearch;
     const normalizedSearch = (activeSearch || "").trim().toLowerCase();
 
-    // Build a quick lookup: id -> quantity in cart
     const qtyById = useMemo(() => {
         const m = new Map();
         (cart || []).forEach((it) => {
@@ -32,7 +31,6 @@ function Menu({
         return m;
     }, [cart]);
 
-    // Helpers to emit toasts
     const show = (msg) => {
         if (typeof notify === "function") notify(msg);
     };
@@ -49,7 +47,11 @@ function Menu({
         if (prevQty <= 0) return;
         removeFromCart(item);
         const nextQty = prevQty - 1;
-        show(nextQty > 0 ? `${item.name} removed. ${nextQty} left.` : `${item.name} removed from order.`);
+        show(
+            nextQty > 0
+                ? `${item.name} removed. ${nextQty} left.`
+                : `${item.name} removed from order.`
+        );
     };
 
     // Load entire menu once (client filters by category/search)
@@ -71,26 +73,24 @@ function Menu({
         [category]
     );
 
-    // When a category is selected we show *all* items of that category
     const perCategoryLimit = category ? 9999 : 4;
 
-    // --- Search results (GLOBAL, any category) shown inline as normal menu items ---
     const searchResultsAll = useMemo(() => {
         if (!normalizedSearch) return [];
-        return items.filter((it) => it.name.toLowerCase().includes(normalizedSearch));
+        return items.filter((it) =>
+            (it.name || "").toLowerCase().includes(normalizedSearch)
+        );
     }, [items, normalizedSearch]);
 
-    // The normal menu should NOT change when using the header search
     const normalizedForMenu = hasExternalSearch ? "" : normalizedSearch;
 
-    // Decide whether to show "No items found."
     const willRenderAnything = useMemo(() => {
         if (normalizedSearch) return searchResultsAll.length > 0;
         const inSelectedCats = categoriesToRender.some((cat) =>
             items.some(
                 (it) =>
                     it.category === cat &&
-                    it.name.toLowerCase().includes(normalizedForMenu || "")
+                    (it.name || "").toLowerCase().includes(normalizedForMenu || "")
             )
         );
         return inSelectedCats || !normalizedSearch;
@@ -104,7 +104,6 @@ function Menu({
 
     return (
         <div className="menu-container">
-            {/* Optional internal search (not used because header search exists) */}
             {!hasExternalSearch && (
                 <div className="search-bar">
                     <input
@@ -122,63 +121,22 @@ function Menu({
                 </p>
             )}
 
-            {/* ===== When searching: show matching items inline, no dropdown, no Top Picks ===== */}
+            {/* Search results */}
             {normalizedSearch && searchResultsAll.length > 0 && (
                 <ul className="menu-list menu-list--full" style={{ margin: 0 }}>
-                    {searchResultsAll.map((item) => {
-                        const qty = qtyById.get(item.id) || 0;
-                        return (
-                            <li key={`sr-${item.id}`} className="menu-item">
-                                <img
-                                    src={item.image_url || PLACEHOLDER}
-                                    alt={item.name}
-                                    className="thumb"
-                                    loading="lazy"
-                                    onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
-                                />
-                                <div className="item-info" onClick={() => handleAdd(item)}>
-                                    <span className="item-name">{item.name}</span>
-                                    <span className="item-price">
-                                        {Math.round(Number(item.price))} MKD
-                                    </span>
-                                </div>
-
-                                {qty > 0 ? (
-                                    <div className="qty-controls" aria-label="Quantity controls">
-                                        <button
-                                            className="qty-btn"
-                                            aria-label={`Remove one ${item.name}`}
-                                            onClick={() => handleRemove(item)}
-                                        >
-                                            &minus;
-                                        </button>
-                                        <span className="qty-num" aria-live="polite">
-                                            {qty}
-                                        </span>
-                                        <button
-                                            className="qty-btn"
-                                            aria-label={`Add one more ${item.name}`}
-                                            onClick={() => handleAdd(item)}
-                                        >
-                                            +
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        className="add-btn"
-                                        aria-label={`Add ${item.name} to order`}
-                                        onClick={() => handleAdd(item)}
-                                    >
-                                        +
-                                    </button>
-                                )}
-                            </li>
-                        );
-                    })}
+                    {searchResultsAll.map((item) => (
+                        <MenuItem
+                            key={`sr-${item.id}`}
+                            item={item}
+                            qty={qtyById.get(item.id) || 0}
+                            onAdd={handleAdd}
+                            onRemove={handleRemove}
+                        />
+                    ))}
                 </ul>
             )}
 
-            {/* ===== Category-specific Top Picks (hidden during search) ===== */}
+            {/* Top Picks */}
             {!normalizedSearch && topPicks.length > 0 && (
                 <>
                     <h3 className="page-head" style={{ marginTop: 0 }}>
@@ -191,16 +149,19 @@ function Menu({
                                 <div key={item.id} className="pick-card" tabIndex={0}>
                                     <img
                                         className={`pick-image ${isLongName ? "pick-image--tight" : ""}`}
-                                        src={item.image_url || PLACEHOLDER}
+                                        src={item.image_url}
                                         alt={item.name}
                                         loading="lazy"
-                                        onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
                                         onClick={() => handleAdd(item)}
+                                        onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
                                     />
-                                    <div className={`pick-meta ${isLongName ? "pick-meta--tight" : ""}`} onClick={() => handleAdd(item)}>
+                                    <div
+                                        className={`pick-meta ${isLongName ? "pick-meta--tight" : ""}`}
+                                        onClick={() => handleAdd(item)}
+                                    >
                                         <div className="pick-name">{item.name}</div>
                                         <div className="pick-price">
-                                            {Math.round(Number(item.price))} MKD
+                                            {fmtMKD(item.price || 0)}
                                         </div>
                                     </div>
                                     <button
@@ -217,14 +178,16 @@ function Menu({
                 </>
             )}
 
-            {/* ===== Normal menu (unchanged by external search) ===== */}
+            {/* Normal menu */}
             {!normalizedSearch &&
                 categoriesToRender.map((cat) => {
                     const filtered = items
                         .filter(
                             (item) =>
                                 item.category === cat &&
-                                item.name.toLowerCase().includes(normalizedForMenu)
+                                (item.name || "")
+                                    .toLowerCase()
+                                    .includes(normalizedForMenu || "")
                         )
                         .slice(0, perCategoryLimit);
 
@@ -235,57 +198,15 @@ function Menu({
                             key={cat}
                             className={`menu-list ${category ? "menu-list--full" : ""}`}
                         >
-                            {filtered.map((item) => {
-                                const qty = qtyById.get(item.id) || 0;
-
-                                return (
-                                    <li key={item.id} className="menu-item">
-                                        <img
-                                            src={item.image_url || PLACEHOLDER}
-                                            alt={item.name}
-                                            className="thumb"
-                                            loading="lazy"
-                                            onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
-                                        />
-                                        <div className="item-info" onClick={() => handleAdd(item)}>
-                                            <span className="item-name">{item.name}</span>
-                                            <span className="item-price">
-                                                {Math.round(Number(item.price))} MKD
-                                            </span>
-                                        </div>
-
-                                        {qty > 0 ? (
-                                            <div className="qty-controls" aria-label="Quantity controls">
-                                                <button
-                                                    className="qty-btn"
-                                                    aria-label={`Remove one ${item.name}`}
-                                                    onClick={() => handleRemove(item)}
-                                                >
-                                                    &minus;
-                                                </button>
-                                                <span className="qty-num" aria-live="polite">
-                                                    {qty}
-                                                </span>
-                                                <button
-                                                    className="qty-btn"
-                                                    aria-label={`Add one more ${item.name}`}
-                                                    onClick={() => handleAdd(item)}
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                className="add-btn"
-                                                aria-label={`Add ${item.name} to order`}
-                                                onClick={() => handleAdd(item)}
-                                            >
-                                                +
-                                            </button>
-                                        )}
-                                    </li>
-                                );
-                            })}
+                            {filtered.map((item) => (
+                                <MenuItem
+                                    key={item.id}
+                                    item={item}
+                                    qty={qtyById.get(item.id) || 0}
+                                    onAdd={handleAdd}
+                                    onRemove={handleRemove}
+                                />
+                            ))}
                         </ul>
                     );
                 })}

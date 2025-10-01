@@ -7,6 +7,7 @@ import WaiterUI from "./components/WaiterUI";
 import api from "./api";
 import "./components/components-style/App.css";
 import "./components/components-style/Waiter.css";
+import ViewOrderPill from "./components/common/ViewOrderPill";
 
 import coffeeIcon from "./assets/category-icons/espresso.png";
 import drinksIcon from "./assets/category-icons/drinks.png";
@@ -125,7 +126,6 @@ function App() {
       return;
     }
 
-    // If URL has permanent table token, exchange it for a 5-min access token
     const urlParams = new URLSearchParams(window.location.search);
     const qrToken = urlParams.get("token");
 
@@ -136,7 +136,6 @@ function App() {
         setAccessToken(accessToken);
         setTableName(table?.name || null);
 
-        // store for potential immediate reuse until expiry (still single-use on server)
         localStorage.setItem(
           "accessToken",
           JSON.stringify({ token: accessToken, exp: expiresAt, tableName: table?.name })
@@ -151,7 +150,6 @@ function App() {
     if (qrToken) {
       exchange(qrToken);
     } else {
-      // If no QR in URL, see if we already have a (maybe unused) access token cached
       try {
         const raw = localStorage.getItem("accessToken");
         if (raw) {
@@ -331,16 +329,13 @@ function App() {
       )}
 
       {!isWaiter && view === "menu" && cartCount > 0 && (
-        <button
-          className={`view-order-pill ${pillHidden ? "pill-hidden" : ""}`}
+        <ViewOrderPill
+          count={cartCount}
+          text="View Order"
+          totalText={`${Math.round(totalMKD)} MKD`}
           onClick={() => goto("cart")}
-        >
-          <span className="pill-left">
-            <span className="pill-count">{cartCount}</span>
-            <span className="pill-text">View Order</span>
-          </span>
-          <span className="pill-total">{Math.round(totalMKD)} MKD</span>
-        </button>
+          hidden={pillHidden}
+        />
       )}
 
       <Notification

@@ -2,7 +2,7 @@
 /* ===== CART (reuses menu/app styles) ===== */
 
 .menu-item-cart {
-    padding: 12px 0;
+    padding: 12px 0 !important;
 }
 
 .cart-container {
