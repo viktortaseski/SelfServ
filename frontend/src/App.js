@@ -2,10 +2,8 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
 import Notification from "./components/Notification";
-import WaiterUI from "./components/WaiterUI";
 import api from "./api";
 import "./components/components-style/App.css";
-import "./components/components-style/Waiter.css";
 import ViewOrderPill from "./components/common/ViewOrderPill";
 
 import coffeeIcon from "./assets/category-icons/espresso.png";
@@ -38,7 +36,6 @@ function App() {
 
   const [accessToken, setAccessToken] = useState(null); // short-lived token
   const [tableName, setTableName] = useState(null);
-  const [isWaiter, setIsWaiter] = useState(false);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [pillHidden, setPillHidden] = useState(false);
@@ -117,14 +114,8 @@ function App() {
     try { sessionStorage.setItem("cart", JSON.stringify(cart)); } catch { }
   }, [cart]);
 
-  // Role / token exchange on load
+  // Token exchange on load (customer)
   useEffect(() => {
-    const role = localStorage.getItem("role");
-    if (role === "waiter" || role === "admin") {
-      setIsWaiter(true);
-      return;
-    }
-
     const urlParams = new URLSearchParams(window.location.search);
     const qrToken = urlParams.get("token");
 
@@ -233,101 +224,81 @@ function App() {
           <div className="brand-wrap" onClick={onLogoClick}>
             <div className="brand-logo">LOGO</div>
           </div>
-          {isWaiter ? (
-            <a className="profile-link" href="#/waiter-login">My Profile</a>
-          ) : (
-            <div className="powered-by">
-              <span className="powered-by-small">supported by</span>
-              <span className="powered-by-brand">selfserv</span>
-            </div>
-          )}
+          <div className="powered-by">
+            <span className="powered-by-small">supported by</span>
+            <span className="powered-by-brand">selfserv</span>
+          </div>
         </div>
 
-        {!isWaiter && (
-          <>
-            <div className="search-wrap">
-              <input
-                className="search-input"
-                type="text"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                aria-label="Search menu"
-              />
-              <div className={`search-center ${searchText ? "is-hidden" : ""}`}>
-                <img src={searchIcon} alt="" className="search-center-icon" />
-                <span className="search-center-text">Search</span>
-              </div>
-              {searchText && (
-                <button
-                  type="button"
-                  className="search-clear-btn"
-                  aria-label="Clear search"
-                  onClick={() => setSearchText("")}
-                >
-                  ×
-                </button>
-              )}
+        <>
+          <div className="search-wrap">
+            <input
+              className="search-input"
+              type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              aria-label="Search menu"
+            />
+            <div className={`search-center ${searchText ? "is-hidden" : ""}`}>
+              <img src={searchIcon} alt="" className="search-center-icon" />
+              <span className="search-center-text">Search</span>
             </div>
+            {searchText && (
+              <button
+                type="button"
+                className="search-clear-btn"
+                aria-label="Clear search"
+                onClick={() => setSearchText("")}
+              >
+                ×
+              </button>
+            )}
+          </div>
 
-            <div className="category-row category-row--tabs">
-              {CATS.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  data-cat={cat}
-                  className={`category-chip ${category === cat ? "is-active" : ""}`}
-                  onClick={() => selectCategory(cat)}
-                >
-                  <img src={ICONS[cat]} alt="" className="chip-icon-img" draggable="false" />
-                  <span className="chip-label" style={{ textTransform: "capitalize" }}>{cat}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+          <div className="category-row category-row--tabs">
+            {CATS.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                data-cat={cat}
+                className={`category-chip ${category === cat ? "is-active" : ""}`}
+                onClick={() => selectCategory(cat)}
+              >
+                <img src={ICONS[cat]} alt="" className="chip-icon-img" draggable="false" />
+                <span className="chip-label" style={{ textTransform: "capitalize" }}>{cat}</span>
+              </button>
+            ))}
+          </div>
+        </>
       </nav>
 
-      {isWaiter ? (
-        <WaiterUI
-          cart={cart}
-          setCart={setCart}
-          addToCart={addToCart}
-          removeFromCart={removeFromCart}
-          category={category}
-          setCategory={setCategory}
-          view={view}
-          setView={setView}
-        />
-      ) : (
-        <>
-          {view === "menu" && (
-            <Menu
-              addToCart={addToCart}
-              removeFromCart={removeFromCart}
-              cart={cart}
-              category={category}
-              setCategory={setCategoryFromScroll}
-              search={searchText}
-            />
-          )}
+      <>
+        {view === "menu" && (
+          <Menu
+            addToCart={addToCart}
+            removeFromCart={removeFromCart}
+            cart={cart}
+            category={category}
+            setCategory={setCategoryFromScroll}
+            search={searchText}
+          />
+        )}
 
-          {view === "cart" && (
-            <Cart
-              cart={cart}
-              addToCart={addToCart}
-              removeFromCart={removeFromCart}
-              tableToken={accessToken}
-              tableName={tableName}
-              isWaiter={false}
-              clearCart={() => setCart([])}
-              onBackToMenu={() => goto("menu")}
-              notify={toast}
-            />
-          )}
-        </>
-      )}
+        {view === "cart" && (
+          <Cart
+            cart={cart}
+            addToCart={addToCart}
+            removeFromCart={removeFromCart}
+            tableToken={accessToken}
+            tableName={tableName}
+            clearCart={() => setCart([])}
+            onBackToMenu={() => goto("menu")}
+            notify={toast}
+          />
+        )}
+      </>
 
-      {!isWaiter && view === "menu" && cartCount > 0 && (
+      {view === "menu" && cartCount > 0 && (
         <ViewOrderPill
           count={cartCount}
           text="View Order"

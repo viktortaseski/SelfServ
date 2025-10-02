@@ -1,7 +1,7 @@
-import React from "react";
+import React, { memo } from "react";
 import { PLACEHOLDER, fmtMKD } from "../common/format";
 
-export default function MenuItem({
+function MenuItem({
     item,
     qty = 0,
     onAdd,
@@ -20,7 +20,11 @@ export default function MenuItem({
                 src={item.image_url || PLACEHOLDER}
                 alt={item.name}
                 className="thumb"
+                width={160}
+                height={120}
                 loading="lazy"
+                decoding="async"
+                fetchpriority="low"
                 onError={handleImgError}
             />
             <div className="item-info" onClick={() => onAdd?.(item)}>
@@ -60,3 +64,20 @@ export default function MenuItem({
         </li>
     );
 }
+
+// Avoid re-render unless something that affects UI changed.
+export default memo(
+    MenuItem,
+    (prev, next) => {
+        const a = prev.item || {};
+        const b = next.item || {};
+        return (
+            prev.qty === next.qty &&
+            prev.className === next.className &&
+            a.id === b.id &&
+            a.name === b.name &&
+            a.price === b.price &&
+            a.image_url === b.image_url
+        );
+    }
+);

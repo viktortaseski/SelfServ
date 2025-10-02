@@ -1,7 +1,7 @@
+// routes/orders.js
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
-const auth = require("../middleware/auth");
 
 async function insertOrderItems(client, orderId, items) {
     const text = `
@@ -59,10 +59,10 @@ router.post("/customer", async (req, res) => {
         }
 
         const oRes = await client.query(
-            `INSERT INTO orders (table_id, created_by_role, status, message)
-       VALUES ($1, 'customer', 'pending', LEFT($2, 200))
+            `INSERT INTO orders (table_id, created_by_role, status, message, tip)
+       VALUES ($1, 'customer', 'pending', LEFT($2, 200), $3)
        RETURNING id`,
-            [tableId, message || null]
+            [tableId, message || null, Number.isFinite(+tip) ? Math.max(0, +tip) : 0]
         );
         const orderId = oRes.rows[0].id;
 
@@ -73,50 +73,6 @@ router.post("/customer", async (req, res) => {
     } catch (err) {
         await client.query("ROLLBACK");
         console.error("POST /orders/customer error:", err);
-        return res.status(500).json({ error: "Server error" });
-    } finally {
-        client.release();
-    }
-});
-
-// POST /api/orders/waiter (auth required)
-router.post("/waiter", auth(["waiter", "admin"]), async (req, res) => {
-    const { accessToken, items, tip, message } = req.body;
-
-    if (!accessToken) {
-        return res.status(400).json({ error: "Missing accessToken" });
-    }
-    if (!Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ error: "Cart is empty" });
-    }
-
-    const client = await pool.connect();
-    try {
-        await client.query("BEGIN");
-
-        const tableId = await consumeAccessToken(client, accessToken);
-        if (!tableId) {
-            await client.query("ROLLBACK");
-            return res
-                .status(400)
-                .json({ error: "Expired or already used token. Please rescan the QR." });
-        }
-
-        const oRes = await client.query(
-            `INSERT INTO orders (table_id, created_by_role, status, waiter_id, message)
-       VALUES ($1, 'waiter', 'pending', $2, LEFT($3, 200))
-       RETURNING id`,
-            [tableId, req.user.id, message || null]
-        );
-        const orderId = oRes.rows[0].id;
-
-        await insertOrderItems(client, orderId, items);
-
-        await client.query("COMMIT");
-        return res.status(201).json({ orderId });
-    } catch (err) {
-        await client.query("ROLLBACK");
-        console.error("POST /orders/waiter error:", err);
         return res.status(500).json({ error: "Server error" });
     } finally {
         client.release();

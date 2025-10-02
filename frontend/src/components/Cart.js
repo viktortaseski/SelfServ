@@ -11,7 +11,6 @@ import { fmtMKD } from "./common/format";
 
 const SUGGESTION_NAMES = ["Water", "Brownie", "Ice Cream"];
 
-// --- helpers to format table names ---
 const tableNum = (name) => {
     const m = String(name || "").match(/\d+/);
     return m ? m[0].padStart(2, "0") : null;
@@ -21,7 +20,6 @@ const tableLabel = (name) => {
     return num ? `Table ${num}` : null;
 };
 
-// ---- local storage helpers for "My Orders" history ----
 const MY_ORDERS_KEY = "myOrders";
 
 function loadMyOrders() {
@@ -46,7 +44,6 @@ function Cart({
     tableName,
     addToCart,
     removeFromCart,
-    isWaiter,
     clearCart,
     notify,
 }) {
@@ -54,15 +51,12 @@ function Cart({
     const [tipAmount, setTipAmount] = useState(0);
     const [note, setNote] = useState("");
 
-    // single summary that is shown immediately (optimistic), then finalized
     const [isPlacing, setIsPlacing] = useState(false);
     const [orderSummary, setOrderSummary] = useState(null);
 
-    // "My Orders" view + data
     const [showMyOrders, setShowMyOrders] = useState(false);
     const [myOrders, setMyOrders] = useState(() => loadMyOrders());
 
-    // suggestions
     const [suggestions, setSuggestions] = useState([]);
 
     const qtyById = useMemo(() => {
@@ -145,7 +139,6 @@ function Cart({
             return;
         }
 
-        // Build and show the summary immediately
         const purchasedItems = (cart || []).map((i) => ({
             id: i.id,
             name: i.name,
@@ -159,7 +152,7 @@ function Cart({
 
         setIsPlacing(true);
         setOrderSummary({
-            orderId: null, // unknown yet
+            orderId: null,
             tableName: tableName || null,
             items: purchasedItems,
             subtotal: sub,
@@ -178,13 +171,10 @@ function Cart({
                 message,
             };
 
-            const res = await (isWaiter
-                ? api.post("/orders/waiter", payload, { withCredentials: true })
-                : api.post("/orders/customer", payload));
-
+            // Customer endpoint only
+            const res = await api.post("/orders/customer", payload);
             const { orderId } = res.data || {};
 
-            // Finalize summary (fill in Order ID) and persist to "My Orders"
             const finalSummary = {
                 orderId: orderId || null,
                 tableName: tableName || null,
@@ -213,7 +203,7 @@ function Cart({
 
             setNote("");
             setTipAmount(0);
-            localStorage.removeItem("accessToken"); // force rescan next time
+            localStorage.removeItem("accessToken");
         } catch (err) {
             const msg =
                 err?.response?.data?.error || err?.message || "Something went wrong";
@@ -224,8 +214,6 @@ function Cart({
             setIsPlacing(false);
         }
     };
-
-    // ---------- RENDER ----------
 
     if (showMyOrders) {
         return (
@@ -245,7 +233,6 @@ function Cart({
         );
     }
 
-    // Default cart UI
     return (
         <div className="menu-container cart-container">
             {tableName && (
@@ -343,26 +330,12 @@ function Cart({
                         />
                     </div>
 
-                    {suggestions.length > 0 && (
-                        <div className="block">
-                            <div className="block-title">You also may like</div>
-                            <ul className="menu-list menu-list--full">
-                                {suggestions.map((item) => {
-                                    const qty = qtyById.get(item.id) || 0;
-                                    return (
-                                        <MenuItem
-                                            key={`s-${item.id}`}
-                                            item={item}
-                                            qty={qty}
-                                            onAdd={addToCart}
-                                            onRemove={removeFromCart}
-                                            className="menu-item-cart"
-                                        />
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    )}
+                    <Suggestions
+                        suggestions={suggestions}
+                        qtyById={qtyById}
+                        addToCart={addToCart}
+                        removeFromCart={removeFromCart}
+                    />
 
                     <ViewOrderPill
                         count={itemsCount}
@@ -373,6 +346,30 @@ function Cart({
                     />
                 </>
             )}
+        </div>
+    );
+}
+
+function Suggestions({ suggestions, qtyById, addToCart, removeFromCart }) {
+    if (!suggestions.length) return null;
+    return (
+        <div className="block">
+            <div className="block-title">You also may like</div>
+            <ul className="menu-list menu-list--full">
+                {suggestions.map((item) => {
+                    const qty = qtyById.get(item.id) || 0;
+                    return (
+                        <MenuItem
+                            key={`s-${item.id}`}
+                            item={item}
+                            qty={qty}
+                            onAdd={addToCart}
+                            onRemove={removeFromCart}
+                            className="menu-item-cart"
+                        />
+                    );
+                })}
+            </ul>
         </div>
     );
 }

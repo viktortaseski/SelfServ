@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import api from "../api";
 import "./components-style/Menu.css";
 import MenuItem from "./menu/MenuItem";
@@ -30,28 +30,24 @@ function Menu({
         return m;
     }, [cart]);
 
-    const show = (msg) => {
+    const show = useCallback((msg) => {
         if (typeof notify === "function") notify(msg);
-    };
+    }, [notify]);
 
-    const handleAdd = (item) => {
+    const handleAdd = useCallback((item) => {
         const prevQty = qtyById.get(item.id) || 0;
         addToCart(item);
         const nextQty = prevQty + 1;
         show(`${item.name} added. ${nextQty} in order.`);
-    };
+    }, [addToCart, show, qtyById]);
 
-    const handleRemove = (item) => {
+    const handleRemove = useCallback((item) => {
         const prevQty = qtyById.get(item.id) || 0;
         if (prevQty <= 0) return;
         removeFromCart(item);
         const nextQty = prevQty - 1;
-        show(
-            nextQty > 0
-                ? `${item.name} removed. ${nextQty} left.`
-                : `${item.name} removed from order.`
-        );
-    };
+        show(nextQty > 0 ? `${item.name} removed. ${nextQty} left.` : `${item.name} removed from order.`);
+    }, [removeFromCart, show, qtyById]);
 
     // Load entire menu once (client filters by category/search)
     useEffect(() => {

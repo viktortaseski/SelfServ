@@ -1,6 +1,7 @@
+import React, { memo } from "react";
 import { fmtMKD, PLACEHOLDER } from "../common/format";
 
-export default function PickCard({ item, onAdd }) {
+function PickCard({ item, onAdd }) {
     if (!item) return null;
 
     const isLongName = (item.name || "").length > 18;
@@ -17,6 +18,8 @@ export default function PickCard({ item, onAdd }) {
                 src={item.image_url || PLACEHOLDER}
                 alt={item.name}
                 loading="lazy"
+                decoding="async"
+                fetchpriority="low"
                 onClick={handleAdd}
                 onError={handleImgError}
             />
@@ -37,3 +40,17 @@ export default function PickCard({ item, onAdd }) {
         </div>
     );
 }
+
+export default memo(
+    PickCard,
+    (prev, next) => {
+        const a = prev.item || {};
+        const b = next.item || {};
+        return (
+            a.id === b.id &&
+            a.name === b.name &&
+            a.price === b.price &&
+            a.image_url === b.image_url
+        );
+    }
+);
