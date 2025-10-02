@@ -1,19 +1,3 @@
-// src/components/common/ViewOrderPill.js
-import React from "react";
-
-/**
- * Reusable sticky pill used in Menu (View Order) and Cart (Place Order).
- *
- * Props:
- * - count: number (circle at left)
- * - text: string (main label)
- * - totalText: string (right-side total already formatted)
- * - onClick: function
- * - hidden: boolean (adds "pill-hidden" class to slide it down)
- * - disabled: boolean
- * - ariaDisabled: boolean (optional override for aria-disabled)
- * - className: string (optional extra classes)
- */
 export default function ViewOrderPill({
     count = 0,
     text = "",

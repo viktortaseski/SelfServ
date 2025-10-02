@@ -1,10 +1,8 @@
-// backend/routes/users.js
 const express = require("express");
 const pool = require("../db");
-
 const router = express.Router();
 
-// Register waiter/admin (DB seeded / protected route in real life)
+
 router.post("/register", async (req, res) => {
     try {
         const { username, password, role } = req.body;
@@ -60,7 +58,6 @@ router.post("/login", async (req, res) => {
     }
 });
 
-// Who am I
 router.get("/me", (req, res) => {
     console.log("🔎 /users/me session:", req.session);
     if (!req.session || !req.session.user) {

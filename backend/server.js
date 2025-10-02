@@ -1,4 +1,3 @@
-// backend/server.js
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -8,7 +7,7 @@ const pgSession = require("connect-pg-simple")(session);
 const menuRoutes = require("./routes/menu");
 const orderRoutes = require("./routes/orders");
 const tableRoutes = require("./routes/tables");
-const tokenRoutes = require("./routes/tokens"); // <-- added
+const tokenRoutes = require("./routes/tokens");
 const usersRouter = require("./routes/users");
 const pool = require("./db");
 
@@ -55,7 +54,7 @@ app.use(
 app.use("/api/menu", menuRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/tables", tableRoutes);
-app.use("/api/tokens", tokenRoutes); // <-- added
+app.use("/api/tokens", tokenRoutes);
 app.use("/api/users", usersRouter);
 
 app.get("/api/debug/session", (req, res) => {

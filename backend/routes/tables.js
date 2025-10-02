@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-// GET /api/tables/all (for waiters/admin) → include token
 router.get("/all", async (req, res) => {
     try {
         const result = await pool.query(
@@ -15,7 +14,6 @@ router.get("/all", async (req, res) => {
     }
 });
 
-// GET /api/tables?token=abc
 router.get("/", async (req, res) => {
     try {
         const { token } = req.query;
@@ -36,7 +34,6 @@ router.get("/", async (req, res) => {
     }
 });
 
-// (Optional) GET /api/tables/:token
 router.get("/:token", async (req, res) => {
     try {
         const { token } = req.params;

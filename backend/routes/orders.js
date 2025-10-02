@@ -1,10 +1,8 @@
-// backend/routes/orders.js
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 const auth = require("../middleware/auth");
 
-// Helper: insert items for an order (matches your order_items schema)
 async function insertOrderItems(client, orderId, items) {
     const text = `
     INSERT INTO order_items (order_id, menu_item_id, quantity)
@@ -17,7 +15,6 @@ async function insertOrderItems(client, orderId, items) {
     }
 }
 
-// --- Helper to validate short-lived single-use token ---
 async function consumeAccessToken(client, accessToken) {
     const q = `
     SELECT tat.table_id
@@ -39,7 +36,6 @@ async function consumeAccessToken(client, accessToken) {
 }
 
 // POST /api/orders/customer (no auth)
-// Body: { accessToken, items, tip, message }
 router.post("/customer", async (req, res) => {
     const { accessToken, items, tip, message } = req.body;
 
@@ -84,7 +80,6 @@ router.post("/customer", async (req, res) => {
 });
 
 // POST /api/orders/waiter (auth required)
-// Body: { accessToken, items, tip, message }
 router.post("/waiter", auth(["waiter", "admin"]), async (req, res) => {
     const { accessToken, items, tip, message } = req.body;
 

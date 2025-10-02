@@ -1,9 +1,8 @@
-// src/components/Menu.js
 import { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/Menu.css";
 import MenuItem from "./menu/MenuItem";
-import { fmtMKD, PLACEHOLDER } from "./common/format";
+import PickCard from "./menu/PickCard";
 
 function Menu({
     addToCart,
@@ -12,7 +11,7 @@ function Menu({
     search,
     category,
     setCategory,
-    notify, // optional toast
+    notify,
 }) {
     const [items, setItems] = useState([]);
     const [topPicks, setTopPicks] = useState([]);
@@ -143,37 +142,9 @@ function Menu({
                         Top Picks
                     </h3>
                     <div className="top-picks-scroller" aria-label="Top Picks" role="region">
-                        {topPicks.map((item) => {
-                            const isLongName = (item.name || "").length > 18;
-                            return (
-                                <div key={item.id} className="pick-card" tabIndex={0}>
-                                    <img
-                                        className={`pick-image ${isLongName ? "pick-image--tight" : ""}`}
-                                        src={item.image_url}
-                                        alt={item.name}
-                                        loading="lazy"
-                                        onClick={() => handleAdd(item)}
-                                        onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
-                                    />
-                                    <div
-                                        className={`pick-meta ${isLongName ? "pick-meta--tight" : ""}`}
-                                        onClick={() => handleAdd(item)}
-                                    >
-                                        <div className="pick-name">{item.name}</div>
-                                        <div className="pick-price">
-                                            {fmtMKD(item.price || 0)}
-                                        </div>
-                                    </div>
-                                    <button
-                                        className="pick-add"
-                                        aria-label={`Add ${item.name} to order`}
-                                        onClick={() => handleAdd(item)}
-                                    >
-                                        +
-                                    </button>
-                                </div>
-                            );
-                        })}
+                        {topPicks.map((item) => (
+                            <PickCard key={item.id} item={item} onAdd={handleAdd} />
+                        ))}
                     </div>
                 </>
             )}

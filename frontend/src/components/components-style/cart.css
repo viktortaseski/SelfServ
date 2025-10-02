@@ -1,6 +1,3 @@
-/* src/components/components-style/cart.css */
-/* ===== CART (reuses menu/app styles) ===== */
-
 .menu-item-cart {
     padding: 12px 0 !important;
 }
@@ -11,7 +8,6 @@
     background-color: #f2f2f2;
 }
 
-/* Header row: "Your Order" + actions */
 .cart-header-row {
     display: flex;
     align-items: center;
@@ -21,14 +17,12 @@
     margin-bottom: 6px;
 }
 
-/* Right-side actions container (My Orders + Clear All) */
 .header-actions {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-/* Generic small pill (used for My Orders & Back) */
 .pill-wrap {
     min-width: 96px;
     height: 32px;
@@ -53,7 +47,6 @@
     letter-spacing: -0.24px;
 }
 
-/* Surrounding pill for Clear All (exact specs) */
 .clear-all-wrap {
     width: 96px;
     height: 32px;
@@ -64,7 +57,6 @@
     justify-content: center;
 }
 
-/* Button inside the pill */
 .clear-all-btn {
     display: inline-flex;
     align-items: center;
@@ -75,14 +67,12 @@
     margin: 0;
     cursor: pointer;
     color: #f00;
-    /* label color; the icon provides the red accent */
     font-weight: 590;
     font-size: 12px;
     line-height: 100%;
     letter-spacing: -0.24px;
 }
 
-/* Trashcan icon size inside the pill */
 .clear-all-icon {
     width: 14px;
     height: 14px;
@@ -91,8 +81,6 @@
     user-select: none;
     -webkit-user-drag: none;
 }
-
-/* ----- Existing styles you provided (unchanged) ----- */
 
 .empty-cart {
     color: #6b7280;
@@ -178,7 +166,6 @@
     }
 }
 
-/* Confirmation card wrapper */
 .order-card {
     background: #ffffff;
     border: 1px solid #f0f0f0;
@@ -188,7 +175,6 @@
     box-shadow: none;
 }
 
-/* Table + Order ID row */
 .order-header {
     display: flex;
     gap: 12px;
@@ -204,7 +190,6 @@
     color: #0f172a;
 }
 
-/* Line total on each item row */
 .line-total {
     margin-left: auto;
     font-weight: 700;
@@ -212,7 +197,6 @@
     color: #0f172a;
 }
 
-/* Totals section */
 .summary {
     margin: 12px 6px 0;
     padding-top: 8px;

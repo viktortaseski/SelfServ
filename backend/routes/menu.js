@@ -1,12 +1,7 @@
-// routes/menu.js
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-/**
- * GET /api/menu
- * Optional: ?search=espresso
- */
 router.get("/", async (req, res) => {
     try {
         const search = req.query.search;
@@ -28,14 +23,6 @@ router.get("/", async (req, res) => {
     }
 });
 
-/**
- * GET /api/menu/top-picks
- * Returns the most-ordered menu items by total quantity.
- *
- * Query params:
- *   - category: (optional) limit results to this category (e.g., "coffee")
- *   - limit: (optional) number of items to return (default 10, max 50)
- */
 router.get("/top-picks", async (req, res) => {
     const category = (req.query.category || "").trim();
     const limit = Math.min(
@@ -43,8 +30,6 @@ router.get("/top-picks", async (req, res) => {
         50
     );
 
-    // Aggregate quantities from order_items (+orders join if you want status filters)
-    // If category is supplied, restrict the base menu_items before ordering.
     const hasCategory = category.length > 0;
     const params = [];
     let idx = 1;

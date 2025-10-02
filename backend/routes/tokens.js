@@ -1,11 +1,9 @@
-// backend/routes/tokens.js
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 const crypto = require("crypto");
 
-// POST /api/tokens/exchange  { tableToken: "permanent token from QR" }
-// Returns: { accessToken, expiresAt, table: { id, name } }
+
 router.post("/exchange", async (req, res) => {
     const { tableToken } = req.body || {};
     if (!tableToken) {
@@ -22,10 +20,8 @@ router.post("/exchange", async (req, res) => {
         }
         const table = tRes.rows[0];
 
-        // 5 minutes from now
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-        // 24-char URL-safe token
         const accessToken = crypto.randomBytes(18).toString("base64url");
 
         await pool.query(

@@ -1,4 +1,3 @@
-// src/AppRoutes.js
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import App from "./App";
 import WaiterLogin from "./components/WaiterLogin";

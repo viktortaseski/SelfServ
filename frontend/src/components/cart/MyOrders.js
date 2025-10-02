@@ -1,4 +1,3 @@
-// src/components/cart/MyOrders.js
 import React from "react";
 
 const PLACEHOLDER =

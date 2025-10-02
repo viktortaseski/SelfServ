@@ -1,17 +1,6 @@
-// src/components/menu/MenuItem.js
 import React from "react";
 import { PLACEHOLDER, fmtMKD } from "../common/format";
 
-/**
- * Reusable menu item row used across Menu and Cart.
- *
- * Props:
- * - item: { id, name, price, image_url }
- * - qty: number (quantity in cart; 0 shows "+", >0 shows qty controls)
- * - onAdd(item)
- * - onRemove(item)
- * - className: string (optional extra class for li; e.g., "menu-item-cart" in Cart)
- */
 export default function MenuItem({
     item,
     qty = 0,

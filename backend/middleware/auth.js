@@ -1,4 +1,3 @@
-// middleware/auth.js
 const authMiddleware = (roles = []) => {
     return (req, res, next) => {
         console.log("🔑 Session data:", req.session);

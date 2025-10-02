@@ -1,4 +1,3 @@
-// src/App.js
 import { useState, useEffect, useMemo, useRef } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";

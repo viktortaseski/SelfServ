@@ -1,4 +1,3 @@
-// src/components/Cart.js
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/App.css";
