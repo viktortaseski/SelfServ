@@ -35,6 +35,13 @@ async function consumeAccessToken(client, accessToken) {
     return tableId;
 }
 
+// Helper to coerce tip -> non-negative integer
+function toTipInt(tip) {
+    const n = Number(tip);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.round(n));
+}
+
 // POST /api/orders/customer (no auth)
 router.post("/customer", async (req, res) => {
     const { accessToken, items, tip, message } = req.body;
@@ -58,11 +65,14 @@ router.post("/customer", async (req, res) => {
                 .json({ error: "Expired or already used token. Please rescan the QR." });
         }
 
+        const tipInt = toTipInt(tip);
+        const trimmedMsg = (message || "").slice(0, 200) || null;
+
         const oRes = await client.query(
             `INSERT INTO orders (table_id, created_by_role, status, message, tip)
-       VALUES ($1, 'customer', 'pending', LEFT($2, 200), $3)
+       VALUES ($1, 'customer', 'pending', $2, $3)
        RETURNING id`,
-            [tableId, message || null, Number.isFinite(+tip) ? Math.max(0, +tip) : 0]
+            [tableId, trimmedMsg, tipInt]
         );
         const orderId = oRes.rows[0].id;
 
