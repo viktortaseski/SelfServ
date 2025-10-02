@@ -245,9 +245,7 @@ function Cart({
             )}
 
             <div className="cart-header-row">
-                <h3 className="page-head" style={{ margin: 0 }}>
-                    Current Order
-                </h3>
+                <h3 className="page-head" style={{ margin: 0 }}>My Order</h3>
                 <div className="header-actions">
                     <div className="pill-wrap">
                         <button
@@ -256,7 +254,7 @@ function Cart({
                             onClick={() => setShowMyOrders(true)}
                             aria-label="Open My Orders"
                         >
-                            My Orders
+                            Past Orders
                         </button>
                     </div>
 
@@ -275,7 +273,7 @@ function Cart({
             </div>
 
             {(!cart || cart.length === 0) && (
-                <p className="empty-cart">Your cart is empty</p>
+                <p className="empty-cart">Your cart is empty.</p>
             )}
 
             <ul className="menu-list menu-list--full">
@@ -353,8 +351,8 @@ function Cart({
 function Suggestions({ suggestions, qtyById, addToCart, removeFromCart }) {
     if (!suggestions.length) return null;
     return (
-        <div className="block">
-            <div className="block-title">You also may like</div>
+        <div className="block" style={{ marginTop: "30px" }}>
+            <div className="block-title" style={{ textAlign: "center" }}>You also may like</div>
             <ul className="menu-list menu-list--full">
                 {suggestions.map((item) => {
                     const qty = qtyById.get(item.id) || 0;

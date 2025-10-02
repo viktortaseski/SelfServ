@@ -1,4 +1,5 @@
 import React from "react";
+import backIcon from "../../assets/other-images/back-button.png";
 
 const PLACEHOLDER =
     "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
@@ -25,13 +26,14 @@ export default function MyOrders({ orders = [], onBack }) {
                 <h3 className="page-head" style={{ margin: 0 }}>My Orders</h3>
                 <div className="header-actions">
                     <div className="pill-wrap">
+                        <img src={backIcon} alt="" style={{ marginRight: "5px" }} className="clear-all-icon" draggable="false" />
                         <button
                             type="button"
                             className="pill-btn"
                             onClick={onBack}
                             aria-label="Back to View Order"
                         >
-                            ← Back
+                            Back
                         </button>
                     </div>
                 </div>

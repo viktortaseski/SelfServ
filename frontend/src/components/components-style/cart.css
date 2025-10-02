@@ -83,6 +83,7 @@
 }
 
 .empty-cart {
+    text-align: center;
     color: #6b7280;
     padding: 12px 6px;
 }
@@ -91,7 +92,8 @@
     display: flex;
     align-items: baseline;
     gap: 10px;
-    justify-content: flex-start;
+    justify-content: space-between;
+    /* flex- start */
     margin: 10px 6px 30px;
 }
 
@@ -108,7 +110,7 @@
 }
 
 .block {
-    margin-top: 12px;
+    margin-top: 20px;
     padding: 0 6px;
 }
 
