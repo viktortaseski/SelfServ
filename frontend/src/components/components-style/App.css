@@ -282,12 +282,57 @@
     transition: transform .18s ease, opacity .18s ease;
 }
 
+.view-order-pill {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 32px;
+    z-index: 999;
+    background: #000000;
+    color: var(--text);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 10px 24px 10px 10px;
+    border-radius: 1000px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .12);
+    transition: transform .18s ease, opacity .18s ease;
+}
+
 .view-order-pill.pill-hidden {
     transform: translateY(120%);
     opacity: 0;
     pointer-events: none;
 }
 
+/* ===== CART variant (centered text with dot) ===== */
+.view-order-pill--center {
+    justify-content: center;
+    padding: 12px 24px;
+    height: 65px;
+}
+
+.view-order-pill--center .pill-total {
+    margin-left: 0;
+    /* override default auto push */
+}
+
+.pill-center {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.pill-dot {
+    opacity: 0.9;
+}
+
+/* ===== default (menu) layout ===== */
 .pill-left {
     display: flex;
     align-items: center;
@@ -317,6 +362,7 @@
     color: #ffffff;
     font-weight: 590;
     margin-left: auto;
+    /* only effective in default layout */
 }
 
 .menu-container {
@@ -347,4 +393,130 @@ button {
 
 html {
     -webkit-text-size-adjust: 100%;
+}
+
+/* ====== Modal confirmation (separate from Notification) ====== */
+
+.has-confirm-open body,
+.has-confirm-open {
+    overflow: hidden;
+    /* lock scroll while modal open */
+}
+
+/* Hide the navbar while confirmation modal is open */
+.has-confirm-open .navbar {
+    display: none !important;
+}
+
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.34);
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+}
+
+.confirm-modal {
+    width: 90%;
+    max-height: 82vh;
+    background: var(--card, #ffffff);
+    color: var(--text, #0f172a);
+    border: 1px solid #f0f0f0;
+    border-radius: 28px;
+    box-shadow: var(--shadow-soft, 0 12px 36px rgba(0, 0, 0, .16));
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+}
+
+.confirm-header {
+    margin-bottom: 6px;
+}
+
+.confirm-title {
+    text-align: center;
+    font-weight: 800;
+    font-size: 22px;
+}
+
+.confirm-body {
+    overflow: hidden;
+}
+
+.confirm-list {
+    max-height: 40vh;
+    overflow: auto;
+    margin: 8px 0 6px;
+    padding-right: 2px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.confirm-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 2px;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.confirm-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.confirm-qty {
+    color: #6b7280;
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+.confirm-line {
+    font-weight: 700;
+}
+
+.confirm-summary {
+    margin-top: 8px;
+}
+
+.confirm-row--total .confirm-label,
+.confirm-row--total .confirm-value {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    padding-top: 12px;
+}
+
+.btn {
+    height: 40px;
+    border: none;
+    border-radius: 20px;
+    padding: 0 18px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background: #000;
+    color: #fff;
+}
+
+.btn-secondary {
+    background: #e6e6e6;
+    /* grey cancel button */
+    color: #111;
 }

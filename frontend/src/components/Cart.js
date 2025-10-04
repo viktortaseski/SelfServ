@@ -7,6 +7,7 @@ import OrderSummary from "./cart/OrderSummary";
 import MyOrders from "./cart/MyOrders";
 import MenuItem from "./menu/MenuItem";
 import ViewOrderPill from "./common/ViewOrderPill";
+import ConfirmOrderNotice from "./common/ConfirmOrderNotice";
 import { fmtMKD } from "./common/format";
 
 const SUGGESTION_NAMES = ["Water", "Brownie", "Ice Cream"];
@@ -58,6 +59,23 @@ function Cart({
     const [myOrders, setMyOrders] = useState(() => loadMyOrders());
 
     const [suggestions, setSuggestions] = useState([]);
+    const [showConfirm, setShowConfirm] = useState(false);
+
+    // Toggle a body class so we can hide the navbar + lock scroll without changing App.js
+    useEffect(() => {
+        const cls = "has-confirm-open";
+        if (showConfirm) {
+            document.documentElement.classList.add(cls);
+            document.body.classList.add(cls);
+        } else {
+            document.documentElement.classList.remove(cls);
+            document.body.classList.remove(cls);
+        }
+        return () => {
+            document.documentElement.classList.remove(cls);
+            document.body.classList.remove(cls);
+        };
+    }, [showConfirm]);
 
     const qtyById = useMemo(() => {
         const m = new Map();
@@ -89,11 +107,6 @@ function Cart({
             mounted = false;
         };
     }, []);
-
-    const itemsCount = useMemo(
-        () => cart.reduce((s, it) => s + (Number(it.quantity) || 0), 0),
-        [cart]
-    );
 
     const subtotal = useMemo(
         () =>
@@ -132,7 +145,7 @@ function Cart({
         if (typeof notify === "function") notify("All items removed.");
     };
 
-    const handleCheckout = async () => {
+    const actuallyCheckout = async () => {
         if (!cart.length) return;
         if (!tableToken) {
             alert("Missing or expired access token. Please scan the table QR again.");
@@ -171,7 +184,6 @@ function Cart({
                 message,
             };
 
-            // Customer endpoint only
             const res = await api.post("/orders/customer", payload);
             const { orderId } = res.data || {};
 
@@ -214,6 +226,25 @@ function Cart({
             setIsPlacing(false);
         }
     };
+
+    // When confirmation is open, show only the modal (overlay); navbar is hidden via CSS body class
+    if (showConfirm) {
+        return (
+            <>
+                <ConfirmOrderNotice
+                    items={cart}
+                    subtotal={subtotal}
+                    tip={tipAmount}
+                    total={total}
+                    onCancel={() => setShowConfirm(false)}
+                    onConfirm={async () => {
+                        setShowConfirm(false);
+                        await actuallyCheckout();
+                    }}
+                />
+            </>
+        );
+    }
 
     if (showMyOrders) {
         return (
@@ -336,10 +367,10 @@ function Cart({
                     />
 
                     <ViewOrderPill
-                        count={itemsCount}
+                        variant="center"
                         text={isPlacing ? "Placing…" : "Place Order"}
                         totalText={fmtMKD(total)}
-                        onClick={handleCheckout}
+                        onClick={() => setShowConfirm(true)}
                         disabled={isPlacing}
                     />
                 </>
