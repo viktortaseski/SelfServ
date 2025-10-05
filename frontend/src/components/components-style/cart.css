@@ -4,6 +4,7 @@
 
 .cart-container {
     padding-bottom: 140px;
+    margin-top: 110px;
     padding: 16px;
     background-color: #f2f2f2;
 }
@@ -127,7 +128,7 @@
 }
 
 .tip-chip {
-    padding: 8px 12px;
+    padding: 8px 10px;
     border-radius: 999px;
     border: 1px solid #d0d4da;
     background: #f5f6f8;

@@ -3,6 +3,7 @@ import api from "../api";
 import "./components-style/Menu.css";
 import MenuItem from "./menu/MenuItem";
 import PickCard from "./menu/PickCard";
+import { t } from "../i18n";
 
 function Menu({
     addToCart,
@@ -30,24 +31,35 @@ function Menu({
         return m;
     }, [cart]);
 
-    const show = useCallback((msg) => {
-        if (typeof notify === "function") notify(msg);
-    }, [notify]);
+    const show = useCallback(
+        (msg) => {
+            if (typeof notify === "function") notify(msg);
+        },
+        [notify]
+    );
 
-    const handleAdd = useCallback((item) => {
-        const prevQty = qtyById.get(item.id) || 0;
-        addToCart(item);
-        const nextQty = prevQty + 1;
-        show(`${item.name} added. ${nextQty} in order.`);
-    }, [addToCart, show, qtyById]);
+    const handleAdd = useCallback(
+        (item) => {
+            const prevQty = qtyById.get(item.id) || 0;
+            addToCart(item);
+            const nextQty = prevQty + 1;
+            // (toast text intentionally left as-is since it's dynamic and optional)
+            show(`${item.name} added. ${nextQty} in order.`);
+        },
+        [addToCart, show, qtyById]
+    );
 
-    const handleRemove = useCallback((item) => {
-        const prevQty = qtyById.get(item.id) || 0;
-        if (prevQty <= 0) return;
-        removeFromCart(item);
-        const nextQty = prevQty - 1;
-        show(nextQty > 0 ? `${item.name} removed. ${nextQty} left.` : `${item.name} removed from order.`);
-    }, [removeFromCart, show, qtyById]);
+    const handleRemove = useCallback(
+        (item) => {
+            const prevQty = qtyById.get(item.id) || 0;
+            if (prevQty <= 0) return;
+            removeFromCart(item);
+            const nextQty = prevQty - 1;
+            // (toast text intentionally left as-is since it's dynamic and optional)
+            show(nextQty > 0 ? `${item.name} removed. ${nextQty} left.` : `${item.name} removed from order.`);
+        },
+        [removeFromCart, show, qtyById]
+    );
 
     // Load entire menu once (client filters by category/search)
     useEffect(() => {
@@ -103,7 +115,7 @@ function Menu({
                 <div className="search-bar">
                     <input
                         type="text"
-                        placeholder="  🔍   Search"
+                        placeholder={`  🔍   ${t("search")}`}
                         value={localSearch}
                         onChange={(e) => setLocalSearch(e.target.value)}
                     />
@@ -112,7 +124,7 @@ function Menu({
 
             {!willRenderAnything && (
                 <p style={{ textAlign: "center", padding: "8px 4px", color: "#666" }}>
-                    No items found.
+                    {t("menu.noItems")}
                 </p>
             )}
 
@@ -135,9 +147,13 @@ function Menu({
             {!normalizedSearch && topPicks.length > 0 && (
                 <>
                     <h3 className="page-head" style={{ marginTop: 0 }}>
-                        Top Picks
+                        {t("menu.topPicks")}
                     </h3>
-                    <div className="top-picks-scroller" aria-label="Top Picks" role="region">
+                    <div
+                        className="top-picks-scroller"
+                        aria-label={t("menu.topPicks")}
+                        role="region"
+                    >
                         {topPicks.map((item) => (
                             <PickCard key={item.id} item={item} onAdd={handleAdd} />
                         ))}

@@ -9,6 +9,7 @@ import MenuItem from "./menu/MenuItem";
 import ViewOrderPill from "./common/ViewOrderPill";
 import ConfirmOrderNotice from "./common/ConfirmOrderNotice";
 import { fmtMKD } from "./common/format";
+import { t } from "../i18n";
 
 const SUGGESTION_NAMES = ["Water", "Brownie", "Ice Cream"];
 
@@ -18,7 +19,7 @@ const tableNum = (name) => {
 };
 const tableLabel = (name) => {
     const num = tableNum(name);
-    return num ? `Table ${num}` : null;
+    return num ? `${t("orders.table")} ${num}` : null;
 };
 
 const MY_ORDERS_KEY = "myOrders";
@@ -124,7 +125,7 @@ function Cart({
     );
 
     const handleCustomTip = () => {
-        const raw = window.prompt("Enter tip amount (MKD):", String(tipAmount || 0));
+        const raw = window.prompt(t("cart.enterTipPrompt"), String(tipAmount || 0));
         if (raw == null) return;
         const v = Math.max(0, Math.round(Number(raw) || 0));
         setTipAmount(v);
@@ -132,7 +133,7 @@ function Cart({
 
     const handleClearAll = () => {
         if (!cart.length) return;
-        const ok = window.confirm("Clear all items from your order?");
+        const ok = window.confirm(t("cart.clearAllConfirm"));
         if (!ok) return;
 
         if (typeof clearCart === "function") clearCart();
@@ -142,7 +143,7 @@ function Cart({
                 for (let i = 0; i < q; i++) removeFromCart(item);
             });
         }
-        if (typeof notify === "function") notify("All items removed.");
+        if (typeof notify === "function") notify(t("cart.clearAll"));
     };
 
     const actuallyCheckout = async () => {
@@ -227,22 +228,20 @@ function Cart({
         }
     };
 
-    // When confirmation is open, show only the modal (overlay); navbar is hidden via CSS body class
+    // Confirmation overlay
     if (showConfirm) {
         return (
-            <>
-                <ConfirmOrderNotice
-                    items={cart}
-                    subtotal={subtotal}
-                    tip={tipAmount}
-                    total={total}
-                    onCancel={() => setShowConfirm(false)}
-                    onConfirm={async () => {
-                        setShowConfirm(false);
-                        await actuallyCheckout();
-                    }}
-                />
-            </>
+            <ConfirmOrderNotice
+                items={cart}
+                subtotal={subtotal}
+                tip={tipAmount}
+                total={total}
+                onCancel={() => setShowConfirm(false)}
+                onConfirm={async () => {
+                    setShowConfirm(false);
+                    await actuallyCheckout();
+                }}
+            />
         );
     }
 
@@ -271,21 +270,21 @@ function Cart({
                     className="table-banner"
                     style={{ paddingBottom: "", marginBottom: "6px", textTransform: "capitalize" }}
                 >
-                    Ordering for {tableLabel(tableName)}
+                    {t("cart.orderingFor")} {tableLabel(tableName)}
                 </div>
             )}
 
             <div className="cart-header-row">
-                <h3 className="page-head" style={{ margin: 0 }}>My Order</h3>
+                <h3 className="page-head" style={{ margin: 0 }}>{t("cart.myOrder")}</h3>
                 <div className="header-actions">
                     <div className="pill-wrap">
                         <button
                             type="button"
                             className="pill-btn"
                             onClick={() => setShowMyOrders(true)}
-                            aria-label="Open My Orders"
+                            aria-label={t("orders.myOrders")}
                         >
-                            Past Orders
+                            {t("cart.pastOrders")}
                         </button>
                     </div>
 
@@ -294,17 +293,17 @@ function Cart({
                             type="button"
                             className="clear-all-btn"
                             onClick={handleClearAll}
-                            aria-label="Clear all items in the order"
+                            aria-label={t("cart.clearAll")}
                         >
                             <img src={binIcon} alt="" className="clear-all-icon" draggable="false" />
-                            <span>Clear All</span>
+                            <span>{t("cart.clearAll")}</span>
                         </button>
                     </div>
                 </div>
             </div>
 
             {(!cart || cart.length === 0) && (
-                <p className="empty-cart">Your cart is empty.</p>
+                <p className="empty-cart">{t("cart.empty")}</p>
             )}
 
             <ul className="menu-list menu-list--full">
@@ -323,12 +322,12 @@ function Cart({
             {cart.length > 0 && (
                 <>
                     <div className="total-row">
-                        <span className="total-label">Total</span>
+                        <span className="total-label">{t("cart.total")}</span>
                         <span className="total-amount">{fmtMKD(total)}</span>
                     </div>
 
                     <div className="block">
-                        <div className="block-title">Add Tip</div>
+                        <div className="block-title">{t("cart.addTip")}</div>
                         <div className="tip-buttons">
                             {TIP_PRESETS.map((amt) => (
                                 <button
@@ -341,19 +340,19 @@ function Cart({
                                 </button>
                             ))}
                             <button type="button" className="tip-chip" onClick={handleCustomTip}>
-                                Custom
+                                {t("cart.custom")}
                             </button>
                         </div>
                     </div>
 
                     <div className="block">
-                        <div className="block-title">Add Note</div>
+                        <div className="block-title">{t("cart.addNote")}</div>
                         <input
                             className="note-input"
                             type="text"
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            placeholder="Message for the waiter"
+                            placeholder={t("cart.notePlaceholder")}
                             maxLength={200}
                             inputMode="text"
                         />
@@ -366,9 +365,10 @@ function Cart({
                         removeFromCart={removeFromCart}
                     />
 
+                    {/* Centered pill for CART */}
                     <ViewOrderPill
                         variant="center"
-                        text={isPlacing ? "Placing…" : "Place Order"}
+                        text={isPlacing ? t("cart.placing") : t("cart.placeOrder")}
                         totalText={fmtMKD(total)}
                         onClick={() => setShowConfirm(true)}
                         disabled={isPlacing}
@@ -383,7 +383,7 @@ function Suggestions({ suggestions, qtyById, addToCart, removeFromCart }) {
     if (!suggestions.length) return null;
     return (
         <div className="block" style={{ marginTop: "30px" }}>
-            <div className="block-title" style={{ textAlign: "center" }}>You also may like</div>
+            <div className="block-title" style={{ textAlign: "center" }}>{t("cart.youMayLike")}</div>
             <ul className="menu-list menu-list--full">
                 {suggestions.map((item) => {
                     const qty = qtyById.get(item.id) || 0;

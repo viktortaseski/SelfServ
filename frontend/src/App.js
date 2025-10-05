@@ -12,6 +12,9 @@ import foodIcon from "./assets/category-icons/food.png";
 import dessertsIcon from "./assets/category-icons/desserts.png";
 import searchIcon from "./assets/category-icons/search.png";
 
+import { t, labelForCat, detectLang, setLang } from "./i18n";
+
+// ---- Keep internal keys stable for logic ----
 const ICONS = { coffee: coffeeIcon, drinks: drinksIcon, food: foodIcon, desserts: dessertsIcon };
 const CATS = ["coffee", "drinks", "food", "desserts"];
 const FIRST_CAT = CATS[0];
@@ -19,6 +22,22 @@ const LAST_CAT = CATS[CATS.length - 1];
 const ACTIVE_CAT_KEY = "activeCategory";
 
 function App() {
+  // i18n: init from URL/localStorage; if nothing, auto-detect browser at first mount
+  const [lang, _setLang] = useState(detectLang);
+  useEffect(() => {
+    try {
+      const hasStored = !!localStorage.getItem("lang");
+      const urlLang = new URLSearchParams(window.location.search).get("lang");
+      if (!hasStored && !urlLang) {
+        const nav = (navigator.languages && navigator.languages[0]) || navigator.language || "en";
+        const lc = String(nav).toLowerCase();
+        const pick = lc.startsWith("mk") ? "mk" : "en";
+        setLang(pick);
+        _setLang(pick);
+      }
+    } catch { }
+  }, []);
+
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
 
@@ -66,21 +85,32 @@ function App() {
 
   useEffect(() => {
     const onScroll = () => {
+      // 👇 Freeze navbar state in cart/order view
+      if (view === "cart") {
+        setIsCollapsed(false);
+        return;
+      }
+
       const y = getScrollY();
       setIsCollapsed(y > 30);
+
       if (y > lastY.current + 4) setPillHidden(true);
       else if (y < lastY.current - 4) setPillHidden(false);
+
       lastY.current = y;
       if (idleTimer.current) clearTimeout(idleTimer.current);
       idleTimer.current = setTimeout(() => setPillHidden(false), 250);
     };
+
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
+    onScroll(); // run once to set initial state
+
     return () => {
       window.removeEventListener("scroll", onScroll);
       if (idleTimer.current) clearTimeout(idleTimer.current);
     };
-  }, []);
+  }, [view]); // 👈 depend on view so logic updates when you enter/leave cart
+
 
   const viewFromHash = () => {
     const raw = window.location.hash.replace(/^#/, "");
@@ -219,7 +249,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <nav className={`navbar ${isCollapsed ? "is-collapsed" : ""}`}>
+      <nav className={`navbar ${isCollapsed ? "is-collapsed" : ""} ${view === "cart" ? "is-cart-view" : ""}`}>
         <div className="nav-top">
           <div className="brand-wrap" onClick={onLogoClick}>
             <div className="brand-logo">LOGO</div>
@@ -237,17 +267,17 @@ function App() {
               type="text"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              aria-label="Search menu"
+              aria-label={t("search")}
             />
             <div className={`search-center ${searchText ? "is-hidden" : ""}`}>
               <img src={searchIcon} alt="" className="search-center-icon" />
-              <span className="search-center-text">Search</span>
+              <span className="search-center-text">{t("search")}</span>
             </div>
             {searchText && (
               <button
                 type="button"
                 className="search-clear-btn"
-                aria-label="Clear search"
+                aria-label={t("search")}
                 onClick={() => setSearchText("")}
               >
                 ×
@@ -265,7 +295,9 @@ function App() {
                 onClick={() => selectCategory(cat)}
               >
                 <img src={ICONS[cat]} alt="" className="chip-icon-img" draggable="false" />
-                <span className="chip-label" style={{ textTransform: "capitalize" }}>{cat}</span>
+                <span className="chip-label" style={{ textTransform: "capitalize" }}>
+                  {labelForCat(cat)}
+                </span>
               </button>
             ))}
           </div>
@@ -301,7 +333,7 @@ function App() {
       {view === "menu" && cartCount > 0 && (
         <ViewOrderPill
           count={cartCount}
-          text="View Order"
+          text={t("viewOrder")}
           totalText={`${Math.round(totalMKD)} MKD`}
           onClick={() => goto("cart")}
           hidden={pillHidden}

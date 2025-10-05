@@ -17,7 +17,6 @@
     min-height: fit-content;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     background-color: #f2f2f2;
-    padding-top: 220px;
     padding-bottom: 110px;
 }
 
@@ -244,6 +243,24 @@
     pointer-events: none;
 }
 
+.navbar.is-cart-view .nav-top {
+    display: none !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.navbar.is-cart-view .chip-icon-img {
+    opacity: 0;
+    height: 0;
+    margin: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+}
+
+
 .navbar.is-collapsed .search-wrap {
     margin-top: 5px;
     padding: 8px 16px;
@@ -367,6 +384,7 @@
 
 .menu-container {
     padding: 0 0px 24px;
+    margin-top: 220px;
     background-color: #f2f2f2;
 }
 

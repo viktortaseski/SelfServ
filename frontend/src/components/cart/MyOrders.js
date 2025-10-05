@@ -1,5 +1,6 @@
 import React from "react";
 import backIcon from "../../assets/other-images/back-button.png";
+import { t } from "../../i18n";
 
 const PLACEHOLDER =
     "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
@@ -23,41 +24,49 @@ export default function MyOrders({ orders = [], onBack }) {
     return (
         <div className="menu-container cart-container">
             <div className="cart-header-row">
-                <h3 className="page-head" style={{ margin: 0 }}>My Orders</h3>
+                <h3 className="page-head" style={{ margin: 0 }}>
+                    {t("orders.myOrders")}
+                </h3>
                 <div className="header-actions">
                     <div className="pill-wrap">
-                        <img src={backIcon} alt="" style={{ marginRight: "5px" }} className="clear-all-icon" draggable="false" />
+                        <img
+                            src={backIcon}
+                            alt=""
+                            style={{ marginRight: "5px" }}
+                            className="clear-all-icon"
+                            draggable="false"
+                        />
                         <button
                             type="button"
                             className="pill-btn"
                             onClick={onBack}
-                            aria-label="Back to View Order"
+                            aria-label={t("orders.back")}
                         >
-                            Back
+                            {t("orders.back")}
                         </button>
                     </div>
                 </div>
             </div>
 
             {(!orders || orders.length === 0) && (
-                <p className="empty-cart">No previous orders yet.</p>
+                <p className="empty-cart">{t("orders.noPrevious")}</p>
             )}
 
             {orders.map((ord, idx) => (
                 <div key={`${ord.orderId || "pending"}-${idx}`} className="order-card">
                     <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
-                        {ord.orderId ? "Order Confirmed" : "Awaiting confirmation"}
+                        {ord.orderId ? t("orders.orderConfirmed") : t("orders.awaiting")}
                     </h3>
 
                     <div className="order-header">
                         {ord.tableName && (
                             <div className="order-header__cell">
-                                Table: <strong>{tableNum(ord.tableName)}</strong>
+                                {t("orders.table")}: <strong>{tableNum(ord.tableName)}</strong>
                             </div>
                         )}
                         {!!ord.orderId && (
                             <div className="order-header__cell">
-                                Order ID: <strong>{ord.orderId}</strong>
+                                {t("orders.orderId")}: <strong>{ord.orderId}</strong>
                             </div>
                         )}
                         {ord.createdAt && (
@@ -87,15 +96,15 @@ export default function MyOrders({ orders = [], onBack }) {
 
                     <div className="summary">
                         <div className="summary-row">
-                            <span>Subtotal</span>
+                            <span>{t("orders.subtotal")}</span>
                             <span>{fmtMKD(ord.subtotal)}</span>
                         </div>
                         <div className="summary-row">
-                            <span>Tip</span>
+                            <span>{t("orders.tip")}</span>
                             <span>{fmtMKD(ord.tip)}</span>
                         </div>
                         <div className="summary-row summary-row--total">
-                            <span>Total</span>
+                            <span>{t("orders.total")}</span>
                             <span>{fmtMKD(ord.total)}</span>
                         </div>
                     </div>

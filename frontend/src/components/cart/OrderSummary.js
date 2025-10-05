@@ -1,3 +1,6 @@
+import React from "react";
+import { t } from "../../i18n";
+
 const PLACEHOLDER =
     "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
 
@@ -16,22 +19,22 @@ export default function OrderSummary({ orderSummary, isPlacing }) {
         <div className="menu-container cart-container">
             <div className="order-card">
                 <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
-                    {isPlacing ? "Submitting order…" : "Order Confirmed"}
+                    {isPlacing ? t("orders.awaiting") : t("orders.orderConfirmed")}
                 </h3>
 
                 <div className="order-header">
                     {tableName && (
                         <div className="order-header__cell">
-                            Table: <strong>{tableNum(tableName)}</strong>
+                            {t("orders.table")}: <strong>{tableNum(tableName)}</strong>
                         </div>
                     )}
                     <div className="order-header__cell">
                         {orderId ? (
                             <>
-                                Order ID: <strong>{orderId}</strong>
+                                {t("orders.orderId")}: <strong>{orderId}</strong>
                             </>
                         ) : (
-                            "Awaiting confirmation"
+                            t("orders.awaiting")
                         )}
                     </div>
                 </div>
@@ -58,15 +61,15 @@ export default function OrderSummary({ orderSummary, isPlacing }) {
 
                 <div className="summary">
                     <div className="summary-row">
-                        <span>Subtotal</span>
+                        <span>{t("orders.subtotal")}</span>
                         <span>{fmtMKD(subtotal)}</span>
                     </div>
                     <div className="summary-row">
-                        <span>Tip</span>
+                        <span>{t("orders.tip")}</span>
                         <span>{fmtMKD(tip)}</span>
                     </div>
                     <div className="summary-row summary-row--total">
-                        <span>Total</span>
+                        <span>{t("orders.total")}</span>
                         <span>{fmtMKD(total)}</span>
                     </div>
                 </div>

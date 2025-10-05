@@ -1,5 +1,6 @@
 import React from "react";
 import { fmtMKD } from "../common/format";
+import { t } from "../../i18n";
 
 /**
  * Centered modal to confirm placing an order.
@@ -25,11 +26,15 @@ export default function ConfirmOrderNotice({
         <div className="confirm-overlay" role="dialog" aria-modal="true">
             <div className="confirm-modal">
                 <div className="confirm-header">
-                    <div className="confirm-title">Confirm your order?</div>
+                    <div className="confirm-title">{t("cart.confirmTitle")}</div>
                 </div>
 
                 <div className="confirm-body">
-                    <div className="confirm-list" role="region" aria-label="Order items">
+                    <div
+                        className="confirm-list"
+                        role="region"
+                        aria-label={t("cart.itemsAria")}
+                    >
                         {items.map((it) => {
                             const qty = Number(it.quantity) || 0;
                             const unit = Number(it.price) || 0;
@@ -47,15 +52,15 @@ export default function ConfirmOrderNotice({
 
                     <div className="confirm-summary">
                         <div className="confirm-row">
-                            <div className="confirm-label">Subtotal</div>
+                            <div className="confirm-label">{t("orders.subtotal")}</div>
                             <div className="confirm-value">{fmtMKD(subtotal)}</div>
                         </div>
                         <div className="confirm-row">
-                            <div className="confirm-label">Tip</div>
+                            <div className="confirm-label">{t("orders.tip")}</div>
                             <div className="confirm-value">{fmtMKD(tip)}</div>
                         </div>
                         <div className="confirm-row confirm-row--total">
-                            <div className="confirm-label">Total</div>
+                            <div className="confirm-label">{t("orders.total")}</div>
                             <div className="confirm-value">{fmtMKD(total)}</div>
                         </div>
                     </div>
@@ -67,14 +72,14 @@ export default function ConfirmOrderNotice({
                         className="btn btn-secondary"
                         onClick={onCancel}
                     >
-                        Cancel
+                        {t("buttons.cancel")}
                     </button>
                     <button
                         type="button"
                         className="btn btn-primary"
                         onClick={onConfirm}
                     >
-                        Yes, order
+                        {t("buttons.confirmOrder")}
                     </button>
                 </div>
             </div>
