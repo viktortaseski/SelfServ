@@ -95,7 +95,7 @@
     gap: 10px;
     justify-content: space-between;
     /* flex- start */
-    margin: 10px 6px 30px;
+    margin: 0px 6px 32px;
 }
 
 .total-label {
@@ -111,12 +111,13 @@
 }
 
 .block {
-    margin-top: 20px;
+    margin-top: 0px;
     padding: 0 6px;
 }
 
 .block-title {
     font-weight: 700;
+    font-size: 16px;
     color: #0f172a;
     margin: 10px 0 8px;
 }
@@ -130,9 +131,10 @@
 .tip-chip {
     padding: 8px 10px;
     border-radius: 999px;
-    border: 1px solid #d0d4da;
-    background: #f5f6f8;
-    font-weight: 700;
+    border: none;
+    background: #E5E5E5;
+    font-weight: 590;
+    font-size: 12px;
     color: #0f172a;
     cursor: pointer;
 }
@@ -146,10 +148,11 @@
 .note-input {
     width: 100%;
     box-sizing: border-box;
-    font-size: 16px;
+    text-align: left;
+    font-size: 12px;
     line-height: 20px;
     height: 44px;
-    padding: 0 14px;
+    padding: 0 24px;
     border-radius: 22px;
     border: none;
     outline: none;
@@ -159,13 +162,13 @@
 
 .note-input::placeholder,
 .note-input::-webkit-input-placeholder {
-    font-size: 16px;
+    font-size: 12px;
 }
 
 /* Extra-sure on iOS Safari */
 @supports (-webkit-touch-callout: none) {
     .note-input {
-        font-size: 16px;
+        font-size: 12px;
     }
 }
 
