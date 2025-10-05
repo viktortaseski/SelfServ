@@ -24,7 +24,7 @@ function MenuItem({
                 height={120}
                 loading="lazy"
                 decoding="async"
-                fetchpriority="low"
+                fetchPriority="high"
                 onError={handleImgError}
             />
             <div className="item-info" onClick={() => onAdd?.(item)}>

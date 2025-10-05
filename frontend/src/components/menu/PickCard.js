@@ -19,7 +19,7 @@ function PickCard({ item, onAdd }) {
                 alt={item.name}
                 loading="lazy"
                 decoding="async"
-                fetchpriority="low"
+                fetchPriority="low"
                 onClick={handleAdd}
                 onError={handleImgError}
             />

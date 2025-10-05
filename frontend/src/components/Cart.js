@@ -146,6 +146,13 @@ function Cart({
         if (typeof notify === "function") notify(t("cart.clearAll"));
     };
 
+    useEffect(() => {
+        if (tableName) {
+            console.log("[cart] table label:", tableLabel(tableName));
+        }
+    }, [tableName]);
+
+
     const actuallyCheckout = async () => {
         if (!cart.length) return;
         if (!tableToken) {
@@ -265,14 +272,6 @@ function Cart({
 
     return (
         <div className="menu-container cart-container">
-            {tableName && (
-                <div
-                    className="table-banner"
-                    style={{ paddingBottom: "", marginBottom: "6px", textTransform: "capitalize" }}
-                >
-                    {t("cart.orderingFor")} {tableLabel(tableName)}
-                </div>
-            )}
 
             <div className="cart-header-row">
                 <h3 className="page-head" style={{ margin: 0 }}>{t("cart.myOrder")}</h3>

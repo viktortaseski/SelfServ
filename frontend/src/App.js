@@ -14,7 +14,6 @@ import searchIcon from "./assets/category-icons/search.png";
 
 import { t, labelForCat, detectLang, setLang } from "./i18n";
 
-// ---- Keep internal keys stable for logic ----
 const ICONS = { coffee: coffeeIcon, drinks: drinksIcon, food: foodIcon, desserts: dessertsIcon };
 const CATS = ["coffee", "drinks", "food", "desserts"];
 const FIRST_CAT = CATS[0];
@@ -22,8 +21,13 @@ const LAST_CAT = CATS[CATS.length - 1];
 const ACTIVE_CAT_KEY = "activeCategory";
 
 function App() {
-  // i18n: init from URL/localStorage; if nothing, auto-detect browser at first mount
+
   const [lang, _setLang] = useState(detectLang);
+
+  useEffect(() => {
+    console.log("[i18n] current lang:", lang);
+  }, [lang]);
+
   useEffect(() => {
     try {
       const hasStored = !!localStorage.getItem("lang");
@@ -103,13 +107,13 @@ function App() {
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll(); // run once to set initial state
+    onScroll();
 
     return () => {
       window.removeEventListener("scroll", onScroll);
       if (idleTimer.current) clearTimeout(idleTimer.current);
     };
-  }, [view]); // 👈 depend on view so logic updates when you enter/leave cart
+  }, [view]);
 
 
   const viewFromHash = () => {

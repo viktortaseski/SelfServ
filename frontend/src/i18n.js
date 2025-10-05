@@ -1,6 +1,3 @@
-// Lightweight i18n helper used across the app.
-// Keys (like "coffee", "drinks") remain internal/stable. Only labels are translated.
-
 const I18N = {
     en: {
         search: "Search",
@@ -29,8 +26,6 @@ const I18N = {
             placeOrder: "Place Order",
             placing: "Placing…",
             enterTipPrompt: "Enter tip amount (MKD):",
-
-            // ✅ added for ConfirmOrderNotice
             confirmTitle: "Confirm your order?",
             itemsAria: "Order items",
         },
@@ -53,7 +48,6 @@ const I18N = {
             total: "Total",
         },
 
-        // ✅ added common button labels
         buttons: {
             cancel: "Cancel",
             confirmOrder: "Yes, order",
@@ -87,8 +81,6 @@ const I18N = {
             placeOrder: "Нарачај",
             placing: "Се потврдува…",
             enterTipPrompt: "Внесете износ на напојница (МКД):",
-
-            // ✅ added for ConfirmOrderNotice
             confirmTitle: "Потврдете ја нарачката?",
             itemsAria: "Артикли во нарачката",
         },
@@ -111,7 +103,6 @@ const I18N = {
             total: "Вкупно",
         },
 
-        // ✅ added common button labels
         buttons: {
             cancel: "Откажи",
             confirmOrder: "Да, нарачај",
@@ -128,7 +119,7 @@ export function detectLang() {
         const saved = localStorage.getItem(LANG_KEY);
         if (saved && I18N[saved]) return saved;
     } catch { }
-    return "mk"; // default
+    return "en"; // default
 }
 
 let currentLang = detectLang();
@@ -159,7 +150,6 @@ export function t(path) {
     }
     if (node != null) return node;
 
-    // fallback to English
     node = I18N.en;
     for (const p of parts) {
         if (node && Object.prototype.hasOwnProperty.call(node, p)) {
