@@ -46,9 +46,7 @@ function toTipInt(tip) {
 router.post("/customer", async (req, res) => {
     const { accessToken, items, tip, message } = req.body;
 
-    if (!accessToken) {
-        return res.status(400).json({ error: "Missing accessToken" });
-    }
+    if (!accessToken) return res.status(400).json({ error: "Missing accessToken" });
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: "Cart is empty" });
     }
@@ -60,9 +58,7 @@ router.post("/customer", async (req, res) => {
         const tableId = await consumeAccessToken(client, accessToken);
         if (!tableId) {
             await client.query("ROLLBACK");
-            return res
-                .status(400)
-                .json({ error: "Expired or already used token. Please rescan the QR." });
+            return res.status(400).json({ error: "Expired or already used token. Please rescan the QR." });
         }
 
         const tipInt = toTipInt(tip);
@@ -71,14 +67,49 @@ router.post("/customer", async (req, res) => {
         const oRes = await client.query(
             `INSERT INTO orders (table_id, created_by_role, status, message, tip)
        VALUES ($1, 'customer', 'pending', $2, $3)
-       RETURNING id`,
+       RETURNING id, created_at`,
             [tableId, trimmedMsg, tipInt]
         );
         const orderId = oRes.rows[0].id;
+        const createdAtISO = oRes.rows[0].created_at?.toISOString?.() || new Date().toISOString();
 
         await insertOrderItems(client, orderId, items);
 
+        // Fetch table name (if you have it) for nicer label; otherwise use tableId
+        let tableName = null;
+        try {
+            const tRes = await client.query(
+                `SELECT name FROM restaurant_tables WHERE id = $1`,
+                [tableId]
+            );
+            tableName = tRes.rows[0]?.name || `Table ${tableId}`;
+        } catch { tableName = `Table ${tableId}`; }
+
         await client.query("COMMIT");
+
+        // Build the payload snapshot to be printed by the Mac agent
+        const purchasedItems = (items || []).map(i => ({
+            name: i.name,
+            quantity: Number(i.quantity) || 0,
+            price: Number(i.price) || 0,
+        }));
+        const subtotal = purchasedItems.reduce((s, it) => s + it.price * it.quantity, 0);
+        const tipVal = tipInt || 0;
+        const printPayload = {
+            orderId,
+            tableName,
+            createdAtISO,
+            items: purchasedItems,
+            subtotal,
+            tip: tipVal,
+            taxRate: 0,
+            payment: "PAYMENT DUE",
+        };
+        await pool.query(
+            `INSERT INTO print_jobs (order_id, payload) VALUES ($1, $2)`,
+            [orderId, printPayload]
+        );
+
         return res.status(201).json({ orderId });
     } catch (err) {
         await client.query("ROLLBACK");
@@ -90,3 +121,4 @@ router.post("/customer", async (req, res) => {
 });
 
 module.exports = router;
+
