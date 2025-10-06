@@ -3,6 +3,11 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
+// Optional receipt header defaults (can override with env on Render)
+const RECEIPT_NAME = "SELFSERV";
+const RECEIPT_PHONE = "69 937 000";
+const RECEIPT_ADDRESS = "Koper";
+
 async function insertOrderItems(client, orderId, items) {
     const text = `
     INSERT INTO order_items (order_id, menu_item_id, quantity)
@@ -71,7 +76,11 @@ router.post("/customer", async (req, res) => {
             [tableId, trimmedMsg, tipInt]
         );
         const orderId = oRes.rows[0].id;
-        const createdAtISO = oRes.rows[0].created_at?.toISOString?.() || new Date().toISOString();
+        const createdAt = oRes.rows[0].created_at;
+        const createdAtISO =
+            (createdAt && typeof createdAt.toISOString === "function")
+                ? createdAt.toISOString()
+                : new Date().toISOString();
 
         await insertOrderItems(client, orderId, items);
 
@@ -83,7 +92,9 @@ router.post("/customer", async (req, res) => {
                 [tableId]
             );
             tableName = tRes.rows[0]?.name || `Table ${tableId}`;
-        } catch { tableName = `Table ${tableId}`; }
+        } catch {
+            tableName = `Table ${tableId}`;
+        }
 
         await client.query("COMMIT");
 
@@ -95,6 +106,7 @@ router.post("/customer", async (req, res) => {
         }));
         const subtotal = purchasedItems.reduce((s, it) => s + it.price * it.quantity, 0);
         const tipVal = tipInt || 0;
+
         const printPayload = {
             orderId,
             tableName,
@@ -104,12 +116,19 @@ router.post("/customer", async (req, res) => {
             tip: tipVal,
             taxRate: 0,
             payment: "PAYMENT DUE",
+
+            // pass header info so the agent can print SELFSERV + address/phone
+            headerTitle: RECEIPT_NAME,
+            phone: RECEIPT_PHONE,
+            address: RECEIPT_ADDRESS,
         };
+
         await pool.query(
             `INSERT INTO print_jobs (order_id, payload) VALUES ($1, $2)`,
             [orderId, printPayload]
         );
 
+        // return the orderId to the client (frontend already shows this)
         return res.status(201).json({ orderId });
     } catch (err) {
         await client.query("ROLLBACK");
@@ -121,4 +140,3 @@ router.post("/customer", async (req, res) => {
 });
 
 module.exports = router;
-
