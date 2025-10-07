@@ -121,6 +121,9 @@ router.post("/customer", async (req, res) => {
             headerTitle: RECEIPT_NAME,
             phone: RECEIPT_PHONE,
             address: RECEIPT_ADDRESS,
+
+            // NEW: include the customer's note (may be null)
+            note: trimmedMsg,
         };
 
         await pool.query(
@@ -128,7 +131,7 @@ router.post("/customer", async (req, res) => {
             [orderId, printPayload]
         );
 
-        // return the orderId to the client (frontend already shows this)
+        // return the orderId to the client
         return res.status(201).json({ orderId });
     } catch (err) {
         await client.query("ROLLBACK");
