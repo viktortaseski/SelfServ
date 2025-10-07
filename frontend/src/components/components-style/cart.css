@@ -149,11 +149,7 @@
     width: 100%;
     box-sizing: border-box;
     text-align: left;
-    font-size: 16px;
-    /* prevents iOS zoom */
-    transform: scale(0.75);
-    /* visually ≈ 12px */
-    transform-origin: left center;
+    font-size: 12px;
     line-height: 20px;
     height: 44px;
     padding: 0 24px;
@@ -164,14 +160,10 @@
     color: #0f172a;
 }
 
-
 .note-input::placeholder,
 .note-input::-webkit-input-placeholder {
-    font-size: 16px;
-    transform: scale(0.75);
-    transform-origin: left center;
+    font-size: 12px;
 }
-
 
 /* Extra-sure on iOS Safari */
 @supports (-webkit-touch-callout: none) {
