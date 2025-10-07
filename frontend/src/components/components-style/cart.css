@@ -149,28 +149,37 @@
     width: 100%;
     box-sizing: border-box;
     text-align: left;
-    font-size: 12px;
+    font-size: 16px;
+    /* stops Safari zoom */
     line-height: 20px;
     height: 44px;
-    padding: 0 24px;
+    padding: 0 20px;
     border-radius: 22px;
     border: none;
     outline: none;
     background: #e9eaee;
     color: #0f172a;
+
+    /* visually appear smaller */
+    letter-spacing: -0.4px;
+    font-weight: 400;
 }
 
 .note-input::placeholder,
 .note-input::-webkit-input-placeholder {
-    font-size: 12px;
+    font-size: 16px;
+    /* must match input font size */
+    opacity: 0.7;
 }
 
-/* Extra-sure on iOS Safari */
+/* optional: limit iOS double-tap zoom */
 @supports (-webkit-touch-callout: none) {
     .note-input {
-        font-size: 12px;
+        touch-action: manipulation;
+        -webkit-text-size-adjust: 100%;
     }
 }
+
 
 .order-card {
     background: #ffffff;
