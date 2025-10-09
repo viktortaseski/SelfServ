@@ -94,8 +94,7 @@
     align-items: baseline;
     gap: 10px;
     justify-content: space-between;
-    /* flex- start */
-    margin: 0px 6px 32px;
+    margin-top: 32px;
 }
 
 .total-label {
@@ -232,3 +231,91 @@
     font-size: 18px;
     font-weight: 800;
 }
+
+/* Cart row tweaks for the new design */
+.menu-item.menu-item-cart {
+    gap: 12px;
+    background: #f2f2f2;
+    border: 1px solid #f3f3f3;
+    padding: 12px 14px !important;
+}
+
+/* hide image on cart rows */
+.menu-item.menu-item-cart .thumb {
+    display: none;
+}
+
+.menu-item.menu-item-cart .item-info {
+    gap: 6px;
+}
+
+/* qty × price line */
+.cart-line {
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+/* inline 'Add Note' pill */
+.note-pill {
+    width: 110px;
+    height: 32px;
+    justify-content: center;
+    align-self: flex-start;
+    border: none;
+    border-radius: 999px;
+    background: #e5e5e5;
+    font-size: 12px;
+    font-weight: 600;
+    color: #808080;
+    padding: 8px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.note-pill__icon {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.note-pill.has-text {
+    background: #e9eaee;
+    color: #0f172a;
+}
+
+/* input that replaces the pill while editing */
+.note-inline-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: none;
+    outline: none;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: #e9eaee;
+    color: #0f172a;
+    font-size: 16px;
+    /* prevents iOS zoom */
+    line-height: 20px;
+}
+
+/* middle column holder for the note */
+.note-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 160px;
+    /* adjust if you want more/less room */
+}
+
+/* use image icon instead of emoji; keep size tidy */
+.note-pill__icon-img {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+}
+
+/* (existing .note-pill / .note-inline-input styles from earlier still apply) */

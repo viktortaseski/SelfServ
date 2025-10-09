@@ -51,7 +51,11 @@ function Cart({
 }) {
     const TIP_PRESETS = [0, 50, 100];
     const [tipAmount, setTipAmount] = useState(0);
-    const [note, setNote] = useState("");
+
+    const [itemNotes, setItemNotes] = useState(() => ({}));
+    const setNoteFor = (id, text) =>
+        setItemNotes((prev) => ({ ...prev, [id]: text }));
+
 
     const [isPlacing, setIsPlacing] = useState(false);
     const [orderSummary, setOrderSummary] = useState(null);
@@ -166,6 +170,7 @@ function Cart({
             price: Number(i.price) || 0,
             quantity: Number(i.quantity) || 0,
             image_url: i.image_url,
+            note: itemNotes[i.id] ? String(itemNotes[i.id]).trim().slice(0, 200) : null,
         }));
         const sub = purchasedItems.reduce((s, it) => s + it.price * it.quantity, 0);
         const tipVal = Math.round(Number(tipAmount) || 0);
@@ -182,14 +187,12 @@ function Cart({
         });
 
         try {
-            const trimmed = (note || "").trim();
-            const message = trimmed.length ? trimmed.slice(0, 200) : null;
 
             const payload = {
                 accessToken: tableToken,
-                items: cart,
+                items: purchasedItems,
                 tip: tipVal,
-                message,
+                message: null,
             };
 
             const res = await api.post("/orders/customer", payload);
@@ -221,8 +224,9 @@ function Cart({
                 notify(text, 6000);
             }
 
-            setNote("");
             setTipAmount(0);
+            setItemNotes({});
+
             localStorage.removeItem("accessToken");
         } catch (err) {
             const msg =
@@ -314,16 +318,17 @@ function Cart({
                         onAdd={addToCart}
                         onRemove={removeFromCart}
                         className="menu-item-cart"
+                        variant="cart"
+                        note={itemNotes[item.id] || ""}
+                        onNoteChange={setNoteFor}
                     />
                 ))}
             </ul>
 
+
+
             {cart.length > 0 && (
                 <>
-                    <div className="total-row">
-                        <span className="total-label">{t("cart.total")}</span>
-                        <span className="total-amount">{fmtMKD(total)}</span>
-                    </div>
 
                     <div className="block">
                         <div className="block-title">{t("cart.addTip")}</div>
@@ -344,25 +349,18 @@ function Cart({
                         </div>
                     </div>
 
-                    <div className="block">
-                        <div className="block-title">{t("cart.addNote")}</div>
-                        <input
-                            className="note-input"
-                            type="text"
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            placeholder={t("cart.notePlaceholder")}
-                            maxLength={200}
-                            inputMode="text"
-                        />
+                    <div className="total-row">
+                        <span className="total-label">{t("cart.total")}</span>
+                        <span className="total-amount">{fmtMKD(total)}</span>
                     </div>
 
-                    <Suggestions
+
+                    {/* <Suggestions
                         suggestions={suggestions}
                         qtyById={qtyById}
                         addToCart={addToCart}
                         removeFromCart={removeFromCart}
-                    />
+                    /> */}
 
                     {/* Centered pill for CART */}
                     <ViewOrderPill
@@ -377,7 +375,6 @@ function Cart({
         </div>
     );
 }
-
 function Suggestions({ suggestions, qtyById, addToCart, removeFromCart }) {
     if (!suggestions.length) return null;
     return (
@@ -393,7 +390,7 @@ function Suggestions({ suggestions, qtyById, addToCart, removeFromCart }) {
                             qty={qty}
                             onAdd={addToCart}
                             onRemove={removeFromCart}
-                            className="menu-item-cart"
+                        // no cart variant here
                         />
                     );
                 })}
@@ -401,5 +398,6 @@ function Suggestions({ suggestions, qtyById, addToCart, removeFromCart }) {
         </div>
     );
 }
+
 
 export default Cart;

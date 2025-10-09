@@ -1,5 +1,6 @@
-import React, { memo } from "react";
+import React, { memo, useState, useRef, useEffect } from "react";
 import { PLACEHOLDER, fmtMKD } from "../common/format";
+import editIcon from "../../assets/other-images/edit.svg";
 
 function MenuItem({
     item,
@@ -7,47 +8,104 @@ function MenuItem({
     onAdd,
     onRemove,
     className = "",
+    variant = "menu",          // "menu" | "cart"
+    note = "",
+    onNoteChange,              // (id, text) => void
 }) {
+    // Hooks must be unconditional
+    const [editing, setEditing] = useState(false);
+    const inputRef = useRef(null);
+    useEffect(() => {
+        if (editing && inputRef.current) inputRef.current.focus();
+    }, [editing]);
+
     if (!item) return null;
 
-    const handleImgError = (e) => {
-        e.currentTarget.src = PLACEHOLDER;
+    const handleImgError = (e) => (e.currentTarget.src = PLACEHOLDER);
+    const handleEditToggle = (e) => {
+        e.stopPropagation();
+        setEditing((v) => !v);
     };
+    const handleChange = (e) => {
+        onNoteChange?.(item.id, e.target.value.slice(0, 200));
+    };
+
+    const showImage = variant !== "cart";
 
     return (
         <li className={`menu-item ${className}`.trim()}>
-            <img
-                src={item.image_url || PLACEHOLDER}
-                alt={item.name}
-                className="thumb"
-                width={160}
-                height={120}
-                loading="lazy"
-                decoding="async"
-                fetchPriority="high"
-                onError={handleImgError}
-            />
-            <div className="item-info" onClick={() => onAdd?.(item)}>
+            {showImage && (
+                <img
+                    src={item.image_url || PLACEHOLDER}
+                    alt={item.name}
+                    className="thumb"
+                    width={160}
+                    height={120}
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="high"
+                    onError={handleImgError}
+                    onClick={() => onAdd?.(item)}
+                />
+            )}
+
+            {/* INFO */}
+            <div
+                className="item-info"
+                onClick={() => (variant === "menu" ? onAdd?.(item) : undefined)}
+            >
                 <span className="item-name">{item.name}</span>
-                <span className="item-price">{fmtMKD(item.price)}</span>
+                {variant === "cart" ? (
+                    <span className="cart-line">{`${qty} × ${fmtMKD(item.price)}`}</span>
+                ) : (
+                    <span className="item-price">{fmtMKD(item.price)}</span>
+                )}
             </div>
 
+            {/* NOTE (sits between info and +/-) */}
+            {variant === "cart" && (
+                <div className="note-slot">
+                    {!editing ? (
+                        <button
+                            type="button"
+                            className={`note-pill ${note ? "has-text" : ""}`}
+                            onClick={handleEditToggle}
+                            aria-label="Add note"
+                        >
+                            <img src={editIcon} alt="" className="note-pill__icon-img" />
+                            {note && note.length ? note : "Add Note"}
+                        </button>
+                    ) : (
+                        <input
+                            ref={inputRef}
+                            className="note-inline-input"
+                            type="text"
+                            value={note || ""}
+                            onChange={handleChange}
+                            onBlur={() => setEditing(false)}
+                            placeholder="Type note (max 200)…"
+                            maxLength={200}
+                            inputMode="text"
+                        />
+                    )}
+                </div>
+            )}
+
+            {/* QTY CONTROLS */}
             {qty > 0 ? (
                 <div className="qty-controls" aria-label="Quantity controls">
                     <button
                         className="qty-btn"
-                        aria-label={`Remove one ${item.name}`}
                         onClick={() => onRemove?.(item)}
+                        aria-label={`Remove one ${item.name}`}
                     >
                         &minus;
                     </button>
-                    <span className="qty-num" aria-live="polite">
-                        {qty}
-                    </span>
+
                     <button
                         className="qty-btn"
-                        aria-label={`Add one more ${item.name}`}
                         onClick={() => onAdd?.(item)}
+                        aria-label={`Add one more ${item.name}`}
                     >
                         +
                     </button>
@@ -55,8 +113,8 @@ function MenuItem({
             ) : (
                 <button
                     className="add-btn"
-                    aria-label={`Add ${item.name} to order`}
                     onClick={() => onAdd?.(item)}
+                    aria-label={`Add ${item.name} to order`}
                 >
                     +
                 </button>
@@ -65,7 +123,6 @@ function MenuItem({
     );
 }
 
-// Avoid re-render unless something that affects UI changed.
 export default memo(
     MenuItem,
     (prev, next) => {
@@ -74,6 +131,8 @@ export default memo(
         return (
             prev.qty === next.qty &&
             prev.className === next.className &&
+            prev.variant === next.variant &&
+            (prev.note || "") === (next.note || "") &&
             a.id === b.id &&
             a.name === b.name &&
             a.price === b.price &&
