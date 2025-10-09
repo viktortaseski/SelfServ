@@ -10,15 +10,17 @@ const RECEIPT_ADDRESS = "Koper";
 
 async function insertOrderItems(client, orderId, items) {
     const text = `
-    INSERT INTO order_items (order_id, menu_item_id, quantity)
-    VALUES ($1, $2, $3)
+    INSERT INTO order_items (order_id, menu_item_id, quantity, note)
+    VALUES ($1, $2, $3, $4)
   `;
     for (const it of items) {
-        const menuItemId = it.id; // frontend sends item.id
-        const quantity = Number(it.quantity) > 0 ? Number(it.quantity) : 1;
-        await client.query(text, [orderId, menuItemId, quantity]);
+        const menuItemId = Number(it.id);
+        const quantity = Math.max(1, Math.round(Number(it.quantity) || 0));
+        const note = it.note ? String(it.note).slice(0, 45) : null;
+        await client.query(text, [orderId, menuItemId, quantity, note]);
     }
 }
+
 
 async function consumeAccessToken(client, accessToken) {
     const q = `
@@ -49,12 +51,21 @@ function toTipInt(tip) {
 
 // POST /api/orders/customer (no auth)
 router.post("/customer", async (req, res) => {
-    const { accessToken, items, tip, message } = req.body;
+    const { accessToken, items, tip } = req.body;
 
     if (!accessToken) return res.status(400).json({ error: "Missing accessToken" });
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: "Cart is empty" });
     }
+
+    // Normalize items: ensure quantity int >=1 and note <= 45
+    const normalizedItems = items.map((it) => ({
+        id: Number(it.id),
+        name: String(it.name || ""),
+        price: Number(it.price) || 0,
+        quantity: Math.max(1, Math.round(Number(it.quantity) || 0)),
+        note: it.note ? String(it.note).slice(0, 45) : null,
+    }));
 
     const client = await pool.connect();
     try {
@@ -67,13 +78,13 @@ router.post("/customer", async (req, res) => {
         }
 
         const tipInt = toTipInt(tip);
-        const trimmedMsg = (message || "").slice(0, 200) || null;
 
+        // orders: drop message column usage
         const oRes = await client.query(
-            `INSERT INTO orders (table_id, created_by_role, status, message, tip)
-       VALUES ($1, 'customer', 'pending', $2, $3)
+            `INSERT INTO orders (table_id, created_by_role, status, tip)
+       VALUES ($1, 'customer', 'pending', $2)
        RETURNING id, created_at`,
-            [tableId, trimmedMsg, tipInt]
+            [tableId, tipInt]
         );
         const orderId = oRes.rows[0].id;
         const createdAt = oRes.rows[0].created_at;
@@ -82,9 +93,8 @@ router.post("/customer", async (req, res) => {
                 ? createdAt.toISOString()
                 : new Date().toISOString();
 
-        await insertOrderItems(client, orderId, items);
+        await insertOrderItems(client, orderId, normalizedItems);
 
-        // Fetch table name (if you have it) for nicer label; otherwise use tableId
         let tableName = null;
         try {
             const tRes = await client.query(
@@ -98,11 +108,12 @@ router.post("/customer", async (req, res) => {
 
         await client.query("COMMIT");
 
-        // Build the payload snapshot to be printed by the Mac agent
-        const purchasedItems = (items || []).map(i => ({
+        // Build print payload (include per-item notes; remove order-level note)
+        const purchasedItems = normalizedItems.map(i => ({
             name: i.name,
-            quantity: Number(i.quantity) || 0,
-            price: Number(i.price) || 0,
+            quantity: i.quantity,
+            price: i.price,
+            note: i.note,              // <— NEW: note per line
         }));
         const subtotal = purchasedItems.reduce((s, it) => s + it.price * it.quantity, 0);
         const tipVal = tipInt || 0;
@@ -116,14 +127,10 @@ router.post("/customer", async (req, res) => {
             tip: tipVal,
             taxRate: 0,
             payment: "PAYMENT DUE",
-
-            // pass header info so the agent can print SELFSERV + address/phone
             headerTitle: RECEIPT_NAME,
             phone: RECEIPT_PHONE,
             address: RECEIPT_ADDRESS,
-
-            // NEW: include the customer's note (may be null)
-            note: trimmedMsg,
+            // removed: note (order-level)
         };
 
         await pool.query(
@@ -131,8 +138,6 @@ router.post("/customer", async (req, res) => {
             [orderId, printPayload]
         );
 
-
-        // return the orderId to the client
         return res.status(201).json({ orderId });
     } catch (err) {
         await client.query("ROLLBACK");
@@ -142,5 +147,6 @@ router.post("/customer", async (req, res) => {
         client.release();
     }
 });
+
 
 module.exports = router;

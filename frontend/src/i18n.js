@@ -12,7 +12,7 @@ const I18N = {
 
         cart: {
             orderingFor: "Ordering for",
-            myOrder: "My Order",
+            myOrder: "Your Order",
             pastOrders: "Past Orders",
             clearAll: "Clear All",
             clearAllConfirm: "Clear all items from your order?",
@@ -24,7 +24,7 @@ const I18N = {
             notePlaceholder: "Message for the waiter",
             youMayLike: "You also may like",
             placeOrder: "Place Order",
-            placing: "Placing…",
+            placing: "Ordering…",
             enterTipPrompt: "Enter tip amount (MKD):",
             confirmTitle: "Confirm your order?",
             itemsAria: "Order items",
