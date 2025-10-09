@@ -127,9 +127,10 @@ router.post("/customer", async (req, res) => {
         };
 
         await pool.query(
-            `INSERT INTO print_jobs (order_id, payload) VALUES ($1, $2)`,
+            `INSERT INTO print_jobs (order_id, payload, status) VALUES ($1, $2, 'queued')`,
             [orderId, printPayload]
         );
+
 
         // return the orderId to the client
         return res.status(201).json({ orderId });
