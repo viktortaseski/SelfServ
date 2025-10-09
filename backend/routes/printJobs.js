@@ -5,6 +5,7 @@ const pool = require("../db");
 
 function requirePrintAuth(req, res, next) {
     const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+
     if (!token || token !== process.env.PRINT_API_TOKEN) {
         return res.status(401).json({ error: "Unauthorized" });
     }
