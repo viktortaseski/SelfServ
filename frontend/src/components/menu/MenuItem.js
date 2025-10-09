@@ -110,7 +110,8 @@ function MenuItem({
                     >
                         &minus;
                     </button>
-                    {/*<span className="qty-num" aria-live="polite">{qty}</span>*/}
+                    {variant !== "cart" ? <span className="qty-num" aria-live="polite">{qty}</span>
+                        : null}
                     <button
                         className="qty-btn"
                         onClick={() => onAdd?.(item)}
