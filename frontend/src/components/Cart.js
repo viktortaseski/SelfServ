@@ -5,6 +5,7 @@ import "./components-style/cart.css";
 import binIcon from "../assets/other-images/bin.svg";
 import OrderSummary from "./cart/OrderSummary";
 import MyOrders from "./cart/MyOrders";
+import Suggestions from "./cart/Suggestions";
 import MenuItem from "./menu/MenuItem";
 import ViewOrderPill from "./common/ViewOrderPill";
 import ConfirmOrderNotice from "./common/ConfirmOrderNotice";
@@ -49,8 +50,11 @@ function Cart({
     clearCart,
     notify,
 }) {
+
     const TIP_PRESETS = [0, 50, 100];
     const [tipAmount, setTipAmount] = useState(0);
+    const isPresetTip = TIP_PRESETS.includes(Number(tipAmount));
+    const customActive = !isPresetTip && (Number.isFinite(tipAmount) && tipAmount >= 0);
 
     const [itemNotes, setItemNotes] = useState(() => ({}));
     const setNoteFor = (id, text) =>
@@ -343,11 +347,18 @@ function Cart({
                                     {amt} MKD
                                 </button>
                             ))}
-                            <button type="button" className="tip-chip" onClick={handleCustomTip}>
-                                {t("cart.custom")}
+
+                            {/* Custom chip: becomes active + shows amount when custom is selected */}
+                            <button
+                                type="button"
+                                className={`tip-chip ${customActive ? "is-active" : ""}`}
+                                onClick={handleCustomTip}
+                            >
+                                {customActive ? `${tipAmount} MKD` : t("cart.custom")}
                             </button>
                         </div>
                     </div>
+
 
                     <div className="total-row">
                         <span className="total-label">{t("cart.total")}</span>
@@ -355,12 +366,12 @@ function Cart({
                     </div>
 
 
-                    {/* <Suggestions
+                    <Suggestions
                         suggestions={suggestions}
                         qtyById={qtyById}
                         addToCart={addToCart}
                         removeFromCart={removeFromCart}
-                    /> */}
+                    />
 
                     {/* Centered pill for CART */}
                     <ViewOrderPill
@@ -375,29 +386,5 @@ function Cart({
         </div>
     );
 }
-function Suggestions({ suggestions, qtyById, addToCart, removeFromCart }) {
-    if (!suggestions.length) return null;
-    return (
-        <div className="block" style={{ marginTop: "10px" }}>
-            <div className="block-title" style={{ textAlign: "center" }}>{t("cart.youMayLike")}</div>
-            <ul className="menu-list menu-list--full">
-                {suggestions.map((item) => {
-                    const qty = qtyById.get(item.id) || 0;
-                    return (
-                        <MenuItem
-                            key={`s-${item.id}`}
-                            item={item}
-                            qty={qty}
-                            onAdd={addToCart}
-                            onRemove={removeFromCart}
-                        // no cart variant here
-                        />
-                    );
-                })}
-            </ul>
-        </div>
-    );
-}
-
 
 export default Cart;

@@ -2,17 +2,19 @@ import React, { memo, useState, useRef, useEffect } from "react";
 import { PLACEHOLDER, fmtMKD } from "../common/format";
 import editIcon from "../../assets/other-images/edit.svg";
 
+const NOTE_MAX = 40; // ⬅️ increased
+
 function MenuItem({
     item,
     qty = 0,
     onAdd,
     onRemove,
     className = "",
-    variant = "menu",          // "menu" | "cart"
+    variant = "menu",
     note = "",
-    onNoteChange,              // (id, text) => void
+    onNoteChange,
 }) {
-    // Hooks must be unconditional
+
     const [editing, setEditing] = useState(false);
     const inputRef = useRef(null);
     useEffect(() => {
@@ -22,12 +24,9 @@ function MenuItem({
     if (!item) return null;
 
     const handleImgError = (e) => (e.currentTarget.src = PLACEHOLDER);
-    const handleEditToggle = (e) => {
-        e.stopPropagation();
-        setEditing((v) => !v);
-    };
     const handleChange = (e) => {
-        onNoteChange?.(item.id, e.target.value.slice(0, 200));
+        const v = e.target.value.slice(0, NOTE_MAX); // enforce hard cap
+        onNoteChange?.(item.id, v);
     };
 
     const showImage = variant !== "cart";
@@ -62,31 +61,41 @@ function MenuItem({
                 )}
             </div>
 
-            {/* NOTE (sits between info and +/-) */}
+            {/* NOTE between info and +/- */}
             {variant === "cart" && (
                 <div className="note-slot">
-                    {!editing ? (
+                    {/* Minimal: pill → input; if text exists show compact text, click to edit */}
+                    {editing ? (<input
+                        ref={inputRef}
+                        className="note-inline-input"
+                        type="text"
+                        value={note || ""}
+                        onChange={handleChange}
+                        onBlur={() => setEditing(false)}
+                        placeholder={`Type note (max ${NOTE_MAX})…`}
+                        maxLength={NOTE_MAX}
+                        inputMode="text"
+                    />
+                    ) : note && note.length ? (
                         <button
                             type="button"
-                            className={`note-pill ${note ? "has-text" : ""}`}
-                            onClick={handleEditToggle}
-                            aria-label="Add note"
+                            className="note-text"
+                            title="Edit note"
+                            onClick={() => setEditing(true)}
                         >
-                            <img src={editIcon} alt="" className="note-pill__icon-img" />
-                            {note && note.length ? note : "Add Note"}
+                            {note}
                         </button>
                     ) : (
-                        <input
-                            ref={inputRef}
-                            className="note-inline-input"
-                            type="text"
-                            value={note || ""}
-                            onChange={handleChange}
-                            onBlur={() => setEditing(false)}
-                            placeholder="Type note (max 200)…"
-                            maxLength={200}
-                            inputMode="text"
-                        />
+                        <button
+                            type="button"
+                            className="note-pill"
+                            onClick={() => setEditing(true)}
+                            aria-label="Add note"
+                            title="Add note"
+                        >
+                            <img src={editIcon} alt="" className="note-pill__icon-img" />
+                            Add Note
+                        </button>
                     )}
                 </div>
             )}
@@ -101,7 +110,7 @@ function MenuItem({
                     >
                         &minus;
                     </button>
-
+                    {/*<span className="qty-num" aria-live="polite">{qty}</span>*/}
                     <button
                         className="qty-btn"
                         onClick={() => onAdd?.(item)}
