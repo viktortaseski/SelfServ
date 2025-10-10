@@ -235,7 +235,7 @@
 .menu-item.menu-item-cart {
     display: grid;
     /* info | note | qty */
-    grid-template-columns: 1fr 160px 92px;
+    grid-template-columns: 140px 100px 100px;
     align-items: center;
     column-gap: 12px;
     background: #f2f2f2;
@@ -292,7 +292,7 @@
     min-width: 140px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: right;
 }
 
 .menu-item.menu-item-cart .note-text,
