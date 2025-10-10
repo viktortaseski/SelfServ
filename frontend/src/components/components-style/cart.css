@@ -15,7 +15,7 @@
     justify-content: space-between;
     gap: 8px;
     margin-top: 0;
-    margin-bottom: 6px;
+    margin-bottom: 16px;
 }
 
 .header-actions {
@@ -94,7 +94,7 @@
     align-items: baseline;
     gap: 10px;
     justify-content: space-between;
-    margin-top: 32px;
+    margin: 32px 0px;
 }
 
 .total-label {
@@ -158,8 +158,6 @@
     outline: none;
     background: #e9eaee;
     color: #0f172a;
-
-    /* visually appear smaller */
     letter-spacing: -0.4px;
     font-weight: 400;
 }
@@ -175,10 +173,8 @@
 @supports (-webkit-touch-callout: none) {
     .note-input {
         touch-action: manipulation;
-        -webkit-text-size-adjust: 100%;
     }
 }
-
 
 .order-card {
     background: #ffffff;
@@ -232,12 +228,21 @@
     font-weight: 800;
 }
 
-/* Cart row tweaks for the new design */
+/* ===========================
+   CART ROW LAYOUT (Grid)
+   =========================== */
+
 .menu-item.menu-item-cart {
-    gap: 12px;
+    display: grid;
+    /* info | note | qty */
+    grid-template-columns: 1fr 160px 92px;
+    align-items: center;
+    column-gap: 12px;
     background: #f2f2f2;
     border: 1px solid #f3f3f3;
     padding: 12px 14px !important;
+    min-height: 60px;
+    /* stable base height; grows if name wraps */
 }
 
 /* hide image on cart rows */
@@ -245,17 +250,106 @@
     display: none;
 }
 
+/* info cell: allow name to wrap; keep consistent spacing */
 .menu-item.menu-item-cart .item-info {
-    gap: 6px;
+    display: grid;
+    grid-template-rows: auto auto;
+    row-gap: 4px;
+    min-width: 0;
+    /* prevents overflow issues */
+    align-items: start;
+}
+
+/* IMPORTANT: show full name (wrap, no ellipsis) */
+.menu-item.menu-item-cart .item-name {
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 18px;
+    white-space: normal;
+    /* allow wrapping */
+    overflow: visible;
+    text-overflow: unset;
+    word-break: break-word;
+    /* safe for very long words */
+    hyphens: auto;
 }
 
 /* qty × price line */
-.cart-line {
+.menu-item.menu-item-cart .cart-line {
     color: #6b7280;
     font-weight: 600;
     font-size: 12px;
     line-height: 16px;
+    white-space: nowrap;
 }
+
+/* note column */
+.menu-item.menu-item-cart .note-slot {
+    justify-self: center;
+    width: 100%;
+    max-width: 160px;
+    /* match grid col */
+    min-width: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-item.menu-item-cart .note-text,
+.menu-item.menu-item-cart .note-pill {
+    max-width: 160px;
+}
+
+/* qty column */
+.menu-item.menu-item-cart .qty-controls {
+    justify-self: end;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.menu-item.menu-item-cart .qty-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.menu-item.menu-item-cart .qty-num {
+    min-width: 24px;
+    text-align: center;
+    font-weight: 700;
+}
+
+/* Responsive: stack note under info on very narrow screens */
+@media (max-width: 360px) {
+    .menu-item.menu-item-cart {
+        grid-template-columns: 1fr 92px;
+        /* info | qty */
+        grid-auto-rows: auto;
+    }
+
+    .menu-item.menu-item-cart .note-slot {
+        grid-column: 1 / -1;
+        /* full width below */
+        justify-self: start;
+        margin-top: 6px;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .menu-item.menu-item-cart .note-text,
+    .menu-item.menu-item-cart .note-pill,
+    .menu-item.menu-item-cart .note-inline-input {
+        max-width: 100%;
+    }
+}
+
+/* ===== Existing note/input styles (unchanged) ===== */
 
 .note-pill {
     width: 110px;
@@ -325,7 +419,6 @@
     font-weight: 700;
     line-height: 1;
     max-width: 180px;
-    /* prevents layout blow-up; tweak if needed */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

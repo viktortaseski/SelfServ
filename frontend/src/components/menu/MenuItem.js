@@ -14,9 +14,9 @@ function MenuItem({
     note = "",
     onNoteChange,
 }) {
-
     const [editing, setEditing] = useState(false);
     const inputRef = useRef(null);
+
     useEffect(() => {
         if (editing && inputRef.current) inputRef.current.focus();
     }, [editing]);
@@ -51,7 +51,7 @@ function MenuItem({
             {/* INFO */}
             <div
                 className="item-info"
-                onClick={() => (variant === "menu" ? onAdd?.(item) : undefined)}
+                onClick={variant === "menu" ? () => onAdd?.(item) : undefined}
             >
                 <span className="item-name">{item.name}</span>
                 {variant === "cart" ? (
@@ -64,18 +64,18 @@ function MenuItem({
             {/* NOTE between info and +/- */}
             {variant === "cart" && (
                 <div className="note-slot">
-                    {/* Minimal: pill → input; if text exists show compact text, click to edit */}
-                    {editing ? (<input
-                        ref={inputRef}
-                        className="note-inline-input"
-                        type="text"
-                        value={note || ""}
-                        onChange={handleChange}
-                        onBlur={() => setEditing(false)}
-                        placeholder={`Type note (max ${NOTE_MAX})…`}
-                        maxLength={NOTE_MAX}
-                        inputMode="text"
-                    />
+                    {editing ? (
+                        <input
+                            ref={inputRef}
+                            className="note-inline-input"
+                            type="text"
+                            value={note || ""}
+                            onChange={handleChange}
+                            onBlur={() => setEditing(false)}
+                            placeholder={`Type note (max ${NOTE_MAX})…`}
+                            maxLength={NOTE_MAX}
+                            inputMode="text"
+                        />
                     ) : note && note.length ? (
                         <button
                             type="button"
@@ -110,8 +110,11 @@ function MenuItem({
                     >
                         &minus;
                     </button>
-                    {variant !== "cart" ? <span className="qty-num" aria-live="polite">{qty}</span>
-                        : null}
+                    {variant !== "cart" ? (
+                        <span className="qty-num" aria-live="polite">
+                            {qty}
+                        </span>
+                    ) : null}
                     <button
                         className="qty-btn"
                         onClick={() => onAdd?.(item)}

@@ -151,7 +151,8 @@ function Cart({
                 for (let i = 0; i < q; i++) removeFromCart(item);
             });
         }
-        if (typeof notify === "function") notify(t("cart.clearAll"));
+        setItemNotes({});
+        if (typeof notify === "function") notify(t("cart.cleared"));
     };
 
     useEffect(() => {
