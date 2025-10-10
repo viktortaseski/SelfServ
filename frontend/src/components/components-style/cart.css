@@ -234,15 +234,19 @@
 
 .menu-item.menu-item-cart {
     display: grid;
-    /* info | note | qty */
-    grid-template-columns: 140px 100px 100px;
+    grid-template-columns:
+        1fr
+        /* item-info takes the leftover space */
+        clamp(120px, 24vw, 180px)
+        /* note column: responsive but bounded */
+        92px;
+    /* qty column stays compact */
     align-items: center;
     column-gap: 12px;
     background: #f2f2f2;
     border: 1px solid #f3f3f3;
     padding: 12px 14px !important;
     min-height: 60px;
-    /* stable base height; grows if name wraps */
 }
 
 /* hide image on cart rows */
@@ -287,17 +291,20 @@
 .menu-item.menu-item-cart .note-slot {
     justify-self: center;
     width: 100%;
-    max-width: 160px;
-    /* match grid col */
-    min-width: 140px;
+    max-width: 180px;
+    /* match grid upper bound */
+    min-width: 120px;
+    /* match grid lower bound */
     display: flex;
     align-items: center;
-    justify-content: right;
+    justify-content: center;
 }
 
+
 .menu-item.menu-item-cart .note-text,
-.menu-item.menu-item-cart .note-pill {
-    max-width: 160px;
+.menu-item.menu-item-cart .note-pill,
+.menu-item.menu-item-cart .note-inline-input {
+    max-width: 100%;
 }
 
 /* qty column */
