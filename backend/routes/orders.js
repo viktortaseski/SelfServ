@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
-const authMiddleware = require("../middleware/auth");
+const authMiddleware = require("../middleware/auth.js");
 
 // Optional receipt header defaults (can override with env on Render)
 const RECEIPT_NAME = "SELFSERV";
