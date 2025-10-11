@@ -1,6 +1,6 @@
 import React from "react";
-import backIcon from "../../assets/other-images/back-button.png";
 import { t } from "../../i18n";
+import backIcon from "../../assets/other-images/back-button.svg";
 
 const PLACEHOLDER =
     "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
@@ -24,92 +24,89 @@ export default function MyOrders({ orders = [], onBack }) {
     return (
         <div className="menu-container cart-container">
             <div className="cart-header-row">
-                <h3 className="page-head" style={{ margin: 0 }}>
-                    {t("orders.myOrders")}
-                </h3>
-                <div className="header-actions">
-                    <div className="pill-wrap">
-                        <img
-                            src={backIcon}
-                            alt=""
-                            style={{ marginRight: "5px" }}
-                            className="clear-all-icon"
-                            draggable="false"
-                        />
-                        <button
-                            type="button"
-                            className="pill-btn"
-                            onClick={onBack}
-                            aria-label={t("orders.back")}
-                        >
-                            {t("orders.back")}
-                        </button>
-                    </div>
+                <div className="header-left" style={{ gap: "0 !important" }}>
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="back-btn"
+                        aria-label={t("orders.back")}
+                        title={t("orders.back")}
+                    >
+                        <img src={backIcon} alt="" className="back-icon" draggable="false" />
+                    </button>
+
+                    <h3 className="page-head" margin='0'>
+                        {t("orders.myOrders")}
+                    </h3>
                 </div>
             </div>
 
-            {(!orders || orders.length === 0) && (
-                <p className="empty-cart">{t("orders.noPrevious")}</p>
-            )}
+            {
+                (!orders || orders.length === 0) && (
+                    <p className="empty-cart">{t("orders.noPrevious")}</p>
+                )
+            }
 
-            {orders.map((ord, idx) => (
-                <div key={`${ord.orderId || "pending"}-${idx}`} className="order-card">
-                    <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
-                        {ord.orderId ? t("orders.orderConfirmed") : t("orders.awaiting")}
-                    </h3>
+            {
+                orders.map((ord, idx) => (
+                    <div key={`${ord.orderId || "pending"}-${idx}`} className="order-card">
+                        <h3 className="page-head" style={{ margin: "0 6px 6px" }}>
+                            {ord.orderId ? t("orders.orderConfirmed") : t("orders.awaiting")}
+                        </h3>
 
-                    <div className="order-header">
-                        {ord.tableName && (
-                            <div className="order-header__cell">
-                                {t("orders.table")}: <strong>{tableNum(ord.tableName)}</strong>
-                            </div>
-                        )}
-                        {!!ord.orderId && (
-                            <div className="order-header__cell">
-                                {t("orders.orderId")}: <strong>{ord.orderId}</strong>
-                            </div>
-                        )}
-                        {ord.createdAt && (
-                            <div className="order-header__cell">{fmtDT(ord.createdAt)}</div>
-                        )}
-                    </div>
-
-                    <ul className="menu-list menu-list--full">
-                        {ord.items.map((it) => (
-                            <li key={`hist-${ord.createdAt}-${it.id}`} className="menu-item">
-                                <img
-                                    src={it.image_url || PLACEHOLDER}
-                                    alt={it.name}
-                                    className="thumb"
-                                    loading="lazy"
-                                />
-                                <div className="item-info">
-                                    <span className="item-name">{it.name}</span>
-                                    <span className="item-price">
-                                        {it.quantity} × {fmtMKD(it.price)}
-                                    </span>
+                        <div className="order-header">
+                            {ord.tableName && (
+                                <div className="order-header__cell">
+                                    {t("orders.table")}: <strong>{tableNum(ord.tableName)}</strong>
                                 </div>
-                                <div className="line-total">{fmtMKD(it.price * it.quantity)}</div>
-                            </li>
-                        ))}
-                    </ul>
+                            )}
+                            {!!ord.orderId && (
+                                <div className="order-header__cell">
+                                    {t("orders.orderId")}: <strong>{ord.orderId}</strong>
+                                </div>
+                            )}
+                            {ord.createdAt && (
+                                <div className="order-header__cell">{fmtDT(ord.createdAt)}</div>
+                            )}
+                        </div>
 
-                    <div className="summary">
-                        <div className="summary-row">
-                            <span>{t("orders.subtotal")}</span>
-                            <span>{fmtMKD(ord.subtotal)}</span>
-                        </div>
-                        <div className="summary-row">
-                            <span>{t("orders.tip")}</span>
-                            <span>{fmtMKD(ord.tip)}</span>
-                        </div>
-                        <div className="summary-row summary-row--total">
-                            <span>{t("orders.total")}</span>
-                            <span>{fmtMKD(ord.total)}</span>
+                        <ul className="menu-list menu-list--full">
+                            {ord.items.map((it) => (
+                                <li key={`hist-${ord.createdAt}-${it.id}`} className="menu-item">
+                                    <img
+                                        src={it.image_url || PLACEHOLDER}
+                                        alt={it.name}
+                                        className="thumb"
+                                        loading="lazy"
+                                    />
+                                    <div className="item-info">
+                                        <span className="item-name">{it.name}</span>
+                                        <span className="item-price">
+                                            {it.quantity} × {fmtMKD(it.price)}
+                                        </span>
+                                    </div>
+                                    <div className="line-total">{fmtMKD(it.price * it.quantity)}</div>
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="summary">
+                            <div className="summary-row">
+                                <span>{t("orders.subtotal")}</span>
+                                <span>{fmtMKD(ord.subtotal)}</span>
+                            </div>
+                            <div className="summary-row">
+                                <span>{t("orders.tip")}</span>
+                                <span>{fmtMKD(ord.tip)}</span>
+                            </div>
+                            <div className="summary-row summary-row--total">
+                                <span>{t("orders.total")}</span>
+                                <span>{fmtMKD(ord.total)}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            ))}
-        </div>
+                ))
+            }
+        </div >
     );
 }

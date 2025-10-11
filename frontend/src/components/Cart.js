@@ -3,6 +3,7 @@ import api from "../api";
 import "./components-style/App.css";
 import "./components-style/cart.css";
 import binIcon from "../assets/other-images/bin.svg";
+import backIcon from "../assets/other-images/back-button.svg"
 import OrderSummary from "./cart/OrderSummary";
 import MyOrders from "./cart/MyOrders";
 import Suggestions from "./cart/Suggestions";
@@ -70,6 +71,11 @@ function Cart({
     const [suggestions, setSuggestions] = useState([]);
     const [showConfirm, setShowConfirm] = useState(false);
 
+    const goBack = () => {
+        if (window.history.length > 1) window.history.back();
+        else window.location.hash = "#/";
+    };
+
     // Toggle a body class so we can hide the navbar + lock scroll without changing App.js
     useEffect(() => {
         const cls = "has-confirm-open";
@@ -85,6 +91,23 @@ function Cart({
             document.body.classList.remove(cls);
         };
     }, [showConfirm]);
+
+    // Show nav-top + hide category tabs while viewing My Orders
+    useEffect(() => {
+        const cls = "is-in-myorders";
+        if (showMyOrders) {
+            document.documentElement.classList.add(cls);
+            document.body.classList.add(cls);
+        } else {
+            document.documentElement.classList.remove(cls);
+            document.body.classList.remove(cls);
+        }
+        return () => {
+            document.documentElement.classList.remove(cls);
+            document.body.classList.remove(cls);
+        };
+    }, [showMyOrders]);
+
 
     const qtyById = useMemo(() => {
         const m = new Map();
@@ -283,7 +306,18 @@ function Cart({
         <div className="menu-container cart-container">
 
             <div className="cart-header-row">
-                <h3 className="page-head" style={{ margin: 0 }}>{t("cart.myOrder")}</h3>
+                <div className="header-left">
+                    <button
+                        type="button"
+                        className="back-btn"
+                        onClick={goBack}
+                        aria-label={t("common.back") || "Go back"}
+                        title={t("common.back") || "Back"}
+                    >
+                        <img src={backIcon} alt="" className="back-icon" draggable="false" />
+                    </button>
+                    <h3 className="page-head" style={{ margin: 0 }}>{t("cart.myOrder")}</h3>
+                </div>
                 <div className="header-actions">
                     <div className="pill-wrap">
                         <button

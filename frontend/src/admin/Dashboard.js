@@ -1,5 +1,4 @@
-// src/admin/Dashboard.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     apiLogin,
     apiMe,

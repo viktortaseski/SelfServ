@@ -1,4 +1,3 @@
-// src/admin/dashboardApi.js
 import api from "../api";
 
 // Use localStorage for a simple stateless token
@@ -12,7 +11,6 @@ export function getToken() {
     return localStorage.getItem(TOKEN_KEY) || "";
 }
 
-// --- Dates ---
 export function DEFAULT_FROM_STR() {
     const d = new Date();
     d.setDate(d.getDate() - 7);
@@ -27,9 +25,18 @@ export function DEFAULT_TO_STR() {
 
 // --- Auth calls (stateless) ---
 export async function apiLogin(username, password) {
-    const { data } = await api.post(`/users/login`, { username, password });
-    if (data?.success && data?.token) setToken(data.token);
-    return data;
+    try {
+        const { data } = await api.post(`/users/login`, { username, password });
+        if (data?.success && data?.token) setToken(data.token);
+        return data;
+    } catch (err) {
+        const serverMsg = err?.response?.data?.error;
+        const msg =
+            serverMsg && /user|password/i.test(serverMsg)
+                ? "Incorrect username or password"
+                : "Incorrect username or password";
+        return { success: false, error: msg };
+    }
 }
 export async function apiMe() {
     const token = getToken();
