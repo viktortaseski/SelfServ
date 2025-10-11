@@ -1,6 +1,6 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import App from "./App";
-import Dashboard from './admin/Dashboard'
+import Dashboard from './admin/Dashboard.js'
 
 function AppRoutes() {
     return (
