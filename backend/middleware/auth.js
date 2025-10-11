@@ -21,3 +21,5 @@ module.exports = (roles = []) => {
         }
     };
 };
+
+export default auth;

@@ -149,8 +149,6 @@ router.post("/customer", async (req, res) => {
     }
 });
 
-// routes/orders.js (append near the bottom)
-const authMiddleware = require("../middleware/auth");
 
 // GET /api/orders/admin (admin-only, session auth)
 // Query params: from,to (ISO), status, tableId, q, limit
