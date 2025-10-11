@@ -2,12 +2,36 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
-const authMiddleware = require("../middleware/auth.js");
+const jwt = require("jsonwebtoken");
 
 // Optional receipt header defaults (can override with env on Render)
 const RECEIPT_NAME = "SELFSERV";
 const RECEIPT_PHONE = "69 937 000";
 const RECEIPT_ADDRESS = "Koper";
+
+const JWT_SECRET = process.env.JWT_SECRET || "devjwtsecret";
+
+// --- Inline JWT guard (CommonJS, no separate middleware file) ---
+function requireRoles(roles = []) {
+    return (req, res, next) => {
+        const auth = req.headers.authorization || "";
+        if (!auth.startsWith("Bearer ")) {
+            return res.status(401).json({ error: "Not authenticated" });
+        }
+        const token = auth.slice(7);
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET); // { id, role, username, iat, exp }
+            if (roles.length && !roles.includes(decoded.role)) {
+                return res.status(403).json({ error: "Forbidden: insufficient role" });
+            }
+            req.user = decoded;
+            next();
+        } catch {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+    };
+}
+// -----------------------------------------------------------------
 
 async function insertOrderItems(client, orderId, items) {
     const text = `
@@ -21,7 +45,6 @@ async function insertOrderItems(client, orderId, items) {
         await client.query(text, [orderId, menuItemId, quantity, note]);
     }
 }
-
 
 async function consumeAccessToken(client, accessToken) {
     const q = `
@@ -59,7 +82,6 @@ router.post("/customer", async (req, res) => {
         return res.status(400).json({ error: "Cart is empty" });
     }
 
-    // Normalize items: ensure quantity int >=1 and note <= 45
     const normalizedItems = items.map((it) => ({
         id: Number(it.id),
         name: String(it.name || ""),
@@ -75,12 +97,13 @@ router.post("/customer", async (req, res) => {
         const tableId = await consumeAccessToken(client, accessToken);
         if (!tableId) {
             await client.query("ROLLBACK");
-            return res.status(400).json({ error: "Expired or already used token. Please rescan the QR." });
+            return res
+                .status(400)
+                .json({ error: "Expired or already used token. Please rescan the QR." });
         }
 
         const tipInt = toTipInt(tip);
 
-        // orders: drop message column usage
         const oRes = await client.query(
             `INSERT INTO orders (table_id, created_by_role, status, tip)
        VALUES ($1, 'customer', 'pending', $2)
@@ -90,7 +113,7 @@ router.post("/customer", async (req, res) => {
         const orderId = oRes.rows[0].id;
         const createdAt = oRes.rows[0].created_at;
         const createdAtISO =
-            (createdAt && typeof createdAt.toISOString === "function")
+            createdAt && typeof createdAt.toISOString === "function"
                 ? createdAt.toISOString()
                 : new Date().toISOString();
 
@@ -109,12 +132,11 @@ router.post("/customer", async (req, res) => {
 
         await client.query("COMMIT");
 
-        // Build print payload (include per-item notes; remove order-level note)
-        const purchasedItems = normalizedItems.map(i => ({
+        const purchasedItems = normalizedItems.map((i) => ({
             name: i.name,
             quantity: i.quantity,
             price: i.price,
-            note: i.note,              // <— NEW: note per line
+            note: i.note,
         }));
         const subtotal = purchasedItems.reduce((s, it) => s + it.price * it.quantity, 0);
         const tipVal = tipInt || 0;
@@ -131,7 +153,6 @@ router.post("/customer", async (req, res) => {
             headerTitle: RECEIPT_NAME,
             phone: RECEIPT_PHONE,
             address: RECEIPT_ADDRESS,
-            // removed: note (order-level)
         };
 
         await pool.query(
@@ -149,39 +170,22 @@ router.post("/customer", async (req, res) => {
     }
 });
 
-
-// GET /api/orders/admin (admin-only, session auth)
-// Query params: from,to (ISO), status, tableId, q, limit
-router.get("/admin", authMiddleware(["admin"]), async (req, res) => {
+// GET /api/orders/admin (admin-only, JWT)
+router.get("/admin", requireRoles(["admin"]), async (req, res) => {
     try {
         const { from, to, status, tableId, q, limit } = req.query;
 
-        // Defaults: last 7 days if not provided
         const lim = Math.min(Math.max(parseInt(limit || "100", 10), 1), 1000);
 
-        // Build dynamic WHERE with params
         const where = [];
         const params = [];
         let idx = 1;
 
-        if (from) {
-            where.push(`o.created_at >= $${idx++}`);
-            params.push(new Date(from));
-        }
-        if (to) {
-            where.push(`o.created_at <= $${idx++}`);
-            params.push(new Date(to));
-        }
-        if (status) {
-            where.push(`o.status = $${idx++}`);
-            params.push(String(status));
-        }
-        if (tableId) {
-            where.push(`o.table_id = $${idx++}`);
-            params.push(Number(tableId));
-        }
+        if (from) { where.push(`o.created_at >= $${idx++}`); params.push(new Date(from)); }
+        if (to) { where.push(`o.created_at <= $${idx++}`); params.push(new Date(to)); }
+        if (status) { where.push(`o.status = $${idx++}`); params.push(String(status)); }
+        if (tableId) { where.push(`o.table_id = $${idx++}`); params.push(Number(tableId)); }
         if (q) {
-            // Search across order id, table name, item name
             where.push(`(
         CAST(o.id AS TEXT) ILIKE $${idx}
         OR rt.name ILIKE $${idx}
@@ -193,20 +197,11 @@ router.get("/admin", authMiddleware(["admin"]), async (req, res) => {
 
         const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-        // Join + aggregate items per order
         const sql = `
       WITH base AS (
         SELECT
-          o.id,
-          o.table_id,
-          rt.name AS table_name,
-          o.status,
-          o.tip,
-          o.created_at,
-          oi.quantity,
-          mi.name AS item_name,
-          mi.price AS item_price,
-          oi.note AS item_note
+          o.id, o.table_id, rt.name AS table_name, o.status, o.tip, o.created_at,
+          oi.quantity, mi.name AS item_name, mi.price AS item_price, oi.note AS item_note
         FROM orders o
         JOIN restaurant_tables rt ON rt.id = o.table_id
         JOIN order_items oi ON oi.order_id = o.id
@@ -215,12 +210,7 @@ router.get("/admin", authMiddleware(["admin"]), async (req, res) => {
       ),
       roll AS (
         SELECT
-          id,
-          table_id,
-          table_name,
-          status,
-          tip,
-          created_at,
+          id, table_id, table_name, status, tip, created_at,
           SUM(quantity * item_price) AS subtotal,
           JSON_AGG(
             JSON_BUILD_OBJECT(
@@ -241,7 +231,6 @@ router.get("/admin", authMiddleware(["admin"]), async (req, res) => {
         params.push(lim);
 
         const result = await pool.query(sql, params);
-        // Ensure ISO strings for created_at
         const rows = (result.rows || []).map((r) => ({
             ...r,
             created_at:
@@ -259,7 +248,5 @@ router.get("/admin", authMiddleware(["admin"]), async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 });
-
-
 
 module.exports = router;
