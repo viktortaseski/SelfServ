@@ -2,6 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
+const authMiddleware = require("../middleware/auth");
 
 // Optional receipt header defaults (can override with env on Render)
 const RECEIPT_NAME = "SELFSERV";
@@ -147,6 +148,120 @@ router.post("/customer", async (req, res) => {
         client.release();
     }
 });
+
+// routes/orders.js (append near the bottom)
+const authMiddleware = require("../middleware/auth");
+
+// GET /api/orders/admin (admin-only, session auth)
+// Query params: from,to (ISO), status, tableId, q, limit
+router.get("/admin", authMiddleware(["admin"]), async (req, res) => {
+    try {
+        const { from, to, status, tableId, q, limit } = req.query;
+
+        // Defaults: last 7 days if not provided
+        const lim = Math.min(Math.max(parseInt(limit || "100", 10), 1), 1000);
+
+        // Build dynamic WHERE with params
+        const where = [];
+        const params = [];
+        let idx = 1;
+
+        if (from) {
+            where.push(`o.created_at >= $${idx++}`);
+            params.push(new Date(from));
+        }
+        if (to) {
+            where.push(`o.created_at <= $${idx++}`);
+            params.push(new Date(to));
+        }
+        if (status) {
+            where.push(`o.status = $${idx++}`);
+            params.push(String(status));
+        }
+        if (tableId) {
+            where.push(`o.table_id = $${idx++}`);
+            params.push(Number(tableId));
+        }
+        if (q) {
+            // Search across order id, table name, item name
+            where.push(`(
+        CAST(o.id AS TEXT) ILIKE $${idx}
+        OR rt.name ILIKE $${idx}
+        OR mi.name ILIKE $${idx}
+      )`);
+            params.push(`%${q}%`);
+            idx++;
+        }
+
+        const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+        // Join + aggregate items per order
+        const sql = `
+      WITH base AS (
+        SELECT
+          o.id,
+          o.table_id,
+          rt.name AS table_name,
+          o.status,
+          o.tip,
+          o.created_at,
+          oi.quantity,
+          mi.name AS item_name,
+          mi.price AS item_price,
+          oi.note AS item_note
+        FROM orders o
+        JOIN restaurant_tables rt ON rt.id = o.table_id
+        JOIN order_items oi ON oi.order_id = o.id
+        JOIN menu_items mi ON mi.id = oi.menu_item_id
+        ${whereSQL}
+      ),
+      roll AS (
+        SELECT
+          id,
+          table_id,
+          table_name,
+          status,
+          tip,
+          created_at,
+          SUM(quantity * item_price) AS subtotal,
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'name', item_name,
+              'quantity', quantity,
+              'price', item_price,
+              'note', item_note
+            ) ORDER BY item_name
+          ) AS items
+        FROM base
+        GROUP BY id, table_id, table_name, status, tip, created_at
+        ORDER BY created_at DESC
+        LIMIT $${idx}
+      )
+      SELECT * FROM roll;
+    `;
+
+        params.push(lim);
+
+        const result = await pool.query(sql, params);
+        // Ensure ISO strings for created_at
+        const rows = (result.rows || []).map((r) => ({
+            ...r,
+            created_at:
+                r.created_at && typeof r.created_at.toISOString === "function"
+                    ? r.created_at.toISOString()
+                    : r.created_at,
+            items: Array.isArray(r.items) ? r.items : [],
+            subtotal: Number(r.subtotal || 0),
+            tip: Number(r.tip || 0),
+        }));
+
+        res.json(rows);
+    } catch (err) {
+        console.error("GET /orders/admin error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 
 
 module.exports = router;

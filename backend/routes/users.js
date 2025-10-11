@@ -1,7 +1,18 @@
+// routes/users.js
 const express = require("express");
 const pool = require("../db");
+const jwt = require("jsonwebtoken");
 const router = express.Router();
 
+const JWT_SECRET = process.env.JWT_SECRET || "devjwtsecret";
+const JWT_EXPIRES = process.env.JWT_EXPIRES || "7d";
+
+// Helper: parse Bearer token
+function readBearer(req) {
+    const auth = req.headers.authorization || "";
+    if (!auth.startsWith("Bearer ")) return null;
+    return auth.slice(7);
+}
 
 router.post("/register", async (req, res) => {
     try {
@@ -20,57 +31,45 @@ router.post("/register", async (req, res) => {
     }
 });
 
-// Login (session-based)
+// Login (NO SESSIONS) -> returns JWT
 router.post("/login", async (req, res) => {
     try {
         const { username, password } = req.body;
-        console.log("➡️ Login attempt:", { username, password });
 
         const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
         if (!result.rows.length) return res.status(400).json({ error: "User not found" });
 
         const user = result.rows[0];
         if (password !== user.password) {
-            console.log("❌ Password mismatch");
             return res.status(400).json({ error: "Invalid password" });
         }
 
-        // Regenerate to avoid fixation + ensure we persist user
-        req.session.regenerate(err => {
-            if (err) {
-                console.error("Session regenerate error:", err);
-                return res.status(500).json({ error: "Server error" });
-            }
+        const payload = { id: user.id, role: user.role, username: user.username };
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 
-            req.session.user = { id: user.id, role: user.role, username: user.username };
-            req.session.save(err2 => {
-                if (err2) {
-                    console.error("Session save error:", err2);
-                    return res.status(500).json({ error: "Server error" });
-                }
-                console.log("✅ Session created & saved:", req.session.user, " REQ.SESSION ", req.session);
-                return res.json({ success: true, role: user.role, username: user.username });
-            });
-        });
+        return res.json({ success: true, token, role: user.role, username: user.username });
     } catch (err) {
         console.error("💥 Login error:", err);
         res.status(500).json({ error: "Server error" });
     }
 });
 
+// Me (NO SESSIONS) -> verifies JWT from Authorization header
 router.get("/me", (req, res) => {
-    console.log("🔎 /users/me session:", req.session);
-    if (!req.session || !req.session.user) {
-        return res.status(401).json({ error: "Not logged in" });
+    try {
+        const token = readBearer(req);
+        if (!token) return res.status(401).json({ error: "Not logged in" });
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+        return res.json(decoded); // { id, role, username, iat, exp }
+    } catch (err) {
+        return res.status(401).json({ error: "Invalid token" });
     }
-    res.json(req.session.user);
 });
 
-// Logout
-router.post("/logout", (req, res) => {
-    req.session.destroy(() => {
-        res.json({ success: true });
-    });
+// Logout is a no-op without sessions; client just drops the token
+router.post("/logout", (_req, res) => {
+    res.json({ success: true });
 });
 
 module.exports = router;

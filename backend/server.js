@@ -8,7 +8,7 @@ const orderRoutes = require("./routes/orders");
 const tokenRoutes = require("./routes/tokens");
 const printJobsRoutes = require("./routes/printJobs");
 // const tableRoutes = require("./routes/tables"); // removed in v1
-// const usersRouter = require("./routes/users");  // removed in v1
+const usersRouter = require("./routes/users");  // removed in v1
 
 const app = express();
 
@@ -36,7 +36,7 @@ app.use("/api/print-jobs", printJobsRoutes);
 
 // Removed waiter-only routes:
 // app.use("/api/tables", tableRoutes);
-// app.use("/api/users", usersRouter);
+app.use("/api/users", usersRouter);
 
 // Removed debug session endpoint (no sessions in v1).
 // app.get("/api/debug/session", ...)

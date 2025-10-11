@@ -1,0 +1,228 @@
+/* Container & layout */
+.admin-container {
+    padding: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.admin-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.center-box {
+    min-height: 70vh;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+}
+
+/* Cards & sections */
+.card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 16px;
+    padding: 16px;
+}
+
+/* Typography helpers */
+.mt-0 {
+    margin-top: 0;
+}
+
+.mb-8 {
+    margin-bottom: 8px;
+}
+
+.mb-16 {
+    margin-bottom: 16px;
+}
+
+.mt-12 {
+    margin-top: 12px;
+}
+
+.mt-16 {
+    margin-top: 16px;
+}
+
+.p-16 {
+    padding: 16px;
+}
+
+.pt-8 {
+    padding-top: 8px;
+}
+
+.small {
+    font-size: 12px;
+}
+
+.fw-700 {
+    font-weight: 700;
+}
+
+.muted {
+    color: #6b7280;
+}
+
+.dim {
+    opacity: 0.6;
+}
+
+/* Simple flex/grid utilities */
+.row {
+    display: inline-flex;
+    align-items: center;
+}
+
+.grid {
+    display: grid;
+}
+
+.grid-gap-10 {
+    display: grid;
+    gap: 10px;
+}
+
+.gap-6 {
+    gap: 6px;
+}
+
+.gap-8 {
+    gap: 8px;
+}
+
+.gap-10 {
+    gap: 10px;
+}
+
+.self-end {
+    align-self: end;
+}
+
+/* Inputs & labels */
+.form-label {
+    display: grid;
+    gap: 6px;
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 12px;
+}
+
+.input {
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    padding: 8px 10px;
+    outline: none;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.btn-primary {
+    background: #111;
+    color: #fff;
+    border: none;
+}
+
+.btn-ghost {
+    background: transparent;
+    color: #111;
+    border: 1px solid #e5e7eb;
+    font-weight: 600;
+    padding: 8px 10px;
+}
+
+/* Errors */
+.error-text {
+    color: #b91c1c;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+/* Filters */
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+/* Stats */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+}
+
+.stat-box {
+    padding: 12px;
+    border: 1px solid #f0f0f0;
+    border-radius: 12px;
+    background: #fafafa;
+}
+
+.stat-value {
+    font-size: 20px;
+    font-weight: 800;
+}
+
+/* Orders list */
+.order-card {
+    border: 1px solid #f0f0f0;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.order-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: 1fr 60px 100px 1fr;
+    gap: 8px;
+    padding: 6px 0;
+    border-top: 1px dashed #eee;
+}
+
+/* Month rows */
+.month-row {
+    display: grid;
+    grid-template-columns: 120px 120px 1fr;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Badges */
+.badge {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    display: inline-block;
+}
+
+.badge--completed {
+    background: #e6ffed;
+    color: #065f46;
+}
+
+.badge--canceled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge--pending {
+    background: #eef2ff;
+    color: #3730a3;
+}
