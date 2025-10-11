@@ -305,7 +305,7 @@ function Cart({
     return (
         <div className="menu-container cart-container">
 
-            <div className="cart-header-row">
+            <div className="cart-header-row bleed-left">
                 <div className="header-left">
                     <button
                         type="button"
