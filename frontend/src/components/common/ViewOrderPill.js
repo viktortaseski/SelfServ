@@ -18,6 +18,8 @@ export default function ViewOrderPill({
         .filter(Boolean)
         .join(" ");
 
+    const hasCenterTotal = variant === "center" && Boolean(totalText);
+
     return (
         <button
             className={classes}
@@ -28,8 +30,12 @@ export default function ViewOrderPill({
             {variant === "center" ? (
                 <span className="pill-center">
                     <span className="pill-text">{text}</span>
-                    <span className="pill-dot" aria-hidden="true">•</span>
-                    <span className="pill-total">{totalText}</span>
+                    {hasCenterTotal && (
+                        <>
+                            <span className="pill-dot" aria-hidden="true">•</span>
+                            <span className="pill-total">{totalText}</span>
+                        </>
+                    )}
                 </span>
             ) : (
                 <>

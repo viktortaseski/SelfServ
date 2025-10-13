@@ -26,7 +26,7 @@ function PaymentOptions() {
 
   return (
     <div className="block">
-      <div className="block-title">Payment Options</div>
+      <div className="block-title" style={{ marginBottom: 16 }}>Payment Options</div>
       <div className="pay-section">
         {groups.map((group) => (
           <div className="pay-group" key={group.title}>

@@ -13,6 +13,7 @@ import ViewOrderPill from "./common/ViewOrderPill";
 import ConfirmOrderNotice from "./common/ConfirmOrderNotice";
 import { fmtMKD } from "./common/format";
 import { t } from "../i18n";
+import plateImage from "../assets/other-images/plate.svg";
 
 const SUGGESTION_NAMES = ["Water", "Brownie", "Ice Cream"];
 
@@ -324,22 +325,27 @@ function Cart({
                         )}
                     </div>
 
-                    {(!cart || cart.length === 0) && (
-                        <p className="empty-cart">{t("cart.empty")}</p>
+                    {(!cart || cart.length === 0) ? (
+                        <div className="empty-plate">
+                            <img src={plateImage} alt="" className="empty-plate-image" />
+                            <h3 className="empty-plate-title">{t("cart.plateEmptyTitle")}</h3>
+                            <p className="empty-plate-subtitle">{t("cart.plateEmptySubtitle")}</p>
+                        </div>
+                    ) : (
+                        <ul className="cart-list">
+                            {cart.map((item) => (
+                                <CartItem
+                                    key={item.id}
+                                    item={item}
+                                    qty={Number(item.quantity) || 0}
+                                    onAdd={addToCart}
+                                    onRemove={removeFromCart}
+                                    note={itemNotes[item.id] || ""}
+                                    onNoteChange={setNoteFor}
+                                />
+                            ))}
+                        </ul>
                     )}
-                    <ul className="cart-list">
-                        {cart.map((item) => (
-                            <CartItem
-                                key={item.id}
-                                item={item}
-                                qty={Number(item.quantity) || 0}
-                                onAdd={addToCart}
-                                onRemove={removeFromCart}
-                                note={itemNotes[item.id] || ""}
-                                onNoteChange={setNoteFor}
-                            />
-                        ))}
-                    </ul>
                 </>
             ) : (
                 <MyOrders orders={myOrders} onBack={() => changeTab("current")} />
@@ -397,6 +403,15 @@ function Cart({
                         disabled={isPlacing}
                     />
                 </>
+            )}
+
+            {!isPreviousTab && cart.length === 0 && (
+                <ViewOrderPill
+                    variant="center"
+                    text={t("cart.viewMenu")}
+                    totalText=""
+                    onClick={handleBackClick}
+                />
             )}
         </div>
     );
