@@ -26,7 +26,8 @@ app.use(
     })
 );
 
-app.use(bodyParser.json());
+// Allow larger JSON bodies for image uploads (base64)
+app.use(bodyParser.json({ limit: '10mb' }));
 
 // Customer-facing routes only
 app.use("/api/menu", menuRoutes);

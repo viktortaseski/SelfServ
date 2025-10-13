@@ -13,7 +13,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 0;
+    margin-top: 16px;
     margin-bottom: 16px;
 }
 
@@ -128,14 +128,19 @@
 }
 
 .tip-chip {
+    min-width: 75px;
     padding: 8px 10px;
     border-radius: 999px;
     border: none;
     background: #E5E5E5;
-    font-weight: 590;
-    font-size: 12px;
-    color: #0f172a;
     cursor: pointer;
+    color: #000;
+    text-align: center;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 590;
+    line-height: 100%;
+    letter-spacing: -0.24px;
 }
 
 .tip-chip.is-active {
@@ -439,7 +444,7 @@
     padding: 0;
     margin: 0;
     cursor: pointer;
-    transform: translateY(2px);
+    transform: translateY(1px);
 
 }
 

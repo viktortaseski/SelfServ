@@ -103,3 +103,53 @@ export function fmtMKD(n) {
     const x = Math.round(Number(n) || 0);
     return `${x.toLocaleString("mk-MK")} MKD`;
 }
+
+// --- Admin: create menu item ---
+export async function apiCreateMenuItem({ name, price, category, imageDataUrl }) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const payload = {
+        name,
+        price,
+        category,
+        image: imageDataUrl || null,
+    };
+    const { data } = await api.post(`/menu`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data;
+}
+
+// --- Admin: list menu items (optional search)
+export async function apiListMenuItems({ search } = {}) {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    const { data } = await api.get(`/menu?${params.toString()}`);
+    return data;
+}
+
+// --- Admin: update menu item ---
+export async function apiUpdateMenuItem(id, { name, price, category, imageDataUrl }) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const payload = {
+        name,
+        price,
+        category,
+        image: imageDataUrl || undefined,
+    };
+    const { data } = await api.put(`/menu/${id}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data;
+}
+
+// --- Admin: delete menu item ---
+export async function apiDeleteMenuItem(id) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const { data } = await api.delete(`/menu/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data;
+}

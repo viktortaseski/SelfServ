@@ -1,8 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
-    apiLogin,
-    apiMe,
-    apiLogout,
     apiFetchOrdersAdmin,
     DEFAULT_FROM_STR,
     DEFAULT_TO_STR,
@@ -10,63 +7,6 @@ import {
     fmtMKD,
 } from "./dashboardApi";
 import "./dashboard.css";
-
-function Login({ onSuccess }) {
-    const [username, setUsername] = useState("rockcafe");
-    const [password, setPassword] = useState("");
-    const [busy, setBusy] = useState(false);
-    const [err, setErr] = useState("");
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setBusy(true);
-        setErr("");
-        try {
-            const res = await apiLogin(username, password);
-            if (res?.success) onSuccess(res);
-            else setErr(res?.error || "Login failed");
-        } catch (e2) {
-            setErr(e2?.message || "Login error");
-        } finally {
-            setBusy(false);
-        }
-    };
-
-    return (
-        <div className="center-box">
-            <div className="card">
-                <h2 className="mt-0">RockCafe Admin</h2>
-                <form onSubmit={handleSubmit} className="grid-gap-10">
-                    <label className="form-label">
-                        Username
-                        <input
-                            className="input"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            autoComplete="username"
-                            required
-                        />
-                    </label>
-                    <label className="form-label">
-                        Password
-                        <input
-                            className="input"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            autoComplete="current-password"
-                            required
-                        />
-                    </label>
-                    {err ? <div className="error-text">{err}</div> : null}
-                    <button type="submit" className="btn btn-primary" disabled={busy}>
-                        {busy ? "Signing in…" : "Sign in"}
-                    </button>
-                </form>
-            </div>
-        </div>
-    );
-}
 
 function Stat({ label, value }) {
     return (
@@ -124,9 +64,6 @@ function OrderCard({ order }) {
 }
 
 export default function Dashboard() {
-    const [user, setUser] = useState(null); // { id, role, username }
-    const [loadingUser, setLoadingUser] = useState(true);
-
     // Filters
     const [fromDate, setFromDate] = useState(DEFAULT_FROM_STR());
     const [toDate, setToDate] = useState(DEFAULT_TO_STR());
@@ -141,29 +78,6 @@ export default function Dashboard() {
     const [orders, setOrders] = useState([]);
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState("");
-
-    useEffect(() => {
-        let mounted = true;
-        (async () => {
-            try {
-                const me = await apiMe();
-                if (mounted) setUser(me);
-            } catch {
-                // not logged in
-            } finally {
-                if (mounted) setLoadingUser(false);
-            }
-        })();
-        return () => {
-            mounted = false;
-        };
-    }, []);
-
-    const handleLogout = async () => {
-        await apiLogout();
-        setUser(null);
-        setOrders([]);
-    };
 
     const fetchOrders = async () => {
         setBusy(true);
@@ -189,23 +103,8 @@ export default function Dashboard() {
 
     const stats = useMemo(() => computeStats(orders), [orders]);
 
-    if (loadingUser) return <div className="p-16">Loading…</div>;
-    if (!user || user.role !== "admin") {
-        return <Login onSuccess={() => window.location.reload()} />;
-    }
-
     return (
-        <div className="admin-container">
-            <header className="admin-header mb-16">
-                <h2 className="mt-0">RockCafe · Admin Dashboard</h2>
-                <div className="row gap-8">
-                    <span className="muted">
-                        Signed in as <strong>{user.username}</strong> ({user.role})
-                    </span>
-                    <button onClick={handleLogout} className="btn btn-ghost">Logout</button>
-                </div>
-            </header>
-
+        <div>
             {/* Filters */}
             <section className="card">
                 <h3 className="mt-0">Filters</h3>

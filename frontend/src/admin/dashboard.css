@@ -10,6 +10,27 @@
     justify-content: space-between;
 }
 
+.admin-navbar {
+    display: flex;
+    gap: 8px;
+}
+
+.nav-tab {
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #111;
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.nav-tab--active {
+    background: #111;
+    color: #fff;
+    border-color: #111;
+}
+
 .center-box {
     min-height: 70vh;
     display: grid;
