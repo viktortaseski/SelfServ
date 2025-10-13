@@ -102,17 +102,16 @@
 }
 
 .empty-plate-image {
-    max-width: 200%;
     height: auto;
     display: block;
-    transform: translateY(-50px);
+    transform: translateY(-100px);
 }
 
 .empty-plate-title {
     font-size: 32px;
     font-weight: 800;
     margin: 0;
-    transform: translateY(-150px);
+    transform: translateY(-200px);
 }
 
 .empty-plate-subtitle {
@@ -121,7 +120,7 @@
     color: #6b7280;
     line-height: 1.4;
     max-width: 260px;
-    transform: translateY(-150px);
+    transform: translateY(-200px);
 }
 
 /* Cart list */

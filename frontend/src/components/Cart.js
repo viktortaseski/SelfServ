@@ -293,22 +293,23 @@ function Cart({
 
             {!isPreviousTab ? (
                 <>
-                    <div className="cart-header-row bleed-left">
-                        <div className="header-left">
-                            <button
-                                type="button"
-                                className="back-btn"
-                                onClick={handleBackClick}
-                                aria-label={t("orders.back")}
-                                title={t("orders.back")}
-                            >
-                                <img src={backIcon} alt="" className="back-icon" draggable="false" />
-                            </button>
-                            <h3 className="page-head" style={{ margin: 0 }}>
-                                {t("cart.currentOrder")}
-                            </h3>
-                        </div>
-                        {cart.length > 0 && (
+
+                    {cart.length > 0 && (
+                        <div className="cart-header-row bleed-left">
+                            <div className="header-left">
+                                <button
+                                    type="button"
+                                    className="back-btn"
+                                    onClick={handleBackClick}
+                                    aria-label={t("orders.back")}
+                                    title={t("orders.back")}
+                                >
+                                    <img src={backIcon} alt="" className="back-icon" draggable="false" />
+                                </button>
+                                <h3 className="page-head" style={{ margin: 0 }}>
+                                    {t("cart.currentOrder")}
+                                </h3>
+                            </div>
                             <div className="header-actions">
                                 <div className="clear-all-wrap">
                                     <button
@@ -322,8 +323,9 @@ function Cart({
                                     </button>
                                 </div>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
+
 
                     {(!cart || cart.length === 0) ? (
                         <div className="empty-plate">
