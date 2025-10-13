@@ -121,10 +121,14 @@ export async function apiCreateMenuItem({ name, price, category, imageDataUrl })
 }
 
 // --- Admin: list menu items (optional search)
-export async function apiListMenuItems({ search } = {}) {
+export async function apiListMenuItems({ search, category, minPrice, maxPrice } = {}) {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
-    const { data } = await api.get(`/menu?${params.toString()}`);
+    if (category) params.set("category", category);
+    if (minPrice != null && minPrice !== "") params.set("minPrice", String(minPrice));
+    if (maxPrice != null && maxPrice !== "") params.set("maxPrice", String(maxPrice));
+    const qs = params.toString();
+    const { data } = await api.get(`/menu${qs ? `?${qs}` : ""}`);
     return data;
 }
 

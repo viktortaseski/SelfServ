@@ -39,19 +39,39 @@ function slugify(str) {
 
 router.get("/", async (req, res) => {
     try {
-        const search = req.query.search;
-        let result;
+        const search = (req.query.search || "").trim();
+        const category = (req.query.category || "").trim();
+        const minPriceRaw = req.query.minPrice;
+        const maxPriceRaw = req.query.maxPrice;
+        const minPrice = minPriceRaw != null ? Number(minPriceRaw) : null;
+        const maxPrice = maxPriceRaw != null ? Number(maxPriceRaw) : null;
+
+        const where = [];
+        const params = [];
+        let idx = 1;
 
         if (search) {
-            result = await pool.query(
-                "SELECT * FROM menu_items WHERE LOWER(name) LIKE LOWER($1)",
-                [`%${search}%`]
-            );
-        } else {
-            result = await pool.query("SELECT * FROM menu_items ORDER BY id ASC");
+            where.push(`LOWER(name) LIKE LOWER($${idx++})`);
+            params.push(`%${search}%`);
+        }
+        if (category) {
+            where.push(`category = $${idx++}`);
+            params.push(category);
+        }
+        if (Number.isFinite(minPrice)) {
+            where.push(`price >= $${idx++}`);
+            params.push(minPrice);
+        }
+        if (Number.isFinite(maxPrice)) {
+            where.push(`price <= $${idx++}`);
+            params.push(maxPrice);
         }
 
-        res.json(result.rows);
+        const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+        const sql = `SELECT * FROM menu_items ${whereSql} ORDER BY id ASC`;
+
+        const { rows } = await pool.query(sql, params);
+        res.json(rows);
     } catch (err) {
         console.error("GET /api/menu error:", err);
         res.status(500).json({ error: "Server error" });
@@ -140,11 +160,12 @@ router.post("/", requireAdmin, async (req, res) => {
 
             const baseName = slugify(name);
             const fileName = `${baseName}.${ext}`;
-            const imagesDir = path.resolve(__dirname, "../../frontend/public/images");
+            const imagesDir = path.resolve(__dirname, "../uploads/images");
             const filePath = path.join(imagesDir, fileName);
             await fs.promises.mkdir(imagesDir, { recursive: true });
             await fs.promises.writeFile(filePath, Buffer.from(b64, "base64"));
-            imageUrl = `/images/${fileName}`;
+            const publicUrl = `${req.protocol}://${req.get("host")}/uploads/images/${fileName}`;
+            imageUrl = publicUrl;
         }
 
         const insertSql =
@@ -199,14 +220,14 @@ router.put("/:id", requireAdmin, async (req, res) => {
 
             const baseName = slugify(updates.name);
             const fileName = `${baseName}.${ext}`;
-            const imagesDir = path.resolve(__dirname, "../../frontend/public/images");
+            const imagesDir = path.resolve(__dirname, "../uploads/images");
             const filePath = path.join(imagesDir, fileName);
             await fs.promises.mkdir(imagesDir, { recursive: true });
             await fs.promises.writeFile(filePath, Buffer.from(b64, "base64"));
-            const newUrl = `/images/${fileName}`;
+            const newUrl = `${req.protocol}://${req.get("host")}/uploads/images/${fileName}`;
 
             // Try to remove old image if it was in our images folder and name changed
-            if (existing.image_url && existing.image_url.startsWith("/images/")) {
+            if (existing.image_url && existing.image_url.includes("/uploads/images/")) {
                 const oldPath = path.join(imagesDir, path.basename(existing.image_url));
                 if (oldPath !== filePath) {
                     try { await fs.promises.unlink(oldPath); } catch {}
@@ -243,8 +264,8 @@ router.delete("/:id", requireAdmin, async (req, res) => {
         await pool.query("DELETE FROM menu_items WHERE id = $1", [id]);
 
         // Best-effort delete of image file if in our images dir
-        if (existing.image_url && existing.image_url.startsWith("/images/")) {
-            const imagesDir = path.resolve(__dirname, "../../frontend/public/images");
+        if (existing.image_url && existing.image_url.includes("/uploads/images/")) {
+            const imagesDir = path.resolve(__dirname, "../uploads/images");
             const oldPath = path.join(imagesDir, path.basename(existing.image_url));
             try { await fs.promises.unlink(oldPath); } catch {}
         }

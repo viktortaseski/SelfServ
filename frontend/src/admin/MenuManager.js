@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { apiCreateMenuItem, apiListMenuItems, apiUpdateMenuItem, apiDeleteMenuItem, fmtMKD } from "./dashboardApi";
 import "./dashboard.css";
 
@@ -16,6 +16,9 @@ function slugify(str) {
 function MenuManager() {
     const [items, setItems] = useState([]);
     const [search, setSearch] = useState("");
+    const [filterCategory, setFilterCategory] = useState("");
+    const [minPrice, setMinPrice] = useState("");
+    const [maxPrice, setMaxPrice] = useState("");
 
     // Create form state
     const [name, setName] = useState("");
@@ -48,12 +51,26 @@ function MenuManager() {
 
     const load = useCallback(async () => {
         try {
-            const data = await apiListMenuItems({ search: search.trim() || undefined });
+            const data = await apiListMenuItems({
+                search: search.trim() || undefined,
+            });
             setItems(Array.isArray(data) ? data : []);
         } catch {}
     }, [search]);
 
     useEffect(() => { load(); }, [load]);
+
+    const filteredItems = useMemo(() => {
+        const min = minPrice !== "" ? Number(minPrice) : null;
+        const max = maxPrice !== "" ? Number(maxPrice) : null;
+        return items.filter((it) => {
+            if (filterCategory && it.category !== filterCategory) return false;
+            const priceNum = Number(it.price);
+            if (min != null && priceNum < min) return false;
+            if (max != null && priceNum > max) return false;
+            return true;
+        });
+    }, [items, filterCategory, minPrice, maxPrice]);
 
     const handleCreate = async (e) => {
         e.preventDefault();
@@ -181,15 +198,34 @@ function MenuManager() {
                         Search
                         <input className="input" placeholder="search by name" value={search} onChange={(e) => setSearch(e.target.value)} />
                     </label>
+                    <label className="form-label">
+                        Category
+                        <select className="input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+                            <option value="">(any)</option>
+                            <option value="other">other</option>
+                            <option value="coffee">coffee</option>
+                            <option value="drinks">drinks</option>
+                            <option value="food">food</option>
+                            <option value="desserts">desserts</option>
+                        </select>
+                    </label>
+                    <label className="form-label">
+                        Min Price
+                        <input className="input" type="number" step="0.01" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
+                    </label>
+                    <label className="form-label">
+                        Max Price
+                        <input className="input" type="number" step="0.01" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
+                    </label>
                     <div className="self-end">
                         <button className="btn btn-ghost" onClick={load} disabled={busy}>Refresh</button>
                     </div>
                 </div>
-                {!items.length ? (
+                {filteredItems.length === 0 ? (
                     <div className="muted">No items.</div>
                 ) : (
                     <div className="grid" style={{ gap: 8 }}>
-                        {items.map((it) => (
+                        {filteredItems.map((it) => (
                             <div key={it.id} className="month-row" style={{ gridTemplateColumns: '60px 1fr 120px 140px 160px' }}>
                                 <div>
                                     {it.image_url ? <img src={it.image_url} alt={it.name} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8 }} /> : <span className="dim">no image</span>}

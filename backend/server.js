@@ -2,6 +2,7 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const path = require("path");
 
 const menuRoutes = require("./routes/menu");
 const orderRoutes = require("./routes/orders");
@@ -28,6 +29,10 @@ app.use(
 
 // Allow larger JSON bodies for image uploads (base64)
 app.use(bodyParser.json({ limit: '10mb' }));
+
+// Serve uploaded files (e.g., menu item images)
+const uploadsDir = path.resolve(__dirname, "uploads");
+app.use("/uploads", express.static(uploadsDir));
 
 // Customer-facing routes only
 app.use("/api/menu", menuRoutes);
