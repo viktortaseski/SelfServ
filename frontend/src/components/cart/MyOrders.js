@@ -22,7 +22,7 @@ const fmtDT = (iso) => {
 
 export default function MyOrders({ orders = [], onBack }) {
     return (
-        <div className="menu-container cart-container">
+        <>
             <div className="cart-header-row">
                 <div className="header-left" style={{ gap: "0 !important" }}>
                     <button
@@ -107,6 +107,6 @@ export default function MyOrders({ orders = [], onBack }) {
                     </div>
                 ))
             }
-        </div >
+        </>
     );
 }

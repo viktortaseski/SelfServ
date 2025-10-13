@@ -3,11 +3,12 @@ import api from "../api";
 import "./components-style/App.css";
 import "./components-style/cart.css";
 import binIcon from "../assets/other-images/bin.svg";
-import backIcon from "../assets/other-images/back-button.svg"
+import backIcon from "../assets/other-images/back-button.svg";
 import OrderSummary from "./cart/OrderSummary";
 import MyOrders from "./cart/MyOrders";
 import Suggestions from "./cart/Suggestions";
-import MenuItem from "./menu/MenuItem";
+import CartItem from "./cart/CartItem";
+import PaymentOptions from "./cart/PaymentOptions";
 import ViewOrderPill from "./common/ViewOrderPill";
 import ConfirmOrderNotice from "./common/ConfirmOrderNotice";
 import { fmtMKD } from "./common/format";
@@ -50,6 +51,9 @@ function Cart({
     removeFromCart,
     clearCart,
     notify,
+    activeTab = "current",
+    onTabChange,
+    onBackToMenu,
 }) {
 
     const TIP_PRESETS = [0, 50, 100];
@@ -65,16 +69,10 @@ function Cart({
     const [isPlacing, setIsPlacing] = useState(false);
     const [orderSummary, setOrderSummary] = useState(null);
 
-    const [showMyOrders, setShowMyOrders] = useState(false);
     const [myOrders, setMyOrders] = useState(() => loadMyOrders());
 
     const [suggestions, setSuggestions] = useState([]);
     const [showConfirm, setShowConfirm] = useState(false);
-
-    const goBack = () => {
-        if (window.history.length > 1) window.history.back();
-        else window.location.hash = "#/";
-    };
 
     // Toggle a body class so we can hide the navbar + lock scroll without changing App.js
     useEffect(() => {
@@ -92,22 +90,18 @@ function Cart({
         };
     }, [showConfirm]);
 
-    // Show nav-top + hide category tabs while viewing My Orders
-    useEffect(() => {
-        const cls = "is-in-myorders";
-        if (showMyOrders) {
-            document.documentElement.classList.add(cls);
-            document.body.classList.add(cls);
-        } else {
-            document.documentElement.classList.remove(cls);
-            document.body.classList.remove(cls);
+    const isPreviousTab = activeTab === "previous";
+    const changeTab = (tab) => {
+        if (typeof onTabChange === "function") onTabChange(tab);
+    };
+    const handleBackClick = () => {
+        if (typeof onBackToMenu === "function") {
+            onBackToMenu();
+            return;
         }
-        return () => {
-            document.documentElement.classList.remove(cls);
-            document.body.classList.remove(cls);
-        };
-    }, [showMyOrders]);
-
+        if (window.history.length > 1) window.history.back();
+        else window.location.hash = "#/";
+    };
 
     const qtyById = useMemo(() => {
         const m = new Map();
@@ -284,15 +278,6 @@ function Cart({
         );
     }
 
-    if (showMyOrders) {
-        return (
-            <MyOrders
-                orders={myOrders}
-                onBack={() => setShowMyOrders(false)}
-            />
-        );
-    }
-
     if (orderSummary) {
         return (
             <OrderSummary
@@ -305,68 +290,62 @@ function Cart({
     return (
         <div className="menu-container cart-container">
 
-            <div className="cart-header-row bleed-left">
-                <div className="header-left">
-                    <button
-                        type="button"
-                        className="back-btn"
-                        onClick={goBack}
-                        aria-label={t("common.back") || "Go back"}
-                        title={t("common.back") || "Back"}
-                    >
-                        <img src={backIcon} alt="" className="back-icon" draggable="false" />
-                    </button>
-                    <h3 className="page-head" style={{ margin: 0 }}>{t("cart.myOrder")}</h3>
-                </div>
-                <div className="header-actions">
-                    <div className="pill-wrap">
-                        <button
-                            type="button"
-                            className="pill-btn"
-                            onClick={() => setShowMyOrders(true)}
-                            aria-label={t("orders.myOrders")}
-                        >
-                            {t("cart.pastOrders")}
-                        </button>
+            {!isPreviousTab ? (
+                <>
+                    <div className="cart-header-row bleed-left">
+                        <div className="header-left">
+                            <button
+                                type="button"
+                                className="back-btn"
+                                onClick={handleBackClick}
+                                aria-label={t("orders.back")}
+                                title={t("orders.back")}
+                            >
+                                <img src={backIcon} alt="" className="back-icon" draggable="false" />
+                            </button>
+                            <h3 className="page-head" style={{ margin: 0 }}>
+                                {t("cart.currentOrder")}
+                            </h3>
+                        </div>
+                        {cart.length > 0 && (
+                            <div className="header-actions">
+                                <div className="clear-all-wrap">
+                                    <button
+                                        type="button"
+                                        className="clear-all-btn"
+                                        onClick={handleClearAll}
+                                        aria-label={t("cart.clearAll")}
+                                    >
+                                        <img src={binIcon} alt="" className="clear-all-icon" draggable="false" />
+                                        <span>{t("cart.clearAll")}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="clear-all-wrap">
-                        <button
-                            type="button"
-                            className="clear-all-btn"
-                            onClick={handleClearAll}
-                            aria-label={t("cart.clearAll")}
-                        >
-                            <img src={binIcon} alt="" className="clear-all-icon" draggable="false" />
-                            <span>{t("cart.clearAll")}</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {(!cart || cart.length === 0) && (
-                <p className="empty-cart">{t("cart.empty")}</p>
+                    {(!cart || cart.length === 0) && (
+                        <p className="empty-cart">{t("cart.empty")}</p>
+                    )}
+                    <ul className="cart-list">
+                        {cart.map((item) => (
+                            <CartItem
+                                key={item.id}
+                                item={item}
+                                qty={Number(item.quantity) || 0}
+                                onAdd={addToCart}
+                                onRemove={removeFromCart}
+                                note={itemNotes[item.id] || ""}
+                                onNoteChange={setNoteFor}
+                            />
+                        ))}
+                    </ul>
+                </>
+            ) : (
+                <MyOrders orders={myOrders} onBack={() => changeTab("current")} />
             )}
 
-            <ul className="menu-list menu-list--full">
-                {cart.map((item) => (
-                    <MenuItem
-                        key={item.id}
-                        item={item}
-                        qty={Number(item.quantity) || 0}
-                        onAdd={addToCart}
-                        onRemove={removeFromCart}
-                        className="menu-item-cart"
-                        variant="cart"
-                        note={itemNotes[item.id] || ""}
-                        onNoteChange={setNoteFor}
-                    />
-                ))}
-            </ul>
-
-
-
-            {cart.length > 0 && (
+            {!isPreviousTab && cart.length > 0 && (
                 <>
 
                     <div className="block">
@@ -400,6 +379,7 @@ function Cart({
                         <span className="total-amount">{fmtMKD(total)}</span>
                     </div>
 
+                    <PaymentOptions />
 
                     <Suggestions
                         suggestions={suggestions}

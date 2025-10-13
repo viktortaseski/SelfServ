@@ -146,7 +146,7 @@ function Menu({
             {/* Top Picks */}
             {!normalizedSearch && topPicks.length > 0 && (
                 <>
-                    <h3 className="page-head" style={{ marginTop: 0 }}>
+                    <h3 className="page-head" style={{ marginLeft: 20, marginTop: 0 }}>
                         {t("menu.topPicks")}
                     </h3>
                     <div

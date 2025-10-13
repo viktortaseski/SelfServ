@@ -4,7 +4,7 @@
 
 .cart-container {
     padding-bottom: 140px;
-    margin-top: 100px;
+    margin-top: 140px;
     padding: 16px;
     background-color: #f2f2f2;
 }
@@ -90,6 +90,107 @@
     padding: 12px 6px;
 }
 
+/* Cart list */
+.cart-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.cart-item {
+    background: #ffffff;
+    border: 1px solid #f0f0f0;
+    border-radius: 24px;
+    padding: 12px;
+}
+
+.ci-main {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.ci-note-toggle {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: none;
+    background: #e9eaee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ci-note-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.ci-info {
+    display: grid;
+    grid-template-rows: auto auto;
+}
+
+.ci-name {
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 18px;
+}
+
+.ci-sub {
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.ci-qty {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ci-qty-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: #eef0f3;
+    border: none;
+    font-size: 22px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ci-qty-num {
+    min-width: 22px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.ci-note-row {
+    margin-top: 8px;
+}
+
+.ci-note-input,
+.ci-note-display {
+    width: 100%;
+    box-sizing: border-box;
+    height: 44px;
+    border-radius: 22px;
+    background: #e9eaee;
+    border: none;
+    outline: none;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    color: #0f172a;
+}
+
 .total-row {
     display: flex;
     align-items: baseline;
@@ -111,7 +212,7 @@
 }
 
 .block {
-    margin-top: 0px;
+    margin-top: 20px;
 }
 
 .block-title {
@@ -129,6 +230,7 @@
 
 .tip-chip {
     min-width: 75px;
+    height: 32px;
     padding: 8px 10px;
     border-radius: 999px;
     border: none;
@@ -233,6 +335,64 @@
     font-weight: 800;
 }
 
+/* Payment options */
+.pay-section {
+    display: grid;
+    gap: 20px;
+}
+
+.pay-group {
+    display: grid;
+    gap: 10px;
+}
+
+.pay-group-title {
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.pay-options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.pay-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 10px 14px;
+    font-weight: 700;
+    color: #0f172a;
+    cursor: pointer;
+    transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.pay-option--outline,
+.pay-option.is-active {
+    border: 1px solid #111;
+}
+
+.pay-option:active {
+    transform: scale(0.97);
+}
+
+.pay-option:focus-visible {
+    outline: 2px solid #111;
+    outline-offset: 2px;
+}
+
+.pay-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    display: block;
+}
+
 
 .menu-item.menu-item-cart {
     display: grid;
@@ -287,6 +447,25 @@
     white-space: nowrap;
 }
 
+/* note icon to the left of name */
+.menu-item.menu-item-cart .note-toggle {
+    margin-right: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.menu-item.menu-item-cart .note-toggle__icon {
+    width: 14px;
+    height: 14px;
+}
+
 /* note column */
 .menu-item.menu-item-cart .note-slot {
     justify-self: center;
@@ -298,6 +477,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* full width note row below the item */
+.menu-item.menu-item-cart .note-row {
+    grid-column: 1 / -1;
+    margin: 8px 0 4px;
+}
+
+.note-display {
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    font-size: 14px;
+    line-height: 20px;
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 22px;
+    background: #e9eaee;
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
 }
 
 
@@ -346,6 +546,10 @@
         margin-top: 6px;
         max-width: 100%;
         min-width: 0;
+    }
+
+    .menu-item.menu-item-cart .note-row {
+        grid-column: 1 / -1;
     }
 
     .menu-item.menu-item-cart .note-text,

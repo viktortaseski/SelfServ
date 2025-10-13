@@ -44,6 +44,7 @@ function App() {
 
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
+  const [cartTab, setCartTab] = useState("current");
 
   const [category, _setCategory] = useState(() => {
     try {
@@ -251,6 +252,17 @@ function App() {
     }
   }, [view]);
 
+  useEffect(() => {
+    if (view !== "cart" && cartTab !== "current") {
+      setCartTab("current");
+    }
+  }, [view, cartTab]);
+
+  const handleCartTabChange = (tab) => {
+    setCartTab(tab);
+    if (view !== "cart") goto("cart");
+  };
+
   return (
     <div className="app-container">
       <nav className={`navbar ${isCollapsed ? "is-collapsed" : ""} ${view === "cart" ? "is-cart-view" : ""}`}>
@@ -289,22 +301,41 @@ function App() {
             )}
           </div>
 
-          <div className="category-row category-row--tabs">
-            {CATS.map((cat) => (
+          {view === "menu" ? (
+            <div className="category-row category-row--tabs">
+              {CATS.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  data-cat={cat}
+                  className={`category-chip ${category === cat ? "is-active" : ""}`}
+                  onClick={() => selectCategory(cat)}
+                >
+                  <img src={ICONS[cat]} alt="" className="chip-icon-img" draggable="false" />
+                  <span className="chip-label" style={{ textTransform: "capitalize" }}>
+                    {labelForCat(cat)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="cart-nav-tabs">
               <button
-                key={cat}
                 type="button"
-                data-cat={cat}
-                className={`category-chip ${category === cat ? "is-active" : ""}`}
-                onClick={() => selectCategory(cat)}
+                className={`cart-nav-tab ${cartTab === "current" ? "is-active" : ""}`}
+                onClick={() => handleCartTabChange("current")}
               >
-                <img src={ICONS[cat]} alt="" className="chip-icon-img" draggable="false" />
-                <span className="chip-label" style={{ textTransform: "capitalize" }}>
-                  {labelForCat(cat)}
-                </span>
+                {t("cart.currentOrder")}
               </button>
-            ))}
-          </div>
+              <button
+                type="button"
+                className={`cart-nav-tab ${cartTab === "previous" ? "is-active" : ""}`}
+                onClick={() => handleCartTabChange("previous")}
+              >
+                {t("cart.previousOrders")}
+              </button>
+            </div>
+          )}
         </>
       </nav>
 
@@ -330,6 +361,8 @@ function App() {
             clearCart={() => setCart([])}
             onBackToMenu={() => goto("menu")}
             notify={toast}
+            activeTab={cartTab}
+            onTabChange={handleCartTabChange}
           />
         )}
       </>

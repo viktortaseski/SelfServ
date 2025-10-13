@@ -2,13 +2,19 @@ import { useEffect, useState } from "react";
 import Login from "./Login";
 import Dashboard from "./Dashboard";
 import MenuManager from "./MenuManager";
+import Analytics from "./Analytics";
 import { apiMe, apiLogout } from "./dashboardApi";
 import "./dashboard.css";
 
 function Admin() {
     const [user, setUser] = useState(null);
     const [loadingUser, setLoadingUser] = useState(true);
-    const [view, setView] = useState("dashboard"); // 'dashboard' | 'item-upload'
+    const [view, _setView] = useState(() => localStorage.getItem('admin_view') || "dashboard"); // 'dashboard' | 'item-upload' | 'analytics'
+
+    const setView = (v) => {
+        _setView(v);
+        try { localStorage.setItem('admin_view', v); } catch {}
+    };
 
     useEffect(() => {
         let mounted = true;
@@ -71,9 +77,15 @@ function Admin() {
                 >
                     Menu Manager
                 </button>
+                <button
+                    className={`nav-tab ${view === 'analytics' ? 'nav-tab--active' : ''}`}
+                    onClick={() => setView('analytics')}
+                >
+                    Analytics & Reporting
+                </button>
             </nav>
 
-            {view === 'dashboard' ? <Dashboard /> : <MenuManager />}
+            {view === 'dashboard' ? <Dashboard /> : view === 'analytics' ? <Analytics /> : <MenuManager />}
         </div>
     );
 }

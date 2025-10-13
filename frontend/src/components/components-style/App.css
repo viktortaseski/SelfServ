@@ -217,6 +217,57 @@
     opacity: 0;
 }
 
+.cart-nav-tabs {
+    position: relative;
+    padding: 0 8px 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    gap: 4px;
+    border-bottom: 1px solid #f0f0f0;
+    transition: padding .18s ease;
+}
+
+.cart-nav-tab {
+    background: transparent;
+    border: none;
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0 8px;
+    color: #808080;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    transition: color .18s ease;
+}
+
+.cart-nav-tab::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 70% !important;
+    height: 5px;
+    background: #000;
+    border-radius: 10px 10px 0 0;
+    opacity: 0;
+    transition: width .22s ease, opacity .18s ease;
+}
+
+.cart-nav-tab.is-active {
+    color: #000;
+    font-weight: 700;
+}
+
+.cart-nav-tab.is-active::after {
+    width: 74px;
+    opacity: 1;
+}
+
 .chip-icon-img {
     width: 48px;
     height: 48px;
@@ -243,24 +294,6 @@
     opacity: 0;
     pointer-events: none;
 }
-
-.navbar.is-cart-view .nav-top {
-    display: none !important;
-    height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
-.navbar.is-cart-view .chip-icon-img {
-    opacity: 0;
-    height: 0;
-    margin: 0;
-    transform: translateY(-6px);
-    pointer-events: none;
-}
-
 
 .navbar.is-collapsed .search-wrap {
     margin-top: 5px;
@@ -538,18 +571,4 @@ html {
     background: #e6e6e6;
     /* grey cancel button */
     color: #111;
-}
-
-.is-in-myorders .category-row,
-.is-in-myorders .category-row--tabs {
-    display: none !important;
-}
-
-.is-in-myorders .navbar.is-cart-view .nav-top {
-    display: flex !important;
-    opacity: 1 !important;
-    height: auto !important;
-    padding: 12px 16px 8px !important;
-    margin: 0 !important;
-    pointer-events: auto !important;
 }

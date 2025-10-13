@@ -53,6 +53,17 @@ function MenuItem({
                 className="item-info"
                 onClick={variant === "menu" ? () => onAdd?.(item) : undefined}
             >
+                {variant === "cart" && (
+                    <button
+                        type="button"
+                        className="note-toggle"
+                        title={editing ? "Hide note" : "Add note"}
+                        aria-label={editing ? "Hide note" : "Add note"}
+                        onClick={(e) => { e.stopPropagation(); setEditing((v) => !v); }}
+                    >
+                        <img src={editIcon} alt="" className="note-toggle__icon" />
+                    </button>
+                )}
                 <span className="item-name">{item.name}</span>
                 {variant === "cart" ? (
                     <span className="cart-line">{`${qty} × ${fmtMKD(item.price)}`}</span>
@@ -61,41 +72,22 @@ function MenuItem({
                 )}
             </div>
 
-            {/* NOTE between info and +/- */}
-            {variant === "cart" && (
-                <div className="note-slot">
+            {/* NOTE full-width row below item when toggled or when a note exists */}
+            {variant === "cart" && (editing || (note && note.length)) && (
+                <div className="note-row">
                     {editing ? (
                         <input
                             ref={inputRef}
-                            className="note-inline-input"
+                            className="note-input"
                             type="text"
                             value={note || ""}
                             onChange={handleChange}
-                            onBlur={() => setEditing(false)}
-                            placeholder={`Type note (max ${NOTE_MAX})…`}
+                            placeholder={`Add note for this item`}
                             maxLength={NOTE_MAX}
                             inputMode="text"
                         />
-                    ) : note && note.length ? (
-                        <button
-                            type="button"
-                            className="note-text"
-                            title="Edit note"
-                            onClick={() => setEditing(true)}
-                        >
-                            {note}
-                        </button>
                     ) : (
-                        <button
-                            type="button"
-                            className="note-pill"
-                            onClick={() => setEditing(true)}
-                            aria-label="Add note"
-                            title="Add note"
-                        >
-                            <img src={editIcon} alt="" className="note-pill__icon-img" />
-                            Add Note
-                        </button>
+                        <div className="note-display">{note}</div>
                     )}
                 </div>
             )}
