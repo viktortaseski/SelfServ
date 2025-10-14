@@ -110,7 +110,7 @@ function Menu({
     ]);
 
     return (
-        <div className="menu-container">
+        <div className="menu-container" style={{ paddingBottom: "120px" }}>
             {!hasExternalSearch && (
                 <div className="search-bar">
                     <input

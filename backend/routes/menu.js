@@ -6,6 +6,7 @@ const path = require("path");
 const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET || "devjwtsecret";
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || null;
 
 function readBearer(req) {
     const auth = req.headers.authorization || "";
@@ -35,6 +36,48 @@ function slugify(str) {
         .replace(/[\s_]+/g, "-")
         .replace(/-+/g, "-")
         .toLowerCase();
+}
+
+function getBaseUrl(req) {
+    if (PUBLIC_BASE_URL) return PUBLIC_BASE_URL.replace(/\/$/, "");
+    const protoHeader = (req.headers['x-forwarded-proto'] || "").split(',')[0];
+    const proto = protoHeader || req.protocol || "http";
+    const host = req.get("host");
+    return `${proto}://${host}`;
+}
+
+function makeAbsoluteImageUrl(raw, req) {
+    if (!raw) return null;
+    let url = String(raw).trim();
+    if (!url) return null;
+
+    try {
+        if (/^https?:\/\//i.test(url)) {
+            const parsed = new URL(url);
+            const base = getBaseUrl(req);
+            try {
+                const baseParsed = new URL(base);
+                if (parsed.origin !== baseParsed.origin && parsed.pathname) {
+                    return `${baseParsed.origin}${parsed.pathname}`;
+                }
+            } catch {
+                return url;
+            }
+            return url;
+        }
+    } catch {
+        // ignore malformed URL, continue to treat as relative
+    }
+
+    if (!url.startsWith("/")) url = `/${url}`;
+    return `${getBaseUrl(req)}${url}`;
+}
+
+function mapImageUrls(rows = [], req) {
+    return rows.map((row) => ({
+        ...row,
+        image_url: makeAbsoluteImageUrl(row?.image_url, req),
+    }));
 }
 
 router.get("/", async (req, res) => {
@@ -77,7 +120,7 @@ router.get("/", async (req, res) => {
         `;
 
         const { rows } = await pool.query(sql, params);
-        res.json(rows);
+        res.json(mapImageUrls(rows, req));
     } catch (err) {
         console.error("GET /api/menu error:", err);
         res.status(500).json({ error: "Server error" });
@@ -127,7 +170,7 @@ router.get("/top-picks", async (req, res) => {
 
     try {
         const { rows } = await pool.query(sql, params);
-        res.json(rows);
+        res.json(mapImageUrls(rows, req));
     } catch (err) {
         console.error("GET /api/menu/top-picks error:", err);
         res.status(500).json({ error: "Server error" });
@@ -177,7 +220,7 @@ router.get("/admin", requireAdmin, async (req, res) => {
         `;
 
         const { rows } = await pool.query(sql, params);
-        res.json(rows);
+        res.json(mapImageUrls(rows, req));
     } catch (err) {
         console.error("GET /api/menu/admin error:", err);
         res.status(500).json({ error: "Server error" });
@@ -207,7 +250,8 @@ router.post("/:id/menu", requireAdmin, async (req, res) => {
             [id]
         );
 
-        return res.json({ success: true, item: rows[0] });
+        const mapped = mapImageUrls(rows, req);
+        return res.json({ success: true, item: mapped[0] });
     } catch (err) {
         console.error("POST /api/menu/:id/menu error:", err);
         return res.status(500).json({ error: "Server error" });
@@ -268,8 +312,7 @@ router.post("/", requireAdmin, async (req, res) => {
             const filePath = path.join(imagesDir, fileName);
             await fs.promises.mkdir(imagesDir, { recursive: true });
             await fs.promises.writeFile(filePath, Buffer.from(b64, "base64"));
-            const publicUrl = `${req.protocol}://${req.get("host")}/uploads/images/${fileName}`;
-            imageUrl = publicUrl;
+            imageUrl = `/uploads/images/${fileName}`;
         }
 
         const insertSql =
@@ -286,7 +329,8 @@ router.post("/", requireAdmin, async (req, res) => {
             }
         }
 
-        return res.json({ success: true, item: rows[0] });
+        const mapped = mapImageUrls(rows, req);
+        return res.json({ success: true, item: mapped[0] });
     } catch (err) {
         if (err && err.code === "23505") {
             return res.status(400).json({ error: "Name already exists" });
@@ -337,7 +381,7 @@ router.put("/:id", requireAdmin, async (req, res) => {
             const filePath = path.join(imagesDir, fileName);
             await fs.promises.mkdir(imagesDir, { recursive: true });
             await fs.promises.writeFile(filePath, Buffer.from(b64, "base64"));
-            const newUrl = `${req.protocol}://${req.get("host")}/uploads/images/${fileName}`;
+            const newUrl = `/uploads/images/${fileName}`;
 
             // Try to remove old image if it was in our images folder and name changed
             if (existing.image_url && existing.image_url.includes("/uploads/images/")) {
@@ -353,7 +397,8 @@ router.put("/:id", requireAdmin, async (req, res) => {
             "UPDATE menu_items SET name = $1, price = $2, category = $3, image_url = $4 WHERE id = $5 RETURNING *",
             [updates.name, updates.price, updates.category, updates.image_url, id]
         );
-        return res.json({ success: true, item: rows[0] });
+        const mapped = mapImageUrls(rows, req);
+        return res.json({ success: true, item: mapped[0] });
     } catch (err) {
         if (err && err.code === "23505") {
             return res.status(400).json({ error: "Name already exists" });

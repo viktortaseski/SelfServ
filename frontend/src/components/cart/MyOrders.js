@@ -1,6 +1,4 @@
-import React from "react";
 import { t } from "../../i18n";
-import backIcon from "../../assets/other-images/back-button.svg";
 
 const PLACEHOLDER =
     "https://dummyimage.com/160x120/eaeaea/555&text=%F0%9F%8D%BA";
@@ -23,23 +21,7 @@ const fmtDT = (iso) => {
 export default function MyOrders({ orders = [], onBack }) {
     return (
         <>
-            <div className="cart-header-row">
-                <div className="header-left" style={{ gap: "0 !important" }}>
-                    <button
-                        type="button"
-                        onClick={onBack}
-                        className="back-btn"
-                        aria-label={t("orders.back")}
-                        title={t("orders.back")}
-                    >
-                        <img src={backIcon} alt="" className="back-icon" draggable="false" />
-                    </button>
 
-                    <h3 className="page-head" margin='0'>
-                        {t("orders.myOrders")}
-                    </h3>
-                </div>
-            </div>
 
             {
                 (!orders || orders.length === 0) && (
