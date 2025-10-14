@@ -1,5 +1,13 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { apiCreateMenuItem, apiListMenuItems, apiUpdateMenuItem, apiDeleteMenuItem, fmtMKD } from "./dashboardApi";
+import {
+    apiCreateMenuItem,
+    apiListMenuItems,
+    apiUpdateMenuItem,
+    apiDeleteMenuItem,
+    apiAddItemToMenu,
+    apiRemoveItemFromMenu,
+    fmtMKD,
+} from "./dashboardApi";
 import "./dashboard.css";
 
 function slugify(str) {
@@ -51,26 +59,35 @@ function MenuManager() {
 
     const load = useCallback(async () => {
         try {
-            const data = await apiListMenuItems({
-                search: search.trim() || undefined,
-            });
-            setItems(Array.isArray(data) ? data : []);
-        } catch {}
-    }, [search]);
+            const data = await apiListMenuItems();
+            const normalized = (Array.isArray(data) ? data : []).map((it) => ({
+                ...it,
+                isOnMenu: Boolean(it.is_on_menu),
+            }));
+            setItems(normalized);
+        } catch { }
+    }, []);
 
     useEffect(() => { load(); }, [load]);
 
     const filteredItems = useMemo(() => {
         const min = minPrice !== "" ? Number(minPrice) : null;
         const max = maxPrice !== "" ? Number(maxPrice) : null;
+        const searchTerm = search.trim().toLowerCase();
         return items.filter((it) => {
+            if (searchTerm && !(it.name || "").toLowerCase().includes(searchTerm)) return false;
             if (filterCategory && it.category !== filterCategory) return false;
             const priceNum = Number(it.price);
             if (min != null && priceNum < min) return false;
             if (max != null && priceNum > max) return false;
             return true;
         });
-    }, [items, filterCategory, minPrice, maxPrice]);
+    }, [items, filterCategory, minPrice, maxPrice, search]);
+
+    const currentMenu = useMemo(
+        () => items.filter((it) => it.isOnMenu),
+        [items]
+    );
 
     const handleCreate = async (e) => {
         e.preventDefault();
@@ -149,6 +166,36 @@ function MenuManager() {
         }
     };
 
+    const handleAddToMenu = async (it) => {
+        setErr(""); setOk(""); setBusy(true);
+        try {
+            const res = await apiAddItemToMenu(it.id);
+            if (!res?.success) throw new Error(res?.error || "Failed to add to menu");
+            setOk(`"${it.name}" added to the menu`);
+            await load();
+        } catch (e2) {
+            const msg = e2?.response?.data?.error || e2?.message || "Failed to add to menu";
+            setErr(msg);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const handleRemoveFromMenu = async (it) => {
+        setErr(""); setOk(""); setBusy(true);
+        try {
+            const res = await apiRemoveItemFromMenu(it.id);
+            if (!res?.success) throw new Error(res?.error || "Failed to remove from menu");
+            setOk(`"${it.name}" removed from the menu`);
+            await load();
+        } catch (e2) {
+            const msg = e2?.response?.data?.error || e2?.message || "Failed to remove from menu";
+            setErr(msg);
+        } finally {
+            setBusy(false);
+        }
+    };
+
     return (
         <div className="grid gap-10">
             <div className="card">
@@ -192,6 +239,38 @@ function MenuManager() {
             </div>
 
             <div className="card">
+                <h3 className="mt-0">Current Menu</h3>
+                {currentMenu.length === 0 ? (
+                    <div className="muted">No items are currently published on the customer menu.</div>
+                ) : (
+                    <div className="grid" style={{ gap: 8 }}>
+                        {currentMenu.map((it) => (
+                            <div key={`menu-${it.id}`} className="month-row" style={{ gridTemplateColumns: '1fr 120px' }}>
+                                <div className="row gap-8" style={{ alignItems: "center" }}>
+                                    {it.image_url ? (
+                                        <img src={it.image_url} alt={it.name} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
+                                    ) : null}
+                                    <div>
+                                        <div className="fw-700">{it.name}</div>
+                                        <div className="muted" style={{ fontSize: 12 }}>{fmtMKD(it.price)}</div>
+                                    </div>
+                                </div>
+                                <div className="row gap-8" style={{ justifyContent: "flex-end" }}>
+                                    <button
+                                        className="btn btn-ghost"
+                                        onClick={() => handleRemoveFromMenu(it)}
+                                        disabled={busy}
+                                    >
+                                        {busy ? "Working…" : "Remove"}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="card">
                 <h3 className="mt-0">Menu Items</h3>
                 <div className="filters-grid" style={{ marginBottom: 12 }}>
                     <label className="form-label">
@@ -225,20 +304,35 @@ function MenuManager() {
                     <div className="muted">No items.</div>
                 ) : (
                     <div className="grid" style={{ gap: 8 }}>
-                        {filteredItems.map((it) => (
-                            <div key={it.id} className="month-row" style={{ gridTemplateColumns: '60px 1fr 120px 140px 160px' }}>
-                                <div>
-                                    {it.image_url ? <img src={it.image_url} alt={it.name} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8 }} /> : <span className="dim">no image</span>}
+                        {filteredItems.map((it) => {
+                            const onMenu = Boolean(it.isOnMenu);
+                            return (
+                                <div key={it.id} className="month-row" style={{ gridTemplateColumns: '60px 1fr 120px 140px 240px' }}>
+                                    <div>
+                                        {it.image_url ? <img src={it.image_url} alt={it.name} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8 }} /> : <span className="dim">no image</span>}
+                                    </div>
+                                    <div className="fw-700">
+                                        {it.name}
+                                        <div className="muted" style={{ fontSize: 12 }}>
+                                            {onMenu ? "On menu" : "Hidden"}
+                                        </div>
+                                    </div>
+                                    <div>{fmtMKD(it.price)}</div>
+                                    <div className="muted">{it.category}</div>
+                                    <div className="row gap-8">
+                                        <button
+                                            className="btn btn-secondary"
+                                            onClick={() => (onMenu ? handleRemoveFromMenu(it) : handleAddToMenu(it))}
+                                            disabled={busy}
+                                        >
+                                            {busy ? "Working…" : onMenu ? "Remove from menu" : "Add to menu"}
+                                        </button>
+                                        <button className="btn btn-ghost" onClick={() => startEdit(it)} disabled={busy}>Edit</button>
+                                        <button className="btn btn-ghost" onClick={() => handleDelete(it)} disabled={busy}>Delete</button>
+                                    </div>
                                 </div>
-                                <div className="fw-700">{it.name}</div>
-                                <div>{fmtMKD(it.price)}</div>
-                                <div className="muted">{it.category}</div>
-                                <div className="row gap-8">
-                                    <button className="btn btn-ghost" onClick={() => startEdit(it)} disabled={busy}>Edit</button>
-                                    <button className="btn btn-ghost" onClick={() => handleDelete(it)} disabled={busy}>Delete</button>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>

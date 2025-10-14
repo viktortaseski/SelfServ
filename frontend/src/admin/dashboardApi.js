@@ -122,13 +122,17 @@ export async function apiCreateMenuItem({ name, price, category, imageDataUrl })
 
 // --- Admin: list menu items (optional search)
 export async function apiListMenuItems({ search, category, minPrice, maxPrice } = {}) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (category) params.set("category", category);
     if (minPrice != null && minPrice !== "") params.set("minPrice", String(minPrice));
     if (maxPrice != null && maxPrice !== "") params.set("maxPrice", String(maxPrice));
     const qs = params.toString();
-    const { data } = await api.get(`/menu${qs ? `?${qs}` : ""}`);
+    const { data } = await api.get(`/menu/admin${qs ? `?${qs}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
     return data;
 }
 
@@ -153,6 +157,24 @@ export async function apiDeleteMenuItem(id) {
     const token = getToken();
     if (!token) throw new Error("No token");
     const { data } = await api.delete(`/menu/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data;
+}
+
+export async function apiAddItemToMenu(id) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const { data } = await api.post(`/menu/${id}/menu`, null, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data;
+}
+
+export async function apiRemoveItemFromMenu(id) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const { data } = await api.delete(`/menu/${id}/menu`, {
         headers: { Authorization: `Bearer ${token}` },
     });
     return data;

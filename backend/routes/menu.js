@@ -51,24 +51,30 @@ router.get("/", async (req, res) => {
         let idx = 1;
 
         if (search) {
-            where.push(`LOWER(name) LIKE LOWER($${idx++})`);
+            where.push(`LOWER(mi.name) LIKE LOWER($${idx++})`);
             params.push(`%${search}%`);
         }
         if (category) {
-            where.push(`category = $${idx++}`);
+            where.push(`mi.category = $${idx++}`);
             params.push(category);
         }
         if (Number.isFinite(minPrice)) {
-            where.push(`price >= $${idx++}`);
+            where.push(`mi.price >= $${idx++}`);
             params.push(minPrice);
         }
         if (Number.isFinite(maxPrice)) {
-            where.push(`price <= $${idx++}`);
+            where.push(`mi.price <= $${idx++}`);
             params.push(maxPrice);
         }
 
         const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-        const sql = `SELECT * FROM menu_items ${whereSql} ORDER BY id ASC`;
+        const sql = `
+            SELECT mi.*
+            FROM menu m
+            JOIN menu_items mi ON mi.id = m.menu_item_id
+            ${whereSql}
+            ORDER BY m.added_at ASC, mi.id ASC
+        `;
 
         const { rows } = await pool.query(sql, params);
         res.json(rows);
@@ -103,7 +109,8 @@ router.get("/top-picks", async (req, res) => {
       mi.category,
       mi.image_url,
       COALESCE(s.total_qty, 0)::bigint AS total_qty
-    FROM menu_items mi
+    FROM menu m
+    JOIN menu_items mi ON mi.id = m.menu_item_id
     LEFT JOIN (
       SELECT
         oi.menu_item_id,
@@ -127,7 +134,104 @@ router.get("/top-picks", async (req, res) => {
     }
 });
 
-module.exports = router;
+router.get("/admin", requireAdmin, async (req, res) => {
+    try {
+        const search = (req.query.search || "").trim();
+        const category = (req.query.category || "").trim();
+        const minPriceRaw = req.query.minPrice;
+        const maxPriceRaw = req.query.maxPrice;
+        const minPrice = minPriceRaw != null ? Number(minPriceRaw) : null;
+        const maxPrice = maxPriceRaw != null ? Number(maxPriceRaw) : null;
+
+        const where = [];
+        const params = [];
+        let idx = 1;
+
+        if (search) {
+            where.push(`LOWER(mi.name) LIKE LOWER($${idx++})`);
+            params.push(`%${search}%`);
+        }
+        if (category) {
+            where.push(`mi.category = $${idx++}`);
+            params.push(category);
+        }
+        if (Number.isFinite(minPrice)) {
+            where.push(`mi.price >= $${idx++}`);
+            params.push(minPrice);
+        }
+        if (Number.isFinite(maxPrice)) {
+            where.push(`mi.price <= $${idx++}`);
+            params.push(maxPrice);
+        }
+
+        const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+        const sql = `
+            SELECT
+                mi.*,
+                (m.menu_item_id IS NOT NULL) AS is_on_menu,
+                m.added_at
+            FROM menu_items mi
+            LEFT JOIN menu m ON m.menu_item_id = mi.id
+            ${whereSql}
+            ORDER BY mi.id ASC
+        `;
+
+        const { rows } = await pool.query(sql, params);
+        res.json(rows);
+    } catch (err) {
+        console.error("GET /api/menu/admin error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+router.post("/:id/menu", requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id) || id <= 0) {
+        return res.status(400).json({ error: "Invalid id" });
+    }
+
+    try {
+        const { rowCount } = await pool.query("SELECT 1 FROM menu_items WHERE id = $1", [id]);
+        if (!rowCount) return res.status(404).json({ error: "Not found" });
+
+        await pool.query(
+            "INSERT INTO menu (menu_item_id, added_at) VALUES ($1, NOW()) ON CONFLICT (menu_item_id) DO NOTHING",
+            [id]
+        );
+
+        const { rows } = await pool.query(
+            `SELECT mi.*, (m.menu_item_id IS NOT NULL) AS is_on_menu
+             FROM menu_items mi
+             LEFT JOIN menu m ON m.menu_item_id = mi.id
+             WHERE mi.id = $1`,
+            [id]
+        );
+
+        return res.json({ success: true, item: rows[0] });
+    } catch (err) {
+        console.error("POST /api/menu/:id/menu error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+
+router.delete("/:id/menu", requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id) || id <= 0) {
+        return res.status(400).json({ error: "Invalid id" });
+    }
+
+    try {
+        const { rowCount } = await pool.query("SELECT 1 FROM menu_items WHERE id = $1", [id]);
+        if (!rowCount) return res.status(404).json({ error: "Not found" });
+
+        await pool.query("DELETE FROM menu WHERE menu_item_id = $1", [id]);
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error("DELETE /api/menu/:id/menu error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
 
 // Admin: create menu item (JSON, optional base64 image)
 router.post("/", requireAdmin, async (req, res) => {
@@ -173,6 +277,15 @@ router.post("/", requireAdmin, async (req, res) => {
         const params = [name, priceNum, cat, imageUrl];
 
         const { rows } = await pool.query(insertSql, params);
+
+        if (rows[0]?.id) {
+            try {
+                await pool.query("INSERT INTO menu (menu_item_id, added_at) VALUES ($1, NOW()) ON CONFLICT (menu_item_id) DO NOTHING", [rows[0].id]);
+            } catch (err) {
+                console.warn("Failed to auto-add new item to menu:", err.message);
+            }
+        }
+
         return res.json({ success: true, item: rows[0] });
     } catch (err) {
         if (err && err.code === "23505") {
@@ -279,3 +392,5 @@ router.delete("/:id", requireAdmin, async (req, res) => {
         return res.status(500).json({ error: "Server error" });
     }
 });
+
+module.exports = router;
