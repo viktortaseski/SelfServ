@@ -1,9 +1,17 @@
 .notification {
     position: fixed;
-    top: 76px;
+    top: 50px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 9999;
+    --notif-fade-delay: 1750ms;
+
+    animation:
+        notif-slide-in 0.22s ease,
+        notif-fade-out 0.25s ease var(--notif-fade-delay) forwards;
+}
+
+.notification-body {
     display: inline-flex;
     align-items: center;
     gap: 12px;
@@ -16,11 +24,11 @@
     box-shadow: var(--shadow-soft, 0 4px 12px rgba(0, 0, 0, .08));
     font-size: 16px;
     line-height: 1.25;
-    --notif-fade-delay: 1750ms;
+    transition: transform .2s ease;
+}
 
-    animation:
-        notif-slide-in 0.22s ease,
-        notif-fade-out 0.25s ease var(--notif-fade-delay) forwards;
+.notification-body.is-dragging {
+    transition: none;
 }
 
 .notif-icon {

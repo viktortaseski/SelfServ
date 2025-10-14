@@ -11,6 +11,7 @@ import drinksIcon from "./assets/category-icons/drinks.png";
 import foodIcon from "./assets/category-icons/food.png";
 import dessertsIcon from "./assets/category-icons/desserts.png";
 import searchIcon from "./assets/category-icons/search.png";
+import backIcon from "./assets/other-images/back-button.svg";
 
 import { t, labelForCat, detectLang, setLang } from "./i18n";
 
@@ -57,6 +58,7 @@ function App() {
 
   const [searchText, setSearchText] = useState("");
   const [notice, setNotice] = useState(null);
+  const [isCartClosing, setIsCartClosing] = useState(false);
 
   const [accessToken, setAccessToken] = useState(null); // short-lived token
   const [tableName, setTableName] = useState(null);
@@ -66,6 +68,7 @@ function App() {
   const lastY = useRef(0);
   const idleTimer = useRef(null);
   const userLockUntil = useRef(0);
+  const cartCloseTimer = useRef(null);
 
   const getScrollY = () =>
     window.scrollY ??
@@ -130,7 +133,23 @@ function App() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
+  useEffect(() => {
+    if (view !== "cart") {
+      setIsCartClosing(false);
+    }
+  }, [view]);
+
+  useEffect(() => () => {
+    if (cartCloseTimer.current) {
+      clearTimeout(cartCloseTimer.current);
+      cartCloseTimer.current = null;
+    }
+  }, []);
+
   const goto = (nextView) => {
+    if (nextView === "cart") {
+      setIsCartClosing(false);
+    }
     window.location.hash = nextView === "cart" ? "/cart" : "/";
     setView(nextView);
   };
@@ -263,45 +282,89 @@ function App() {
     if (view !== "cart") goto("cart");
   };
 
+  const closeCartWithAnimation = () => {
+    if (view !== "cart" || isCartClosing) return;
+    setIsCartClosing(true);
+    if (cartCloseTimer.current) clearTimeout(cartCloseTimer.current);
+    cartCloseTimer.current = setTimeout(() => {
+      cartCloseTimer.current = null;
+      setIsCartClosing(false);
+      goto("menu");
+    }, 320);
+  };
+
   return (
     <div className="app-container">
       <nav className={`navbar ${isCollapsed ? "is-collapsed" : ""} ${view === "cart" ? "is-cart-view" : ""}`}>
-        <div className="nav-top">
-          <div className="brand-wrap" onClick={onLogoClick}>
-            <div className="brand-logo">LOGO</div>
-          </div>
-          <div className="powered-by">
-            <span className="powered-by-small">supported by</span>
-            <span className="powered-by-brand">selfserv</span>
-          </div>
-        </div>
-
-        <>
-          <div className="search-wrap">
-            <input
-              className="search-input"
-              type="text"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              aria-label={t("search")}
-            />
-            <div className={`search-center ${searchText ? "is-hidden" : ""}`}>
-              <img src={searchIcon} alt="" className="search-center-icon" />
-              <span className="search-center-text">{t("search")}</span>
-            </div>
-            {searchText && (
+        {view === "cart" ? (
+          <>
+            <div className="cart-nav-header">
               <button
                 type="button"
-                className="search-clear-btn"
-                aria-label={t("search")}
-                onClick={() => setSearchText("")}
+                className="cart-nav-back"
+                onClick={closeCartWithAnimation}
+                aria-label={t("orders.back")}
+                disabled={isCartClosing}
               >
-                ×
+                <img src={backIcon} alt="" className="cart-nav-back-icon" draggable="false" />
               </button>
-            )}
-          </div>
+              <h2 className="cart-nav-title">{t("cart.myOrder")}</h2>
+            </div>
+            <div className="cart-nav-tabs">
+              <button
+                type="button"
+                className={`cart-nav-tab ${cartTab === "current" ? "is-active" : ""}`}
+                onClick={() => handleCartTabChange("current")}
+                disabled={isCartClosing}
+              >
+                {t("cart.currentOrder")}
+              </button>
+              <button
+                type="button"
+                className={`cart-nav-tab ${cartTab === "previous" ? "is-active" : ""}`}
+                onClick={() => handleCartTabChange("previous")}
+                disabled={isCartClosing}
+              >
+                {t("cart.previousOrders")}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="nav-top">
+              <div className="brand-wrap" onClick={onLogoClick}>
+                <div className="brand-logo">LOGO</div>
+              </div>
+              <div className="powered-by">
+                <span className="powered-by-small">supported by</span>
+                <span className="powered-by-brand">selfserv</span>
+              </div>
+            </div>
 
-          {view === "menu" ? (
+            <div className="search-wrap">
+              <input
+                className="search-input"
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                aria-label={t("search")}
+              />
+              <div className={`search-center ${searchText ? "is-hidden" : ""}`}>
+                <img src={searchIcon} alt="" className="search-center-icon" />
+                <span className="search-center-text">{t("search")}</span>
+              </div>
+              {searchText && (
+                <button
+                  type="button"
+                  className="search-clear-btn"
+                  aria-label={t("search")}
+                  onClick={() => setSearchText("")}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
             <div className="category-row category-row--tabs">
               {CATS.map((cat) => (
                 <button
@@ -318,25 +381,8 @@ function App() {
                 </button>
               ))}
             </div>
-          ) : (
-            <div className="cart-nav-tabs">
-              <button
-                type="button"
-                className={`cart-nav-tab ${cartTab === "current" ? "is-active" : ""}`}
-                onClick={() => handleCartTabChange("current")}
-              >
-                {t("cart.currentOrder")}
-              </button>
-              <button
-                type="button"
-                className={`cart-nav-tab ${cartTab === "previous" ? "is-active" : ""}`}
-                onClick={() => handleCartTabChange("previous")}
-              >
-                {t("cart.previousOrders")}
-              </button>
-            </div>
-          )}
-        </>
+          </>
+        )}
       </nav>
 
       <>
@@ -359,10 +405,11 @@ function App() {
             tableToken={accessToken}
             tableName={tableName}
             clearCart={() => setCart([])}
-            onBackToMenu={() => goto("menu")}
             notify={toast}
             activeTab={cartTab}
             onTabChange={handleCartTabChange}
+            onRequestClose={closeCartWithAnimation}
+            isClosing={isCartClosing}
           />
         )}
       </>

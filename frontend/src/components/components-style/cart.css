@@ -4,84 +4,18 @@
 
 .cart-container {
     padding-bottom: 140px;
-    margin-top: 140px;
+    margin-top: 112px;
     padding: 16px;
     background-color: #f2f2f2;
+    transition: transform .32s ease, opacity .32s ease;
+    transform: translateY(0);
+    opacity: 1;
 }
 
-.cart-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 16px;
-    margin-bottom: 16px;
-}
-
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.pill-wrap {
-    width: 96px;
-    height: 32px;
-    background: #E5E5E5;
-    border-radius: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transform: translateY(2px);
-
-}
-
-.pill-btn {
-    background: transparent;
-    border: none;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
-    color: #111;
-    font-weight: 700;
-    font-size: 12px;
-    line-height: 100%;
-    letter-spacing: -0.24px;
-}
-
-.clear-all-wrap {
-    width: 96px;
-    height: 32px;
-    background: #E5E5E5;
-    border-radius: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transform: translateY(2px)
-}
-
-.clear-all-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: transparent;
-    border: none;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
-    color: #f00;
-    font-weight: 590;
-    font-size: 12px;
-    line-height: 100%;
-    letter-spacing: -0.24px;
-}
-
-.clear-all-icon {
-    width: 14px;
-    height: 14px;
-    object-fit: contain;
-    display: block;
-    user-select: none;
-    -webkit-user-drag: none;
+.cart-container.is-sliding-out {
+    transform: translateY(80px);
+    opacity: 0;
+    pointer-events: none;
 }
 
 .empty-cart {
@@ -133,8 +67,8 @@
 }
 
 .cart-item {
-    background: #ffffff;
     border: 1px solid #f0f0f0;
+    background-color: none;
     border-radius: 24px;
     padding: 12px;
 }
@@ -151,7 +85,7 @@
     height: 36px;
     border-radius: 999px;
     border: none;
-    background: #e9eaee;
+    background: #E5E5E5;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -189,13 +123,15 @@
     width: 36px;
     height: 36px;
     border-radius: 999px;
-    background: #eef0f3;
+    background: #E5E5E5;
     border: none;
     font-size: 22px;
+    font-weight: 700;
     line-height: 1;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    vertical-align: middle;
 }
 
 .ci-qty-num {
@@ -556,7 +492,9 @@
     align-items: center;
     justify-content: center;
     font-size: 25px;
+    font-weight: 700;
     line-height: 1;
+    vertical-align: middle;
 }
 
 .menu-item.menu-item-cart .qty-num {

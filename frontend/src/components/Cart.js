@@ -2,8 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import "./components-style/App.css";
 import "./components-style/cart.css";
-import binIcon from "../assets/other-images/bin.svg";
-import backIcon from "../assets/other-images/back-button.svg";
 import OrderSummary from "./cart/OrderSummary";
 import MyOrders from "./cart/MyOrders";
 import Suggestions from "./cart/Suggestions";
@@ -54,7 +52,8 @@ function Cart({
     notify,
     activeTab = "current",
     onTabChange,
-    onBackToMenu,
+    onRequestClose,
+    isClosing = false,
 }) {
 
     const TIP_PRESETS = [0, 50, 100];
@@ -96,8 +95,9 @@ function Cart({
         if (typeof onTabChange === "function") onTabChange(tab);
     };
     const handleBackClick = () => {
-        if (typeof onBackToMenu === "function") {
-            onBackToMenu();
+        if (isClosing) return;
+        if (typeof onRequestClose === "function") {
+            onRequestClose();
             return;
         }
         if (window.history.length > 1) window.history.back();
@@ -155,22 +155,6 @@ function Cart({
         if (raw == null) return;
         const v = Math.max(0, Math.round(Number(raw) || 0));
         setTipAmount(v);
-    };
-
-    const handleClearAll = () => {
-        if (!cart.length) return;
-        const ok = window.confirm(t("cart.clearAllConfirm"));
-        if (!ok) return;
-
-        if (typeof clearCart === "function") clearCart();
-        else {
-            cart.forEach((item) => {
-                const q = Number(item.quantity) || 0;
-                for (let i = 0; i < q; i++) removeFromCart(item);
-            });
-        }
-        setItemNotes({});
-        if (typeof notify === "function") notify(t("cart.cleared"));
     };
 
     useEffect(() => {
@@ -289,42 +273,10 @@ function Cart({
     }
 
     return (
-        <div className="menu-container cart-container">
+        <div className={`menu-container cart-container ${isClosing ? "is-sliding-out" : ""}`}>
 
             {!isPreviousTab ? (
                 <>
-
-                    {cart.length > 0 && (
-                        <div className="cart-header-row bleed-left">
-                            <div className="header-left">
-                                <button
-                                    type="button"
-                                    className="back-btn"
-                                    onClick={handleBackClick}
-                                    aria-label={t("orders.back")}
-                                    title={t("orders.back")}
-                                >
-                                    <img src={backIcon} alt="" className="back-icon" draggable="false" />
-                                </button>
-                                <h3 className="page-head" style={{ margin: 0 }}>
-                                    {t("cart.currentOrder")}
-                                </h3>
-                            </div>
-                            <div className="header-actions">
-                                <div className="clear-all-wrap">
-                                    <button
-                                        type="button"
-                                        className="clear-all-btn"
-                                        onClick={handleClearAll}
-                                        aria-label={t("cart.clearAll")}
-                                    >
-                                        <img src={binIcon} alt="" className="clear-all-icon" draggable="false" />
-                                        <span>{t("cart.clearAll")}</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
 
                     {(!cart || cart.length === 0) ? (
@@ -395,15 +347,6 @@ function Cart({
                         addToCart={addToCart}
                         removeFromCart={removeFromCart}
                     />
-
-                    {/* Centered pill for CART */}
-                    <ViewOrderPill
-                        variant="center"
-                        text={isPlacing ? t("cart.placing") : t("cart.placeOrder")}
-                        totalText={fmtMKD(total)}
-                        onClick={() => setShowConfirm(true)}
-                        disabled={isPlacing}
-                    />
                 </>
             )}
 
@@ -413,6 +356,17 @@ function Cart({
                     text={t("cart.viewMenu")}
                     totalText=""
                     onClick={handleBackClick}
+                />
+            )}
+
+            {!isPreviousTab && cart.length > 0 && (
+                <ViewOrderPill
+                    variant="center"
+                    text={isPlacing ? t("cart.placing") : t("cart.placeOrder")}
+                    totalText={fmtMKD(total)}
+                    onClick={() => setShowConfirm(true)}
+                    disabled={isPlacing}
+                    className="cart-bottom-pill"
                 />
             )}
         </div>
