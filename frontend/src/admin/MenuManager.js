@@ -10,6 +10,15 @@ import {
 } from "./dashboardApi";
 import "./dashboard.css";
 
+const CATEGORY_ORDER = ["coffee", "drinks", "food", "desserts", "other"];
+const CATEGORY_LABELS = {
+    coffee: "Coffee",
+    drinks: "Drinks",
+    food: "Food",
+    desserts: "Desserts",
+    other: "Other",
+};
+
 function slugify(str) {
     return (str || "")
         .toString()
@@ -27,6 +36,7 @@ function MenuManager() {
     const [filterCategory, setFilterCategory] = useState("");
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
+    const [activeSection, setActiveSection] = useState("menu"); // "menu" | "all"
 
     // Create form state
     const [name, setName] = useState("");
@@ -88,6 +98,30 @@ function MenuManager() {
         () => items.filter((it) => it.isOnMenu),
         [items]
     );
+
+    const currentMenuByCategory = useMemo(() => {
+        const groups = new Map();
+        currentMenu.forEach((item) => {
+            const key = item.category || "other";
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(item);
+        });
+
+        const sorted = Array.from(groups.entries()).map(([cat, list]) => ({
+            category: cat,
+            label: CATEGORY_LABELS[cat] || (cat ? cat : "Other"),
+            items: list.sort((a, b) => (a.name || "").localeCompare(b.name || "")),
+        }));
+
+        return sorted.sort((a, b) => {
+            const idxA = CATEGORY_ORDER.indexOf(a.category);
+            const idxB = CATEGORY_ORDER.indexOf(b.category);
+            const orderA = idxA === -1 ? Number.MAX_SAFE_INTEGER : idxA;
+            const orderB = idxB === -1 ? Number.MAX_SAFE_INTEGER : idxB;
+            if (orderA !== orderB) return orderA - orderB;
+            return a.label.localeCompare(b.label);
+        });
+    }, [currentMenu]);
 
     const handleCreate = async (e) => {
         e.preventDefault();
@@ -238,104 +272,137 @@ function MenuManager() {
                 {ok ? <div className="mt-12" style={{ color: '#065f46', fontWeight: 700 }}>{ok}</div> : null}
             </div>
 
-            <div className="card">
-                <h3 className="mt-0">Current Menu</h3>
-                {currentMenu.length === 0 ? (
-                    <div className="muted">No items are currently published on the customer menu.</div>
-                ) : (
-                    <div className="grid" style={{ gap: 8 }}>
-                        {currentMenu.map((it) => (
-                            <div key={`menu-${it.id}`} className="month-row" style={{ gridTemplateColumns: '1fr 120px' }}>
-                                <div className="row gap-8" style={{ alignItems: "center" }}>
-                                    {it.image_url ? (
-                                        <img src={it.image_url} alt={it.name} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
-                                    ) : null}
-                                    <div>
-                                        <div className="fw-700">{it.name}</div>
-                                        <div className="muted" style={{ fontSize: 12 }}>{fmtMKD(it.price)}</div>
-                                    </div>
-                                </div>
-                                <div className="row gap-8" style={{ justifyContent: "flex-end" }}>
-                                    <button
-                                        className="btn btn-ghost"
-                                        onClick={() => handleRemoveFromMenu(it)}
-                                        disabled={busy}
-                                    >
-                                        {busy ? "Working…" : "Remove"}
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+            <div className="row gap-8" style={{ marginBottom: 16 }}>
+                <button
+                    type="button"
+                    className={`btn ${activeSection === "menu" ? "btn-primary" : "btn-ghost"}`}
+                    onClick={() => setActiveSection("menu")}
+                    disabled={busy}
+                >
+                    Menu Overview
+                </button>
+                <button
+                    type="button"
+                    className={`btn ${activeSection === "all" ? "btn-primary" : "btn-ghost"}`}
+                    onClick={() => setActiveSection("all")}
+                    disabled={busy}
+                >
+                    Menu Items
+                </button>
             </div>
 
-            <div className="card">
-                <h3 className="mt-0">Menu Items</h3>
-                <div className="filters-grid" style={{ marginBottom: 12 }}>
-                    <label className="form-label">
-                        Search
-                        <input className="input" placeholder="search by name" value={search} onChange={(e) => setSearch(e.target.value)} />
-                    </label>
-                    <label className="form-label">
-                        Category
-                        <select className="input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-                            <option value="">(any)</option>
-                            <option value="other">other</option>
-                            <option value="coffee">coffee</option>
-                            <option value="drinks">drinks</option>
-                            <option value="food">food</option>
-                            <option value="desserts">desserts</option>
-                        </select>
-                    </label>
-                    <label className="form-label">
-                        Min Price
-                        <input className="input" type="number" step="0.01" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
-                    </label>
-                    <label className="form-label">
-                        Max Price
-                        <input className="input" type="number" step="0.01" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
-                    </label>
-                    <div className="self-end">
-                        <button className="btn btn-ghost" onClick={load} disabled={busy}>Refresh</button>
-                    </div>
-                </div>
-                {filteredItems.length === 0 ? (
-                    <div className="muted">No items.</div>
-                ) : (
-                    <div className="grid" style={{ gap: 8 }}>
-                        {filteredItems.map((it) => {
-                            const onMenu = Boolean(it.isOnMenu);
-                            return (
-                                <div key={it.id} className="month-row" style={{ gridTemplateColumns: '60px 1fr 120px 140px 240px' }}>
-                                    <div>
-                                        {it.image_url ? <img src={it.image_url} alt={it.name} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8 }} /> : <span className="dim">no image</span>}
+            {activeSection === "menu" && (
+                <div className="card">
+                    <h3 className="mt-0">Menu Overview</h3>
+                    {currentMenu.length === 0 ? (
+                        <div className="muted">No items are currently published on the customer menu.</div>
+                    ) : (
+                        <div className="current-menu-grid">
+                            {currentMenuByCategory.map((group) => (
+                                <section key={`menu-cat-${group.category}`} className="current-menu-column">
+                                    <header className="current-menu-column__header">
+                                        <span className="current-menu-column__title">{group.label}</span>
+                                        <span className="current-menu-count">{group.items.length}</span>
+                                    </header>
+                                    <div className="current-menu-items">
+                                        {group.items.map((it) => (
+                                            <div key={`menu-item-${group.category}-${it.id}`} className="current-menu-item">
+                                                <div className="current-menu-item__info">
+                                                    {it.image_url ? (
+                                                        <img src={it.image_url} alt={it.name} className="current-menu-item__thumb" />
+                                                    ) : (
+                                                        <div className="current-menu-item__thumb current-menu-item__thumb--placeholder">N/A</div>
+                                                    )}
+                                                    <div>
+                                                        <div className="fw-700">{it.name}</div>
+                                                        <div className="muted" style={{ fontSize: 12 }}>{fmtMKD(it.price)}</div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    className="btn btn-danger"
+                                                    onClick={() => handleRemoveFromMenu(it)}
+                                                    disabled={busy}
+                                                >
+                                                    {busy ? "Working…" : "Remove"}
+                                                </button>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="fw-700">
-                                        {it.name}
-                                        <div className="muted" style={{ fontSize: 12 }}>
-                                            {onMenu ? "On menu" : "Hidden"}
+                                </section>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeSection === "all" && (
+                <div className="card">
+                    <h3 className="mt-0">Menu Items</h3>
+                    <div className="filters-grid" style={{ marginBottom: 12 }}>
+                        <label className="form-label">
+                            Search
+                            <input className="input" placeholder="search by name" value={search} onChange={(e) => setSearch(e.target.value)} />
+                        </label>
+                        <label className="form-label">
+                            Category
+                            <select className="input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+                                <option value="">(any)</option>
+                                <option value="other">other</option>
+                                <option value="coffee">coffee</option>
+                                <option value="drinks">drinks</option>
+                                <option value="food">food</option>
+                                <option value="desserts">desserts</option>
+                            </select>
+                        </label>
+                        <label className="form-label">
+                            Min Price
+                            <input className="input" type="number" step="0.01" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
+                        </label>
+                        <label className="form-label">
+                            Max Price
+                            <input className="input" type="number" step="0.01" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
+                        </label>
+                        <div className="self-end">
+                            <button className="btn btn-ghost" onClick={load} disabled={busy}>Refresh</button>
+                        </div>
+                    </div>
+                    {filteredItems.length === 0 ? (
+                        <div className="muted">No items.</div>
+                    ) : (
+                        <div className="grid" style={{ gap: 8 }}>
+                            {filteredItems.map((it) => {
+                                const onMenu = Boolean(it.isOnMenu);
+                                return (
+                                    <div key={it.id} className="month-row" style={{ gridTemplateColumns: '60px 1fr 120px 140px 240px' }}>
+                                        <div>
+                                            {it.image_url ? <img src={it.image_url} alt={it.name} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8 }} /> : <span className="dim">no image</span>}
+                                        </div>
+                                        <div className="fw-700">
+                                            {it.name}
+                                            <div className="muted" style={{ fontSize: 12 }}>
+                                                {onMenu ? "On menu" : "Hidden"}
+                                            </div>
+                                        </div>
+                                        <div>{fmtMKD(it.price)}</div>
+                                        <div className="muted">{it.category}</div>
+                                        <div className="row gap-8">
+                                            <button
+                                                className={`btn ${onMenu ? "btn-danger" : "btn-primary"}`}
+                                                onClick={() => (onMenu ? handleRemoveFromMenu(it) : handleAddToMenu(it))}
+                                                disabled={busy}
+                                            >
+                                                {busy ? "Working…" : onMenu ? "Remove from menu" : "Add to menu"}
+                                            </button>
+                                            <button className="btn btn-ghost" onClick={() => startEdit(it)} disabled={busy}>Edit</button>
+                                            <button className="btn btn-ghost" onClick={() => handleDelete(it)} disabled={busy}>Delete</button>
                                         </div>
                                     </div>
-                                    <div>{fmtMKD(it.price)}</div>
-                                    <div className="muted">{it.category}</div>
-                                    <div className="row gap-8">
-                                        <button
-                                            className="btn btn-secondary"
-                                            onClick={() => (onMenu ? handleRemoveFromMenu(it) : handleAddToMenu(it))}
-                                            disabled={busy}
-                                        >
-                                            {busy ? "Working…" : onMenu ? "Remove from menu" : "Add to menu"}
-                                        </button>
-                                        <button className="btn btn-ghost" onClick={() => startEdit(it)} disabled={busy}>Edit</button>
-                                        <button className="btn btn-ghost" onClick={() => handleDelete(it)} disabled={busy}>Delete</button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
