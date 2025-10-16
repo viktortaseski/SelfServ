@@ -51,6 +51,12 @@ function makeAbsoluteImageUrl(raw, req) {
     let url = String(raw).trim();
     if (!url) return null;
 
+    if (url.startsWith("/images/")) {
+        url = `/uploads/images/${url.replace(/^\/images\//, "")}`;
+    } else if (url.startsWith("images/")) {
+        url = `/uploads/images/${url.replace(/^images\//, "")}`;
+    }
+
     try {
         if (/^https?:\/\//i.test(url)) {
             const parsed = new URL(url);
