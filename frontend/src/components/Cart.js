@@ -73,6 +73,7 @@ function Cart({
 
     const [suggestions, setSuggestions] = useState([]);
     const [showConfirm, setShowConfirm] = useState(false);
+    const [isEntering, setIsEntering] = useState(true);
 
     // Toggle a body class so we can hide the navbar + lock scroll without changing App.js
     useEffect(() => {
@@ -162,6 +163,15 @@ function Cart({
             console.log("[cart] table label:", tableLabel(tableName));
         }
     }, [tableName]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsEntering(false), 320);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (isClosing) setIsEntering(false);
+    }, [isClosing]);
 
 
     const actuallyCheckout = async () => {
@@ -273,7 +283,7 @@ function Cart({
     }
 
     return (
-        <div className={`menu-container cart-container ${isClosing ? "is-sliding-out" : ""}`}>
+        <div className={`menu-container cart-container ${isEntering ? "is-sliding-in" : ""} ${isClosing ? "is-sliding-out" : ""}`}>
 
             {!isPreviousTab ? (
                 <>
@@ -356,6 +366,7 @@ function Cart({
                     text={t("cart.viewMenu")}
                     totalText=""
                     onClick={handleBackClick}
+                    className="cart-bottom-pill"
                 />
             )}
 

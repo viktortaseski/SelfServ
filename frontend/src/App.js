@@ -147,7 +147,15 @@ function App() {
   }, []);
 
   const goto = (nextView) => {
+    if (nextView === view) return;
+    if (cartCloseTimer.current) {
+      clearTimeout(cartCloseTimer.current);
+      cartCloseTimer.current = null;
+    }
     if (nextView === "cart") {
+      setIsCartClosing(false);
+    }
+    if (nextView !== "cart") {
       setIsCartClosing(false);
     }
     window.location.hash = nextView === "cart" ? "/cart" : "/";

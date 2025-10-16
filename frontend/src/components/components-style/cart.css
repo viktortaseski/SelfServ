@@ -7,14 +7,16 @@
     margin-top: 112px;
     padding: 16px;
     background-color: #f2f2f2;
-    transition: transform .32s ease, opacity .32s ease;
     transform: translateY(0);
     opacity: 1;
 }
 
+.cart-container.is-sliding-in {
+    animation: cart-slide-in .32s ease forwards;
+}
+
 .cart-container.is-sliding-out {
-    transform: translateY(80px);
-    opacity: 0;
+    animation: cart-slide-out .32s ease forwards;
     pointer-events: none;
 }
 
@@ -527,6 +529,28 @@
     .menu-item.menu-item-cart .note-pill,
     .menu-item.menu-item-cart .note-inline-input {
         max-width: 100%;
+    }
+}
+
+@keyframes cart-slide-in {
+    0% {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes cart-slide-out {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100%);
+        opacity: 0;
     }
 }
 

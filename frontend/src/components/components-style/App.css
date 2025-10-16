@@ -275,13 +275,14 @@
     align-items: center;
     justify-content: center;
     min-height: 50px;
-
-    padding-right: 20px;
+    margin-bottom: 0px;
+    padding-top: 12px;
 }
 
 .cart-nav-back {
     position: absolute;
-    right: 0;
+    top: 20px;
+    right: 0px;
     background: rgba(17, 17, 17, 0.08);
     border: none;
     width: 32px;
@@ -308,6 +309,7 @@
     height: 14px;
     transform: rotate(-90deg);
     display: block;
+    aspect-ratio: 4/7;
 }
 
 .cart-nav-title {
@@ -402,6 +404,9 @@
     margin-top: 24px;
     transform: none;
     opacity: 1;
+    left: auto;
+    right: auto;
+    bottom: auto;
 }
 
 /* ===== CART variant (centered text with dot) ===== */
