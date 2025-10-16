@@ -40,7 +40,9 @@ coverage/
 *.lcov
 
 # Backend specific
-backend/uploads/
+backend/uploads/*
+!backend/uploads/images/
+!backend/uploads/images/**
 backend/temp/
 
 # Frontend specific
