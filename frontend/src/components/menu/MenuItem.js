@@ -100,7 +100,9 @@ function MenuItem({
                         onClick={() => onRemove?.(item)}
                         aria-label={`Remove one ${item.name}`}
                     >
-                        &minus;
+                        <span className="btn-symbol" aria-hidden="true">
+                            &minus;
+                        </span>
                     </button>
                     {variant !== "cart" ? (
                         <span className="qty-num" aria-live="polite">
@@ -112,7 +114,7 @@ function MenuItem({
                         onClick={() => onAdd?.(item)}
                         aria-label={`Add one more ${item.name}`}
                     >
-                        +
+                        <span className="btn-symbol" aria-hidden="true">+</span>
                     </button>
                 </div>
             ) : (
@@ -121,7 +123,7 @@ function MenuItem({
                     onClick={() => onAdd?.(item)}
                     aria-label={`Add ${item.name} to order`}
                 >
-                    +
+                    <span className="btn-symbol" aria-hidden="true">+</span>
                 </button>
             )}
         </li>

@@ -35,7 +35,7 @@ function PickCard({ item, onAdd }) {
                 aria-label={`Add ${item.name} to order`}
                 onClick={handleAdd}
             >
-                +
+                <span className="btn-symbol" aria-hidden="true">+</span>
             </button>
         </div>
     );

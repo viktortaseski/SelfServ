@@ -18,8 +18,8 @@ function PaymentOptions() {
     {
       title: "In-app",
       options: [
-        { id: "apple", label: "Apple Pay", icon: appleIcon },
-        { id: "google", label: "Google Pay", icon: googleIcon },
+        { id: "apple", label: "Apple Pay", icon: appleIcon, disabled: true },
+        { id: "google", label: "Google Pay", icon: googleIcon, disabled: true },
       ],
     },
   ];
@@ -38,9 +38,13 @@ function PaymentOptions() {
                   key={option.id}
                   className={`pay-option ${selected === option.id ? "pay-option--outline" : ""}`}
                   onClick={() => setSelected(option.id)}
+                  disabled={option.disabled}
                 >
                   <img src={option.icon} alt="" className="pay-icon" />
-                  <span>{option.label}</span>
+                  <span>
+                    {option.label}
+                    {option.disabled ? " (Coming soon)" : ""}
+                  </span>
                 </button>
               ))}
             </div>

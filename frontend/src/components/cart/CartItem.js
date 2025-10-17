@@ -35,11 +35,11 @@ function CartItem({ item, qty = 0, note = "", onAdd, onRemove, onNoteChange }) {
 
         <div className="ci-qty">
           <button className="ci-qty-btn" onClick={() => onRemove?.(item)} aria-label={`Remove one ${item.name}`}>
-            &minus;
+            <span className="btn-symbol" aria-hidden="true">&minus;</span>
           </button>
           <span className="ci-qty-num">{qty}</span>
           <button className="ci-qty-btn" onClick={() => onAdd?.(item)} aria-label={`Add one ${item.name}`}>
-            +
+            <span className="btn-symbol" aria-hidden="true">+</span>
           </button>
         </div>
       </div>
@@ -67,4 +67,3 @@ function CartItem({ item, qty = 0, note = "", onAdd, onRemove, onNoteChange }) {
 }
 
 export default CartItem;
-
