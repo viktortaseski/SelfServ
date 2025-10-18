@@ -299,7 +299,6 @@ router.post("/", requireAdmin, async (req, res) => {
 
         let imageUrl = null;
         if (image && typeof image === "string" && image.startsWith("data:image/")) {
-            // image is a data URL: data:image/png;base64,XXXXX
             const match = image.match(/^data:(image\/[^;]+);base64,(.+)$/);
             if (!match) {
                 return res.status(400).json({ error: "Invalid image data" });
@@ -312,13 +311,29 @@ router.post("/", requireAdmin, async (req, res) => {
                 mime === "image/webp" ? "webp" : null;
             if (!ext) return res.status(400).json({ error: "Unsupported image type" });
 
-            const baseName = slugify(name);
-            const fileName = `${baseName}.${ext}`;
-            const imagesDir = path.resolve(__dirname, "../uploads/images");
-            const filePath = path.join(imagesDir, fileName);
-            await fs.promises.mkdir(imagesDir, { recursive: true });
-            await fs.promises.writeFile(filePath, Buffer.from(b64, "base64"));
-            imageUrl = `/uploads/images/${fileName}`;
+            const buffer = Buffer.from(b64, "base64");
+            let uploadedUrl = null;
+            try {
+                uploadedUrl = await uploadMenuImage({
+                    buffer,
+                    contentType: mime,
+                    extension: ext,
+                });
+            } catch (storageErr) {
+                console.error("[storage] upload failed, falling back to disk", storageErr);
+            }
+
+            if (uploadedUrl) {
+                imageUrl = uploadedUrl;
+            } else {
+                const baseName = slugify(name);
+                const fileName = `${baseName}.${ext}`;
+                const imagesDir = path.resolve(__dirname, "../uploads/images");
+                const filePath = path.join(imagesDir, fileName);
+                await fs.promises.mkdir(imagesDir, { recursive: true });
+                await fs.promises.writeFile(filePath, buffer);
+                imageUrl = `/uploads/images/${fileName}`;
+            }
         }
 
         const insertSql =
@@ -381,22 +396,37 @@ router.put("/:id", requireAdmin, async (req, res) => {
             const ext = mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : null;
             if (!ext) return res.status(400).json({ error: "Unsupported image type" });
 
-            const baseName = slugify(updates.name);
-            const fileName = `${baseName}.${ext}`;
-            const imagesDir = path.resolve(__dirname, "../uploads/images");
-            const filePath = path.join(imagesDir, fileName);
-            await fs.promises.mkdir(imagesDir, { recursive: true });
-            await fs.promises.writeFile(filePath, Buffer.from(b64, "base64"));
-            const newUrl = `/uploads/images/${fileName}`;
-
-            // Try to remove old image if it was in our images folder and name changed
-            if (existing.image_url && existing.image_url.includes("/uploads/images/")) {
-                const oldPath = path.join(imagesDir, path.basename(existing.image_url));
-                if (oldPath !== filePath) {
-                    try { await fs.promises.unlink(oldPath); } catch {}
-                }
+            const buffer = Buffer.from(b64, "base64");
+            let uploadedUrl = null;
+            try {
+                uploadedUrl = await uploadMenuImage({
+                    buffer,
+                    contentType: mime,
+                    extension: ext,
+                });
+            } catch (storageErr) {
+                console.error("[storage] upload failed, falling back to disk", storageErr);
             }
-            updates.image_url = newUrl;
+
+            if (uploadedUrl) {
+                updates.image_url = uploadedUrl;
+            } else {
+                const baseName = slugify(updates.name);
+                const fileName = `${baseName}.${ext}`;
+                const imagesDir = path.resolve(__dirname, "../uploads/images");
+                const filePath = path.join(imagesDir, fileName);
+                await fs.promises.mkdir(imagesDir, { recursive: true });
+                await fs.promises.writeFile(filePath, buffer);
+                const newUrl = `/uploads/images/${fileName}`;
+
+                if (existing.image_url && existing.image_url.includes("/uploads/images/")) {
+                    const oldPath = path.join(imagesDir, path.basename(existing.image_url));
+                    if (oldPath !== filePath) {
+                        try { await fs.promises.unlink(oldPath); } catch {}
+                    }
+                }
+                updates.image_url = newUrl;
+            }
         }
 
         const { rows } = await pool.query(
