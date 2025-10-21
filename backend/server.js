@@ -18,7 +18,7 @@ app.set("trust proxy", 1);
 app.use(
     cors({
         origin: [
-            "https://selfserv-web.onrender.com",
+            "https://selfservscaled.onrender.com",
             "http://localhost:3000",
         ],
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
