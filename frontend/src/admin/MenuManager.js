@@ -39,7 +39,9 @@ function humanizeSlug(slug) {
         .join(" ");
 }
 
-function MenuManager() {
+function MenuManager({ user }) {
+    const restaurantId = user?.restaurant_id || null;
+    const restaurantName = user?.restaurant_name || "";
     const [items, setItems] = useState([]);
     const [search, setSearch] = useState("");
     const [filterCategory, setFilterCategory] = useState("");
@@ -93,11 +95,18 @@ function MenuManager() {
         } catch { }
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        if (!restaurantId) return;
+        load();
+    }, [load, restaurantId]);
 
     useEffect(() => {
+        if (!restaurantId) {
+            setServerCategories([]);
+            return;
+        }
         let mounted = true;
-        apiFetchCategories()
+        apiFetchCategories({ restaurantId, auth: true })
             .then((rows) => {
                 if (!mounted) return;
                 if (Array.isArray(rows) && rows.length) {
@@ -108,13 +117,17 @@ function MenuManager() {
                         }))
                         .filter((row) => row.slug);
                     setServerCategories(mapped);
+                } else {
+                    setServerCategories([]);
                 }
             })
-            .catch(() => { /* ignore */ });
+            .catch(() => {
+                if (mounted) setServerCategories([]);
+            });
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [restaurantId]);
 
     const categoryOptions = useMemo(() => {
         const fallback = CATEGORY_ORDER.map((slug) => ({
@@ -332,180 +345,229 @@ function MenuManager() {
 
     return (
         <div className="grid gap-10">
-            <div className="card">
-                <h3 className="mt-0">{editing ? "Edit Menu Item" : "Add Menu Item"}</h3>
-                <form onSubmit={editing ? handleSave : handleCreate} className="filters-grid">
-                    <label className="form-label">
-                        Name
-                        <input className="input" value={editing ? eName : name} onChange={(e) => (editing ? setEName(e.target.value) : setName(e.target.value))} required />
-                    </label>
-                    <label className="form-label">
-                        Price (MKD)
-                        <input className="input" type="number" step="0.01" value={editing ? ePrice : price} onChange={(e) => (editing ? setEPrice(e.target.value) : setPrice(e.target.value))} required />
-                    </label>
-                    <label className="form-label">
-                        Category
-                        <select
-                            className="input"
-                            value={editing ? eCategory : category}
-                            onChange={(e) => (editing ? setECategory(e.target.value) : setCategory(e.target.value))}
-                        >
-                            {categoryOptions.map((opt) => (
-                                <option key={opt.slug} value={opt.slug}>
-                                    {opt.name}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <label className="form-label">
-                        {editing ? "New Image (optional)" : "Image"}
-                        <input className="input" type="file" accept="image/png,image/jpeg,image/webp" onChange={editing ? onEditFile : onFile} />
-                    </label>
-                    <div className="self-end">
-                        {!editing ? (
-                            <button className="btn btn-primary" disabled={busy}>{busy ? "Uploading…" : "Create item"}</button>
-                        ) : (
-                            <div className="row gap-8">
-                                <button className="btn btn-primary" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button>
-                                <button type="button" className="btn btn-ghost" onClick={cancelEdit} disabled={busy}>Cancel</button>
-                            </div>
-                        )}
-                    </div>
-                </form>
-                {err ? <div className="error-text">{err}</div> : null}
-                {ok ? <div className="mt-12" style={{ color: '#065f46', fontWeight: 700 }}>{ok}</div> : null}
-            </div>
-
-            <div className="row gap-8" style={{ marginBottom: 16 }}>
-                <button
-                    type="button"
-                    className={`btn ${activeSection === "menu" ? "btn-primary" : "btn-ghost"}`}
-                    onClick={() => setActiveSection("menu")}
-                    disabled={busy}
-                >
-                    Menu Overview
-                </button>
-                <button
-                    type="button"
-                    className={`btn ${activeSection === "all" ? "btn-primary" : "btn-ghost"}`}
-                    onClick={() => setActiveSection("all")}
-                    disabled={busy}
-                >
-                    Menu Items
-                </button>
-            </div>
-
-            {activeSection === "menu" && (
+            {!restaurantId ? (
                 <div className="card">
-                    <h3 className="mt-0">Menu Overview</h3>
-                    {currentMenu.length === 0 ? (
-                        <div className="muted">No items are currently published on the customer menu.</div>
-                    ) : (
-                        <div className="current-menu-grid">
-                            {currentMenuByCategory.map((group) => (
-                                <section key={`menu-cat-${group.category}`} className="current-menu-column">
-                                    <header className="current-menu-column__header">
-                                        <span className="current-menu-column__title">{group.label}</span>
-                                        <span className="current-menu-count">{group.items.length}</span>
-                                    </header>
-                                    <div className="current-menu-items">
-                                        {group.items.map((it) => (
-                                            <div key={`menu-item-${group.category}-${it.id}`} className="current-menu-item">
-                                                <div className="current-menu-item__info">
+                    <h3 className="mt-0">Menu Manager</h3>
+                    <p className="muted">This employee is not assigned to a restaurant yet.</p>
+                </div>
+            ) : (
+                <>
+                    <div className="card">
+                        <h3 className="mt-0">
+                            {editing ? "Edit Menu Item" : "Add Menu Item"}
+                            {restaurantName ? ` · ${restaurantName}` : ""}
+                        </h3>
+                        <form onSubmit={editing ? handleSave : handleCreate} className="filters-grid">
+                            <label className="form-label">
+                                Name
+                                <input
+                                    className="input"
+                                    value={editing ? eName : name}
+                                    onChange={(e) => (editing ? setEName(e.target.value) : setName(e.target.value))}
+                                    required
+                                />
+                            </label>
+                            <label className="form-label">
+                                Price (MKD)
+                                <input
+                                    className="input"
+                                    type="number"
+                                    step="0.01"
+                                    value={editing ? ePrice : price}
+                                    onChange={(e) => (editing ? setEPrice(e.target.value) : setPrice(e.target.value))}
+                                    required
+                                />
+                            </label>
+                            <label className="form-label">
+                                Category
+                                <select
+                                    className="input"
+                                    value={editing ? eCategory : category}
+                                    onChange={(e) => (editing ? setECategory(e.target.value) : setCategory(e.target.value))}
+                                >
+                                    {categoryOptions.map((opt) => (
+                                        <option key={opt.slug} value={opt.slug}>
+                                            {opt.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="form-label">
+                                {editing ? "New Image (optional)" : "Image"}
+                                <input
+                                    className="input"
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    onChange={editing ? onEditFile : onFile}
+                                />
+                            </label>
+                            <div className="self-end">
+                                {!editing ? (
+                                    <button className="btn btn-primary" disabled={busy}>
+                                        {busy ? "Uploading…" : "Create item"}
+                                    </button>
+                                ) : (
+                                    <div className="row gap-8">
+                                        <button className="btn btn-primary" disabled={busy}>
+                                            {busy ? "Saving…" : "Save changes"}
+                                        </button>
+                                        <button type="button" className="btn btn-ghost" onClick={cancelEdit} disabled={busy}>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </form>
+                        {err ? <div className="error-text">{err}</div> : null}
+                        {ok ? (
+                            <div className="mt-12" style={{ color: "#065f46", fontWeight: 700 }}>
+                                {ok}
+                            </div>
+                        ) : null}
+                    </div>
+
+                    <div className="row gap-8" style={{ marginBottom: 16 }}>
+                        <button
+                            type="button"
+                            className={`btn ${activeSection === "menu" ? "btn-primary" : "btn-ghost"}`}
+                            onClick={() => setActiveSection("menu")}
+                            disabled={busy}
+                        >
+                            Menu Overview
+                        </button>
+                        <button
+                            type="button"
+                            className={`btn ${activeSection === "all" ? "btn-primary" : "btn-ghost"}`}
+                            onClick={() => setActiveSection("all")}
+                            disabled={busy}
+                        >
+                            Menu Items
+                        </button>
+                    </div>
+
+                    {activeSection === "menu" && (
+                        <div className="card">
+                            <h3 className="mt-0">Menu Overview{restaurantName ? ` · ${restaurantName}` : ""}</h3>
+                            {currentMenu.length === 0 ? (
+                                <div className="muted">No items are currently published on the customer menu.</div>
+                            ) : (
+                                <div className="current-menu-grid">
+                                    {currentMenuByCategory.map((group) => (
+                                        <section key={`menu-cat-${group.category}`} className="current-menu-column">
+                                            <header className="current-menu-column__header">
+                                                <span className="current-menu-column__title">{group.label}</span>
+                                                <span className="current-menu-count">{group.items.length}</span>
+                                            </header>
+                                            <div className="current-menu-items">
+                                                {group.items.map((it) => (
+                                                    <div key={`menu-item-${group.category}-${it.id}`} className="current-menu-item">
+                                                        <div className="current-menu-item__info">
+                                                            {it.image_url ? (
+                                                                <img src={it.image_url} alt={it.name} className="current-menu-item__thumb" />
+                                                            ) : (
+                                                                <div className="current-menu-item__thumb current-menu-item__thumb--placeholder">N/A</div>
+                                                            )}
+                                                            <div>
+                                                                <div className="fw-700">{it.name}</div>
+                                                                <div className="muted" style={{ fontSize: 12 }}>{fmtMKD(it.price)}</div>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            className="btn btn-danger"
+                                                            onClick={() => handleRemoveFromMenu(it)}
+                                                            disabled={busy}
+                                                        >
+                                                            {busy ? "Working…" : "Remove"}
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </section>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeSection === "all" && (
+                        <div className="card">
+                            <h3 className="mt-0">Menu Items{restaurantName ? ` · ${restaurantName}` : ""}</h3>
+                            <div className="filters-grid" style={{ marginBottom: 12 }}>
+                                <label className="form-label">
+                                    Search
+                                    <input className="input" placeholder="search by name" value={search} onChange={(e) => setSearch(e.target.value)} />
+                                </label>
+                                <label className="form-label">
+                                    Category
+                                    <select className="input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+                                        <option value="">(any)</option>
+                                        {categoryOptions.map((opt) => (
+                                            <option key={`filter-${opt.slug}`} value={opt.slug}>
+                                                {opt.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="form-label">
+                                    Min Price
+                                    <input className="input" type="number" step="0.01" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
+                                </label>
+                                <label className="form-label">
+                                    Max Price
+                                    <input className="input" type="number" step="0.01" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
+                                </label>
+                                <div className="self-end">
+                                    <button className="btn btn-ghost" onClick={load} disabled={busy}>
+                                        Refresh
+                                    </button>
+                                </div>
+                            </div>
+                            {filteredItems.length === 0 ? (
+                                <div className="muted">No items.</div>
+                            ) : (
+                                <div className="grid" style={{ gap: 8 }}>
+                                    {filteredItems.map((it) => {
+                                        const onMenu = Boolean(it.isActive);
+                                        return (
+                                            <div key={it.id} className="month-row" style={{ gridTemplateColumns: "60px 1fr 120px 140px 240px" }}>
+                                                <div>
                                                     {it.image_url ? (
-                                                        <img src={it.image_url} alt={it.name} className="current-menu-item__thumb" />
+                                                        <img src={it.image_url} alt={it.name} style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 8 }} />
                                                     ) : (
-                                                        <div className="current-menu-item__thumb current-menu-item__thumb--placeholder">N/A</div>
+                                                        <span className="dim">no image</span>
                                                     )}
-                                                    <div>
-                                                        <div className="fw-700">{it.name}</div>
-                                                        <div className="muted" style={{ fontSize: 12 }}>{fmtMKD(it.price)}</div>
+                                                </div>
+                                                <div className="fw-700">
+                                                    {it.name}
+                                                    <div className="muted" style={{ fontSize: 12 }}>
+                                                        {onMenu ? "On menu" : "Hidden"}
                                                     </div>
                                                 </div>
-                                                <button
-                                                    className="btn btn-danger"
-                                                    onClick={() => handleRemoveFromMenu(it)}
-                                                    disabled={busy}
-                                                >
-                                                    {busy ? "Working…" : "Remove"}
-                                                </button>
+                                                <div>{fmtMKD(it.price)}</div>
+                                                <div className="muted">{categoryLabelMap[it.category] || humanizeSlug(it.category) || "Other"}</div>
+                                                <div className="row gap-8">
+                                                    <button
+                                                        className={`btn ${onMenu ? "btn-danger" : "btn-primary"}`}
+                                                        onClick={() => (onMenu ? handleRemoveFromMenu(it) : handleAddToMenu(it))}
+                                                        disabled={busy}
+                                                    >
+                                                        {busy ? "Working…" : onMenu ? "Remove from menu" : "Add to menu"}
+                                                    </button>
+                                                    <button className="btn btn-ghost" onClick={() => startEdit(it)} disabled={busy}>
+                                                        Edit
+                                                    </button>
+                                                    <button className="btn btn-ghost" onClick={() => handleDelete(it)} disabled={busy}>
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                </section>
-                            ))}
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
-                </div>
-            )}
-
-            {activeSection === "all" && (
-                <div className="card">
-                    <h3 className="mt-0">Menu Items</h3>
-                    <div className="filters-grid" style={{ marginBottom: 12 }}>
-                        <label className="form-label">
-                            Search
-                            <input className="input" placeholder="search by name" value={search} onChange={(e) => setSearch(e.target.value)} />
-                        </label>
-                        <label className="form-label">
-                            Category
-                            <select className="input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-                                <option value="">(any)</option>
-                                {categoryOptions.map((opt) => (
-                                    <option key={`filter-${opt.slug}`} value={opt.slug}>
-                                        {opt.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <label className="form-label">
-                            Min Price
-                            <input className="input" type="number" step="0.01" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
-                        </label>
-                        <label className="form-label">
-                            Max Price
-                            <input className="input" type="number" step="0.01" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
-                        </label>
-                        <div className="self-end">
-                            <button className="btn btn-ghost" onClick={load} disabled={busy}>Refresh</button>
-                        </div>
-                    </div>
-                    {filteredItems.length === 0 ? (
-                        <div className="muted">No items.</div>
-                    ) : (
-                        <div className="grid" style={{ gap: 8 }}>
-                            {filteredItems.map((it) => {
-                                const onMenu = Boolean(it.isActive);
-                                return (
-                                    <div key={it.id} className="month-row" style={{ gridTemplateColumns: '60px 1fr 120px 140px 240px' }}>
-                                        <div>
-                                            {it.image_url ? <img src={it.image_url} alt={it.name} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8 }} /> : <span className="dim">no image</span>}
-                                        </div>
-                                        <div className="fw-700">
-                                            {it.name}
-                                            <div className="muted" style={{ fontSize: 12 }}>
-                                                {onMenu ? "On menu" : "Hidden"}
-                                            </div>
-                                        </div>
-                                        <div>{fmtMKD(it.price)}</div>
-                                        <div className="muted">{categoryLabelMap[it.category] || humanizeSlug(it.category) || "Other"}</div>
-                                        <div className="row gap-8">
-                                            <button
-                                                className={`btn ${onMenu ? "btn-danger" : "btn-primary"}`}
-                                                onClick={() => (onMenu ? handleRemoveFromMenu(it) : handleAddToMenu(it))}
-                                                disabled={busy}
-                                            >
-                                                {busy ? "Working…" : onMenu ? "Remove from menu" : "Add to menu"}
-                                            </button>
-                                            <button className="btn btn-ghost" onClick={() => startEdit(it)} disabled={busy}>Edit</button>
-                                            <button className="btn btn-ghost" onClick={() => handleDelete(it)} disabled={busy}>Delete</button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
+                </>
             )}
         </div>
     );

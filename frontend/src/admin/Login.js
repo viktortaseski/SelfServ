@@ -3,7 +3,7 @@ import { apiLogin } from "./dashboardApi";
 import "./dashboard.css";
 
 function Login({ onSuccess }) {
-    const [username, setUsername] = useState("rockcafe");
+    const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState("");
@@ -26,7 +26,7 @@ function Login({ onSuccess }) {
     return (
         <div className="center-box">
             <div className="card">
-                <h2 className="mt-0">RockCafe Admin</h2>
+                <h2 className="mt-0">Admin Login</h2>
                 <form onSubmit={handleSubmit} className="grid-gap-10">
                     <label className="form-label">
                         Username
@@ -60,4 +60,3 @@ function Login({ onSuccess }) {
 }
 
 export default Login;
-

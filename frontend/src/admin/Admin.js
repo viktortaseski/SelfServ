@@ -55,7 +55,9 @@ function Admin() {
     return (
         <div className="admin-container">
             <header className="admin-header mb-16">
-                <h2 className="mt-0">RockCafe · Admin</h2>
+                <h2 className="mt-0">
+                    {user?.restaurant_name ? `${user.restaurant_name} · Admin` : "Admin"}
+                </h2>
                 <div className="row gap-8">
                     <span className="muted">
                         Signed in as <strong>{user.username}</strong> ({user.role})
@@ -85,7 +87,11 @@ function Admin() {
                 </button>
             </nav>
 
-            {view === 'dashboard' ? <Dashboard /> : view === 'analytics' ? <Analytics /> : <MenuManager />}
+            {view === 'dashboard'
+                ? <Dashboard user={user} />
+                : view === 'analytics'
+                    ? <Analytics user={user} />
+                    : <MenuManager user={user} />}
         </div>
     );
 }

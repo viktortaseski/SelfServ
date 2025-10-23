@@ -16,12 +16,13 @@ function Stat({ label, value }) {
   );
 }
 
-export default function Analytics() {
+export default function Analytics({ user: _user }) {
   const [fromDate, setFromDate] = useState(DEFAULT_FROM_STR());
   const [toDate, setToDate] = useState(DEFAULT_TO_STR());
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [orders, setOrders] = useState([]);
+  const restaurantName = _user?.restaurant_name || "";
 
   const fetchOrders = async () => {
     setBusy(true);
@@ -85,7 +86,10 @@ export default function Analytics() {
   return (
     <div className="grid gap-10">
       <section className="card">
-        <h3 className="mt-0">Analytics & Reporting</h3>
+        <h3 className="mt-0">
+          Analytics & Reporting
+          {restaurantName ? ` · ${restaurantName}` : ""}
+        </h3>
         <div className="filters-grid">
           <label className="form-label">
             From date
@@ -149,4 +153,3 @@ export default function Analytics() {
     </div>
   );
 }
-

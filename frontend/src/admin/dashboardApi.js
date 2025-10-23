@@ -104,9 +104,18 @@ export function fmtMKD(n) {
     return `${x.toLocaleString("mk-MK")} MKD`;
 }
 
-export async function apiFetchCategories() {
+export async function apiFetchCategories({ restaurantId, auth } = {}) {
     try {
-        const { data } = await api.get(`/menu/categories`);
+        const params = new URLSearchParams();
+        if (restaurantId) params.set("restaurantId", String(restaurantId));
+        const qs = params.toString();
+        const config = {};
+        if (auth) {
+            const token = getToken();
+            if (!token) throw new Error("No token");
+            config.headers = { Authorization: `Bearer ${token}` };
+        }
+        const { data } = await api.get(`/menu/categories${qs ? `?${qs}` : ""}`, config);
         if (!Array.isArray(data)) return [];
         return data;
     } catch {

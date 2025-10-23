@@ -68,7 +68,7 @@ function OrderCard({ order }) {
     );
 }
 
-export default function Dashboard() {
+export default function Dashboard({ user: _user }) {
     // Filters
     const [fromDate, setFromDate] = useState(DEFAULT_FROM_STR());
     const [toDate, setToDate] = useState(DEFAULT_TO_STR());
@@ -81,6 +81,7 @@ export default function Dashboard() {
 
     // Data
     const [orders, setOrders] = useState([]);
+    const restaurantName = _user?.restaurant_name || "";
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState("");
 
@@ -112,7 +113,10 @@ export default function Dashboard() {
         <div>
             {/* Filters */}
             <section className="card">
-                <h3 className="mt-0">Filters</h3>
+                <h3 className="mt-0">
+                    Filters
+                    {restaurantName ? ` · ${restaurantName}` : ""}
+                </h3>
                 <div className="filters-grid">
                     <label className="form-label">
                         From date

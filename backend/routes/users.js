@@ -60,9 +60,10 @@ router.post("/login", async (req, res) => {
 
         const result = await pool.query(
             `
-            SELECT *
-            FROM employees
-            WHERE username = $1
+            SELECT e.*, r.name AS restaurant_name
+            FROM employees e
+            LEFT JOIN restaurants r ON r.id = e.restaurant_id
+            WHERE e.username = $1
             LIMIT 1
         `,
             [username]
@@ -91,6 +92,7 @@ router.post("/login", async (req, res) => {
             role: user.role,
             username: user.username,
             restaurant_id: user.restaurant_id,
+            restaurant_name: user.restaurant_name || null,
         });
     } catch (err) {
         console.error("💥 Login error:", err);
@@ -99,15 +101,46 @@ router.post("/login", async (req, res) => {
 });
 
 // Me (NO SESSIONS) -> verifies JWT from Authorization header
-router.get("/me", (req, res) => {
+router.get("/me", async (req, res) => {
     try {
         const token = readBearer(req);
         if (!token) return res.status(401).json({ error: "Not logged in" });
 
         const decoded = jwt.verify(token, JWT_SECRET);
-        return res.json(decoded); // includes restaurant_id
+        const { rows } = await pool.query(
+            `
+            SELECT
+                e.id,
+                e.username,
+                e.role,
+                e.restaurant_id,
+                r.name AS restaurant_name
+            FROM employees e
+            LEFT JOIN restaurants r ON r.id = e.restaurant_id
+            WHERE e.id = $1
+            LIMIT 1
+        `,
+            [decoded.id]
+        );
+
+        if (!rows.length) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const user = rows[0];
+        return res.json({
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            restaurant_id: user.restaurant_id,
+            restaurant_name: user.restaurant_name || null,
+        });
     } catch (err) {
-        return res.status(401).json({ error: "Invalid token" });
+        if (err?.name === "JsonWebTokenError" || err?.name === "TokenExpiredError") {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+        console.error("GET /users/me error:", err);
+        return res.status(500).json({ error: "Server error" });
     }
 });
 
