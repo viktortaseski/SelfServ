@@ -159,17 +159,35 @@ router.post("/customer", async (req, res) => {
         const rows = await fetchMenuItems(client, ids);
         const productMap = new Map(rows.map((row) => [row.id, row]));
 
+        const missingIds = ids.filter((id) => !productMap.has(id));
+        if (missingIds.length) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                error: "Some items are no longer available. Please refresh your cart.",
+                missingItems: missingIds,
+            });
+        }
+
+        const foreignItems = ids.filter((id) => productMap.get(id)?.restaurant_id !== tokenData.restaurantId);
+        if (foreignItems.length) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                error: "Some items are from a different restaurant. Please refresh your cart.",
+                invalidItems: foreignItems,
+            });
+        }
+
+        const inactiveItems = ids.filter((id) => !productMap.get(id)?.is_active);
+        if (inactiveItems.length) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                error: "Some items are no longer available. Please refresh your cart.",
+                inactiveItems,
+            });
+        }
+
         const orderItems = normalizedItems.map((item) => {
             const product = productMap.get(item.id);
-            if (!product) {
-                throw new Error(`Item ${item.id} not found`);
-            }
-            if (product.restaurant_id !== tokenData.restaurantId) {
-                throw new Error(`Item ${item.id} does not belong to this restaurant`);
-            }
-            if (!product.is_active) {
-                throw new Error(`Item ${item.id} is unavailable`);
-            }
             return {
                 restaurant_product_id: product.id,
                 name: product.name,
