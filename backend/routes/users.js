@@ -2,6 +2,8 @@
 const express = require("express");
 const pool = require("../db");
 const jwt = require("jsonwebtoken");
+const { DEFAULT_RESTAURANT_ID } = require("../config");
+
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || "devjwtsecret";
@@ -16,13 +18,33 @@ function readBearer(req) {
 
 router.post("/register", async (req, res) => {
     try {
-        const { username, password, role } = req.body;
-        if (!["waiter", "admin"].includes(role)) {
+        const {
+            username,
+            password,
+            role,
+            restaurantId = DEFAULT_RESTAURANT_ID,
+        } = req.body || {};
+
+        const trimmedUsername = String(username || "").trim();
+        const trimmedPassword = String(password || "").trim();
+
+        if (!trimmedUsername || !trimmedPassword) {
+            return res.status(400).json({ error: "Username and password are required" });
+        }
+
+        if (!["admin", "staff"].includes(role)) {
             return res.status(400).json({ error: "Invalid role" });
         }
+
+        const restaurantIdNum = Number(restaurantId) || DEFAULT_RESTAURANT_ID;
+
         const result = await pool.query(
-            "INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role",
-            [username, password, role]
+            `
+            INSERT INTO employees (restaurant_id, role, username, password)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, restaurant_id, role, username
+        `,
+            [restaurantIdNum, role, trimmedUsername, trimmedPassword]
         );
         res.json(result.rows[0]);
     } catch (err) {
@@ -36,18 +58,40 @@ router.post("/login", async (req, res) => {
     try {
         const { username, password } = req.body;
 
-        const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+        const result = await pool.query(
+            `
+            SELECT *
+            FROM employees
+            WHERE username = $1
+            LIMIT 1
+        `,
+            [username]
+        );
         if (!result.rows.length) return res.status(400).json({ error: "User not found" });
 
         const user = result.rows[0];
+        if (!user.is_active) {
+            return res.status(403).json({ error: "Account disabled" });
+        }
         if (password !== user.password) {
             return res.status(400).json({ error: "Invalid password" });
         }
 
-        const payload = { id: user.id, role: user.role, username: user.username };
+        const payload = {
+            id: user.id,
+            role: user.role,
+            username: user.username,
+            restaurant_id: user.restaurant_id,
+        };
         const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 
-        return res.json({ success: true, token, role: user.role, username: user.username });
+        return res.json({
+            success: true,
+            token,
+            role: user.role,
+            username: user.username,
+            restaurant_id: user.restaurant_id,
+        });
     } catch (err) {
         console.error("💥 Login error:", err);
         res.status(500).json({ error: "Server error" });
@@ -61,7 +105,7 @@ router.get("/me", (req, res) => {
         if (!token) return res.status(401).json({ error: "Not logged in" });
 
         const decoded = jwt.verify(token, JWT_SECRET);
-        return res.json(decoded); // { id, role, username, iat, exp }
+        return res.json(decoded); // includes restaurant_id
     } catch (err) {
         return res.status(401).json({ error: "Invalid token" });
     }

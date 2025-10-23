@@ -1,12 +1,16 @@
 const express = require("express");
-const router = express.Router();
-const pool = require("../db");
 const fs = require("fs");
 const path = require("path");
 const jwt = require("jsonwebtoken");
+const pool = require("../db");
+const { uploadMenuImage } = require("../services/storage");
+const { DEFAULT_RESTAURANT_ID } = require("../config");
 
+const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "devjwtsecret";
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || null;
+const MENU_IMAGES_DIR = path.resolve(__dirname, "../uploads/images");
+const fsp = fs.promises;
 
 function readBearer(req) {
     const auth = req.headers.authorization || "";
@@ -38,9 +42,27 @@ function slugify(str) {
         .toLowerCase();
 }
 
+function humanizeSlug(slug) {
+    if (!slug) return "";
+    return slug
+        .split("-")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+}
+
+function pickRestaurantId(req) {
+    const fromUser = Number(req?.user?.restaurant_id);
+    if (Number.isFinite(fromUser) && fromUser > 0) return fromUser;
+
+    const fromQuery = Number(req?.query?.restaurantId);
+    if (Number.isFinite(fromQuery) && fromQuery > 0) return fromQuery;
+
+    return DEFAULT_RESTAURANT_ID;
+}
+
 function getBaseUrl(req) {
     if (PUBLIC_BASE_URL) return PUBLIC_BASE_URL.replace(/\/$/, "");
-    const protoHeader = (req.headers['x-forwarded-proto'] || "").split(',')[0];
+    const protoHeader = (req.headers["x-forwarded-proto"] || "").split(",")[0];
     const proto = protoHeader || req.protocol || "http";
     const host = req.get("host");
     return `${proto}://${host}`;
@@ -52,7 +74,7 @@ function makeAbsoluteImageUrl(raw, req) {
     if (!url) return null;
 
     if (url.startsWith("/images/")) {
-        url = `/uploads/images/${url.replace(/^\/images\//, "")}`;
+        url = `/uploads/images/${url.replace(/^\/?images\//, "")}`;
     } else if (url.startsWith("images/")) {
         url = `/uploads/images/${url.replace(/^images\//, "")}`;
     }
@@ -79,54 +101,224 @@ function makeAbsoluteImageUrl(raw, req) {
     return `${getBaseUrl(req)}${url}`;
 }
 
-function mapImageUrls(rows = [], req) {
-    return rows.map((row) => ({
-        ...row,
-        image_url: makeAbsoluteImageUrl(row?.image_url, req),
-    }));
+function formatMenuRow(row, req) {
+    if (!row) return null;
+    const rawPrice = row.price != null ? Number(row.price) : null;
+    const price = Number.isFinite(rawPrice) ? rawPrice : null;
+    const rawImage = row.img_url ?? row.image_url ?? null;
+    const imageUrl = makeAbsoluteImageUrl(rawImage, req);
+    return {
+        id: row.id,
+        restaurant_id: row.restaurant_id,
+        product_id: row.product_id,
+        category_id: row.category_id,
+        name: row.name,
+        description: row.description,
+        price,
+        category: row.category,
+        category_name: row.category_name,
+        is_active: row.is_active,
+        is_on_menu: row.is_on_menu ?? row.is_active,
+        sku: row.sku,
+        image_url: imageUrl,
+        img_url: imageUrl,
+        raw_image_url: rawImage,
+    };
+}
+
+async function fetchMenuItemById(db, restaurantId, id) {
+    const { rows } = await db.query(
+        `
+        SELECT
+            rp.id,
+            rp.restaurant_id,
+            rp.product_id,
+            rp.category_id,
+            rp.price,
+            rp.img_url,
+            rp.is_active,
+            rp.sku,
+            p.name,
+            p.description,
+            c.slug AS category,
+            c.name AS category_name
+        FROM restaurant_products rp
+        JOIN products p ON p.id = rp.product_id
+        JOIN categories c ON c.id = rp.category_id
+        WHERE rp.id = $1
+          AND rp.restaurant_id = $2
+    `,
+        [id, restaurantId]
+    );
+    return rows[0] || null;
+}
+
+async function getCategoryId(client, restaurantId, categoryInput, employeeId) {
+    const slug = slugify(categoryInput || "other") || "other";
+    const { rows: existing } = await client.query(
+        "SELECT id FROM categories WHERE slug = $1",
+        [slug]
+    );
+
+    let categoryId = existing[0]?.id || null;
+
+    if (!categoryId) {
+        const { rows } = await client.query(
+            `
+            INSERT INTO categories (slug, name, created_by_employee_id)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (slug) DO NOTHING
+            RETURNING id
+        `,
+            [slug, humanizeSlug(slug) || slug, employeeId || null]
+        );
+        if (rows[0]?.id) {
+            categoryId = rows[0].id;
+        } else {
+            const { rows: reFetch } = await client.query(
+                "SELECT id FROM categories WHERE slug = $1",
+                [slug]
+            );
+            categoryId = reFetch[0]?.id || null;
+        }
+    }
+
+    if (!categoryId) {
+        throw new Error("Unable to resolve category");
+    }
+
+    try {
+        await client.query(
+            `
+            INSERT INTO restaurant_categories (restaurant_id, category_id)
+            VALUES ($1, $2)
+            ON CONFLICT (restaurant_id, category_id) DO NOTHING
+        `,
+            [restaurantId, categoryId]
+        );
+    } catch (err) {
+        if (err.code === "P0001") {
+            throw new Error("Restaurant already has maximum categories assigned");
+        }
+        throw err;
+    }
+
+    return { categoryId, slug };
+}
+
+async function handleImageUpload(image, name) {
+    if (!image || typeof image !== "string") return null;
+    const trimmed = image.trim();
+    if (!trimmed) return null;
+
+    if (!trimmed.startsWith("data:image/")) {
+        return trimmed;
+    }
+
+    const match = trimmed.match(/^data:(image\/[^;]+);base64,(.+)$/);
+    if (!match) {
+        throw new Error("Invalid image data");
+    }
+    const mime = match[1];
+    const data = match[2];
+    const ext =
+        mime === "image/png"
+            ? "png"
+            : mime === "image/jpeg"
+                ? "jpg"
+                : mime === "image/webp"
+                    ? "webp"
+                    : null;
+    if (!ext) throw new Error("Unsupported image type");
+
+    const buffer = Buffer.from(data, "base64");
+    let uploadedUrl = null;
+    try {
+        uploadedUrl = await uploadMenuImage({
+            buffer,
+            contentType: mime,
+            extension: ext,
+        });
+    } catch (storageErr) {
+        console.error("[storage] upload failed, falling back to disk", storageErr);
+    }
+
+    if (uploadedUrl) return uploadedUrl;
+
+    await fsp.mkdir(MENU_IMAGES_DIR, { recursive: true });
+    const baseName = slugify(name) || `item-${Date.now()}`;
+    const fileName = `${baseName}-${Date.now()}.${ext}`;
+    const filePath = path.join(MENU_IMAGES_DIR, fileName);
+    await fsp.writeFile(filePath, buffer);
+    return `/uploads/images/${fileName}`;
+}
+
+function parsePrice(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num) || num < 0) return null;
+    return Math.round(num * 100) / 100;
 }
 
 router.get("/", async (req, res) => {
     try {
+        const restaurantId = pickRestaurantId(req);
         const search = (req.query.search || "").trim();
         const category = (req.query.category || "").trim();
-        const minPriceRaw = req.query.minPrice;
-        const maxPriceRaw = req.query.maxPrice;
-        const minPrice = minPriceRaw != null ? Number(minPriceRaw) : null;
-        const maxPrice = maxPriceRaw != null ? Number(maxPriceRaw) : null;
+        const minPrice = req.query.minPrice != null ? Number(req.query.minPrice) : null;
+        const maxPrice = req.query.maxPrice != null ? Number(req.query.maxPrice) : null;
 
-        const where = [];
-        const params = [];
-        let idx = 1;
+        const where = [
+            "rp.restaurant_id = $1",
+            "rp.is_active = TRUE",
+            "p.is_active = TRUE",
+            "c.is_active = TRUE",
+        ];
+        const params = [restaurantId];
+        let idx = params.length;
 
         if (search) {
-            where.push(`LOWER(mi.name) LIKE LOWER($${idx++})`);
+            where.push(`LOWER(p.name) LIKE LOWER($${++idx})`);
             params.push(`%${search}%`);
         }
         if (category) {
-            where.push(`mi.category = $${idx++}`);
+            where.push(`c.slug = $${++idx}`);
             params.push(category);
         }
         if (Number.isFinite(minPrice)) {
-            where.push(`mi.price >= $${idx++}`);
+            where.push(`rp.price >= $${++idx}`);
             params.push(minPrice);
         }
         if (Number.isFinite(maxPrice)) {
-            where.push(`mi.price <= $${idx++}`);
+            where.push(`rp.price <= $${++idx}`);
             params.push(maxPrice);
         }
 
         const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-        const sql = `
-            SELECT mi.*
-            FROM menu m
-            JOIN menu_items mi ON mi.id = m.menu_item_id
+        const { rows } = await pool.query(
+            `
+            SELECT
+                rp.id,
+                rp.restaurant_id,
+                rp.product_id,
+                rp.category_id,
+                rp.price,
+                rp.img_url,
+                rp.is_active,
+                rp.sku,
+                p.name,
+                p.description,
+                c.slug AS category,
+                c.name AS category_name
+            FROM restaurant_products rp
+            JOIN products p ON p.id = rp.product_id
+            JOIN categories c ON c.id = rp.category_id
             ${whereSql}
-            ORDER BY m.added_at ASC, mi.id ASC
-        `;
+            ORDER BY c.slug ASC, p.name ASC
+        `,
+            params
+        );
 
-        const { rows } = await pool.query(sql, params);
-        res.json(mapImageUrls(rows, req));
+        res.json(rows.map((row) => formatMenuRow(row, req)));
     } catch (err) {
         console.error("GET /api/menu error:", err);
         res.status(500).json({ error: "Server error" });
@@ -134,99 +326,171 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/top-picks", async (req, res) => {
-    const category = (req.query.category || "").trim();
-    const limit = Math.min(
-        Math.max(parseInt(req.query.limit || "10", 10), 1),
-        50
-    );
-
-    const hasCategory = category.length > 0;
-    const params = [];
-    let idx = 1;
-
-    const whereClause = hasCategory ? `WHERE mi.category = $${idx++}` : "";
-
-    if (hasCategory) params.push(category);
-
-    params.push(limit); // last param is always limit
-
-    const sql = `
-    SELECT
-      mi.id,
-      mi.name,
-      mi.price,
-      mi.category,
-      mi.image_url,
-      COALESCE(s.total_qty, 0)::bigint AS total_qty
-    FROM menu m
-    JOIN menu_items mi ON mi.id = m.menu_item_id
-    LEFT JOIN (
-      SELECT
-        oi.menu_item_id,
-        SUM(oi.quantity)::bigint AS total_qty
-      FROM order_items oi
-      JOIN orders o ON o.id = oi.order_id
-      WHERE oi.quantity > 0
-      GROUP BY oi.menu_item_id
-    ) s ON s.menu_item_id = mi.id
-    ${whereClause}
-    ORDER BY s.total_qty DESC NULLS LAST, mi.id ASC
-    LIMIT $${idx}
-  `;
-
     try {
-        const { rows } = await pool.query(sql, params);
-        res.json(mapImageUrls(rows, req));
+        const restaurantId = pickRestaurantId(req);
+        const category = (req.query.category || "").trim();
+        const limit = Math.min(
+            Math.max(parseInt(req.query.limit || "10", 10), 1),
+            50
+        );
+
+        const params = [restaurantId];
+        let idx = params.length;
+        const filters = [
+            "rp.restaurant_id = $1",
+            "rp.is_active = TRUE",
+            "p.is_active = TRUE",
+            "c.is_active = TRUE",
+        ];
+
+        if (category) {
+            filters.push(`c.slug = $${++idx}`);
+            params.push(category);
+        }
+
+        params.push(limit);
+
+        const { rows } = await pool.query(
+            `
+            SELECT
+                rp.id,
+                rp.restaurant_id,
+                rp.product_id,
+                rp.category_id,
+                rp.price,
+                rp.img_url,
+                rp.is_active,
+                rp.sku,
+                p.name,
+                p.description,
+                c.slug AS category,
+                c.name AS category_name,
+                COALESCE(SUM(oi.quantity), 0)::bigint AS total_qty
+            FROM restaurant_products rp
+            JOIN products p ON p.id = rp.product_id
+            JOIN categories c ON c.id = rp.category_id
+            LEFT JOIN order_items oi ON oi.restaurant_product_id = rp.id
+            LEFT JOIN orders o ON o.id = oi.order_id AND o.restaurant_id = rp.restaurant_id
+            WHERE ${filters.join(" AND ")}
+            GROUP BY rp.id, p.name, p.description, c.slug, c.name
+            ORDER BY total_qty DESC NULLS LAST, p.name ASC
+            LIMIT $${idx + 1}
+        `,
+            params
+        );
+
+        res.json(rows.map((row) => formatMenuRow(row, req)));
     } catch (err) {
         console.error("GET /api/menu/top-picks error:", err);
         res.status(500).json({ error: "Server error" });
     }
 });
 
+router.get("/categories", async (req, res) => {
+    try {
+        const restaurantId = pickRestaurantId(req);
+        const { rows } = await pool.query(
+            `
+            SELECT
+                c.id,
+                c.slug,
+                c.name,
+                rc.created_at
+            FROM restaurant_categories rc
+            JOIN categories c ON c.id = rc.category_id
+            WHERE rc.restaurant_id = $1
+              AND c.is_active = TRUE
+            ORDER BY c.name ASC
+        `,
+            [restaurantId]
+        );
+
+        res.json(
+            rows.map((row) => ({
+                id: row.id,
+                slug: row.slug,
+                name: row.name,
+                created_at:
+                    row.created_at instanceof Date
+                        ? row.created_at.toISOString()
+                        : row.created_at,
+            }))
+        );
+    } catch (err) {
+        console.error("GET /api/menu/categories error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 router.get("/admin", requireAdmin, async (req, res) => {
     try {
+        const restaurantId = pickRestaurantId(req);
         const search = (req.query.search || "").trim();
         const category = (req.query.category || "").trim();
-        const minPriceRaw = req.query.minPrice;
-        const maxPriceRaw = req.query.maxPrice;
-        const minPrice = minPriceRaw != null ? Number(minPriceRaw) : null;
-        const maxPrice = maxPriceRaw != null ? Number(maxPriceRaw) : null;
+        const minPrice = req.query.minPrice != null ? Number(req.query.minPrice) : null;
+        const maxPrice = req.query.maxPrice != null ? Number(req.query.maxPrice) : null;
+        const includeInactive = String(req.query.includeInactive || "").toLowerCase() === "true";
 
-        const where = [];
-        const params = [];
-        let idx = 1;
+        const where = ["rp.restaurant_id = $1"];
+        const params = [restaurantId];
+        let idx = params.length;
 
+        if (!includeInactive) {
+            where.push("rp.is_active = TRUE");
+        }
         if (search) {
-            where.push(`LOWER(mi.name) LIKE LOWER($${idx++})`);
+            where.push(`LOWER(p.name) LIKE LOWER($${++idx})`);
             params.push(`%${search}%`);
         }
         if (category) {
-            where.push(`mi.category = $${idx++}`);
+            where.push(`c.slug = $${++idx}`);
             params.push(category);
         }
         if (Number.isFinite(minPrice)) {
-            where.push(`mi.price >= $${idx++}`);
+            where.push(`rp.price >= $${++idx}`);
             params.push(minPrice);
         }
         if (Number.isFinite(maxPrice)) {
-            where.push(`mi.price <= $${idx++}`);
+            where.push(`rp.price <= $${++idx}`);
             params.push(maxPrice);
         }
 
         const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-        const sql = `
+        const { rows } = await pool.query(
+            `
             SELECT
-                mi.*,
-                (m.menu_item_id IS NOT NULL) AS is_on_menu,
-                m.added_at
-            FROM menu_items mi
-            LEFT JOIN menu m ON m.menu_item_id = mi.id
+                rp.id,
+                rp.restaurant_id,
+                rp.product_id,
+                rp.category_id,
+                rp.price,
+                rp.img_url,
+                rp.is_active,
+                rp.sku,
+                rp.created_at,
+                p.name,
+                p.description,
+                c.slug AS category,
+                c.name AS category_name
+            FROM restaurant_products rp
+            JOIN products p ON p.id = rp.product_id
+            JOIN categories c ON c.id = rp.category_id
             ${whereSql}
-            ORDER BY mi.id ASC
-        `;
+            ORDER BY rp.created_at DESC, rp.id DESC
+        `,
+            params
+        );
 
-        const { rows } = await pool.query(sql, params);
-        res.json(mapImageUrls(rows, req));
+        const mapped = rows.map((row) =>
+            formatMenuRow(
+                {
+                    ...row,
+                    is_on_menu: row.is_active,
+                },
+                req
+            )
+        );
+        res.json(mapped);
     } catch (err) {
         console.error("GET /api/menu/admin error:", err);
         res.status(500).json({ error: "Server error" });
@@ -234,30 +498,20 @@ router.get("/admin", requireAdmin, async (req, res) => {
 });
 
 router.post("/:id/menu", requireAdmin, async (req, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = Number(req.params.id);
     if (!Number.isFinite(id) || id <= 0) {
         return res.status(400).json({ error: "Invalid id" });
     }
-
     try {
-        const { rowCount } = await pool.query("SELECT 1 FROM menu_items WHERE id = $1", [id]);
+        const restaurantId = pickRestaurantId(req);
+        const { rowCount } = await pool.query(
+            "UPDATE restaurant_products SET is_active = TRUE WHERE id = $1 AND restaurant_id = $2",
+            [id, restaurantId]
+        );
         if (!rowCount) return res.status(404).json({ error: "Not found" });
 
-        await pool.query(
-            "INSERT INTO menu (menu_item_id, added_at) VALUES ($1, NOW()) ON CONFLICT (menu_item_id) DO NOTHING",
-            [id]
-        );
-
-        const { rows } = await pool.query(
-            `SELECT mi.*, (m.menu_item_id IS NOT NULL) AS is_on_menu
-             FROM menu_items mi
-             LEFT JOIN menu m ON m.menu_item_id = mi.id
-             WHERE mi.id = $1`,
-            [id]
-        );
-
-        const mapped = mapImageUrls(rows, req);
-        return res.json({ success: true, item: mapped[0] });
+        const item = await fetchMenuItemById(pool, restaurantId, id);
+        return res.json({ success: true, item: formatMenuRow(item, req) });
     } catch (err) {
         console.error("POST /api/menu/:id/menu error:", err);
         return res.status(500).json({ error: "Server error" });
@@ -265,17 +519,17 @@ router.post("/:id/menu", requireAdmin, async (req, res) => {
 });
 
 router.delete("/:id/menu", requireAdmin, async (req, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = Number(req.params.id);
     if (!Number.isFinite(id) || id <= 0) {
         return res.status(400).json({ error: "Invalid id" });
     }
-
     try {
-        const { rowCount } = await pool.query("SELECT 1 FROM menu_items WHERE id = $1", [id]);
+        const restaurantId = pickRestaurantId(req);
+        const { rowCount } = await pool.query(
+            "UPDATE restaurant_products SET is_active = FALSE WHERE id = $1 AND restaurant_id = $2",
+            [id, restaurantId]
+        );
         if (!rowCount) return res.status(404).json({ error: "Not found" });
-
-        await pool.query("DELETE FROM menu WHERE menu_item_id = $1", [id]);
-
         return res.json({ success: true });
     } catch (err) {
         console.error("DELETE /api/menu/:id/menu error:", err);
@@ -283,194 +537,289 @@ router.delete("/:id/menu", requireAdmin, async (req, res) => {
     }
 });
 
-// Admin: create menu item (JSON, optional base64 image)
 router.post("/", requireAdmin, async (req, res) => {
+    const client = await pool.connect();
     try {
-        const { name, price, category = "other", image } = req.body || {};
+        const restaurantId = pickRestaurantId(req);
+        const { name, price, category = "other", image, description = null, sku = null } = req.body || {};
 
-        if (!name || !String(name).trim()) {
+        const trimmedName = String(name || "").trim();
+        if (!trimmedName) {
             return res.status(400).json({ error: "Name is required" });
         }
-        const priceNum = Number(price);
-        if (!Number.isFinite(priceNum) || priceNum <= 0) {
+
+        const priceNum = parsePrice(price);
+        if (priceNum == null || priceNum <= 0) {
             return res.status(400).json({ error: "Price must be a positive number" });
         }
-        const cat = String(category || "other").trim() || "other";
 
-        let imageUrl = null;
-        if (image && typeof image === "string" && image.startsWith("data:image/")) {
-            const match = image.match(/^data:(image\/[^;]+);base64,(.+)$/);
-            if (!match) {
-                return res.status(400).json({ error: "Invalid image data" });
-            }
-            const mime = match[1];
-            const b64 = match[2];
-            const ext =
-                mime === "image/png" ? "png" :
-                mime === "image/jpeg" ? "jpg" :
-                mime === "image/webp" ? "webp" : null;
-            if (!ext) return res.status(400).json({ error: "Unsupported image type" });
+        await client.query("BEGIN");
 
-            const buffer = Buffer.from(b64, "base64");
-            let uploadedUrl = null;
-            try {
-                uploadedUrl = await uploadMenuImage({
-                    buffer,
-                    contentType: mime,
-                    extension: ext,
-                });
-            } catch (storageErr) {
-                console.error("[storage] upload failed, falling back to disk", storageErr);
-            }
+        const { categoryId, slug } = await getCategoryId(
+            client,
+            restaurantId,
+            category,
+            req.user?.id || null
+        );
 
-            if (uploadedUrl) {
-                imageUrl = uploadedUrl;
-            } else {
-                const baseName = slugify(name);
-                const fileName = `${baseName}.${ext}`;
-                const imagesDir = path.resolve(__dirname, "../uploads/images");
-                const filePath = path.join(imagesDir, fileName);
-                await fs.promises.mkdir(imagesDir, { recursive: true });
-                await fs.promises.writeFile(filePath, buffer);
-                imageUrl = `/uploads/images/${fileName}`;
-            }
+        const imageUrl = await handleImageUpload(image, trimmedName);
+
+        const { rows: productRows } = await client.query(
+            `
+            INSERT INTO products (name, description, created_by_employee_id)
+            VALUES ($1, $2, $3)
+            RETURNING id
+        `,
+            [trimmedName, description || null, req.user?.id || null]
+        );
+        const productId = productRows[0]?.id;
+        if (!productId) {
+            throw new Error("Failed to create product");
         }
 
-        const insertSql =
-            "INSERT INTO menu_items (name, price, category, image_url) VALUES ($1, $2, $3, $4) RETURNING *";
-        const params = [name, priceNum, cat, imageUrl];
-
-        const { rows } = await pool.query(insertSql, params);
-
-        if (rows[0]?.id) {
-            try {
-                await pool.query("INSERT INTO menu (menu_item_id, added_at) VALUES ($1, NOW()) ON CONFLICT (menu_item_id) DO NOTHING", [rows[0].id]);
-            } catch (err) {
-                console.warn("Failed to auto-add new item to menu:", err.message);
-            }
+        const { rows: rpRows } = await client.query(
+            `
+            INSERT INTO restaurant_products (
+                restaurant_id,
+                product_id,
+                category_id,
+                price,
+                img_url,
+                is_active,
+                sku
+            )
+            VALUES ($1, $2, $3, $4, $5, TRUE, $6)
+            RETURNING id
+        `,
+            [restaurantId, productId, categoryId, priceNum, imageUrl, sku || null]
+        );
+        const rpId = rpRows[0]?.id;
+        if (!rpId) {
+            throw new Error("Failed to create restaurant product");
         }
 
-        const mapped = mapImageUrls(rows, req);
-        return res.json({ success: true, item: mapped[0] });
+        await client.query("COMMIT");
+
+        const item = await fetchMenuItemById(pool, restaurantId, rpId);
+        const formatted = formatMenuRow(item, req);
+        formatted.category = slug;
+        return res.json({ success: true, item: formatted });
     } catch (err) {
+        await client.query("ROLLBACK").catch(() => { });
         if (err && err.code === "23505") {
-            return res.status(400).json({ error: "Name already exists" });
+            return res.status(400).json({ error: "Item already exists" });
+        }
+        if (err && typeof err.message === "string") {
+            const lower = err.message.toLowerCase();
+            if (
+                lower.includes("image") ||
+                lower.includes("category") ||
+                lower.includes("product")
+            ) {
+                return res.status(400).json({ error: err.message });
+            }
         }
         console.error("POST /api/menu error:", err);
         return res.status(500).json({ error: "Server error" });
+    } finally {
+        client.release();
     }
 });
 
-// Admin: update menu item
 router.put("/:id", requireAdmin, async (req, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = Number(req.params.id);
     if (!Number.isFinite(id) || id <= 0) {
         return res.status(400).json({ error: "Invalid id" });
     }
-    try {
-        const { name, price, category, image } = req.body || {};
 
-        const { rows: existingRows } = await pool.query("SELECT * FROM menu_items WHERE id = $1", [id]);
-        if (!existingRows.length) return res.status(404).json({ error: "Not found" });
+    const client = await pool.connect();
+    try {
+        const restaurantId = pickRestaurantId(req);
+        const { name, price, category, image, description, sku } = req.body || {};
+
+        await client.query("BEGIN");
+        const { rows: existingRows } = await client.query(
+            `
+            SELECT
+                rp.id,
+                rp.restaurant_id,
+                rp.product_id,
+                rp.category_id,
+                rp.price,
+                rp.img_url,
+                rp.is_active,
+                rp.sku,
+                p.name AS product_name,
+                p.description AS product_description,
+                c.slug AS category_slug
+            FROM restaurant_products rp
+            JOIN products p ON p.id = rp.product_id
+            JOIN categories c ON c.id = rp.category_id
+            WHERE rp.id = $1
+              AND rp.restaurant_id = $2
+            FOR UPDATE
+        `,
+            [id, restaurantId]
+        );
+
+        if (!existingRows.length) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ error: "Not found" });
+        }
+
         const existing = existingRows[0];
 
-        const updates = {
-            name: name != null ? String(name) : existing.name,
-            price: price != null ? Number(price) : Number(existing.price),
-            category: category != null ? String(category) : existing.category,
-            image_url: existing.image_url,
-        };
+        const updatedName =
+            name != null ? String(name).trim() : String(existing.product_name || "").trim();
+        if (!updatedName) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({ error: "Name is required" });
+        }
 
-        if (!updates.name.trim()) return res.status(400).json({ error: "Name is required" });
-        if (!Number.isFinite(updates.price) || updates.price <= 0) {
+        const priceNum =
+            price != null ? parsePrice(price) : parsePrice(existing.price);
+        if (priceNum == null || priceNum <= 0) {
+            await client.query("ROLLBACK");
             return res.status(400).json({ error: "Price must be a positive number" });
         }
-        updates.category = updates.category.trim() || "other";
 
-        // If new image provided, save it and update image_url; delete old one best-effort
-        if (image && typeof image === "string" && image.startsWith("data:image/")) {
-            const match = image.match(/^data:(image\/[^;]+);base64,(.+)$/);
-            if (!match) return res.status(400).json({ error: "Invalid image data" });
-            const mime = match[1];
-            const b64 = match[2];
-            const ext = mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : null;
-            if (!ext) return res.status(400).json({ error: "Unsupported image type" });
+        let targetCategoryId = existing.category_id;
+        let targetCategorySlug = existing.category_slug;
+        if (category != null && slugify(category) !== slugify(existing.category_slug)) {
+            const { categoryId, slug } = await getCategoryId(
+                client,
+                restaurantId,
+                category,
+                req.user?.id || null
+            );
+            targetCategoryId = categoryId;
+            targetCategorySlug = slug;
+        }
 
-            const buffer = Buffer.from(b64, "base64");
-            let uploadedUrl = null;
-            try {
-                uploadedUrl = await uploadMenuImage({
-                    buffer,
-                    contentType: mime,
-                    extension: ext,
-                });
-            } catch (storageErr) {
-                console.error("[storage] upload failed, falling back to disk", storageErr);
-            }
-
-            if (uploadedUrl) {
-                updates.image_url = uploadedUrl;
+        let imageUrl = existing.img_url;
+        if (image !== undefined) {
+            if (image === null || image === "") {
+                imageUrl = null;
             } else {
-                const baseName = slugify(updates.name);
-                const fileName = `${baseName}.${ext}`;
-                const imagesDir = path.resolve(__dirname, "../uploads/images");
-                const filePath = path.join(imagesDir, fileName);
-                await fs.promises.mkdir(imagesDir, { recursive: true });
-                await fs.promises.writeFile(filePath, buffer);
-                const newUrl = `/uploads/images/${fileName}`;
-
-                if (existing.image_url && existing.image_url.includes("/uploads/images/")) {
-                    const oldPath = path.join(imagesDir, path.basename(existing.image_url));
-                    if (oldPath !== filePath) {
-                        try { await fs.promises.unlink(oldPath); } catch {}
-                    }
-                }
-                updates.image_url = newUrl;
+                imageUrl = await handleImageUpload(image, updatedName);
             }
         }
 
-        const { rows } = await pool.query(
-            "UPDATE menu_items SET name = $1, price = $2, category = $3, image_url = $4 WHERE id = $5 RETURNING *",
-            [updates.name, updates.price, updates.category, updates.image_url, id]
+        const nextSku =
+            sku !== undefined ? (sku === null || sku === "" ? null : String(sku)) : existing.sku;
+
+        await client.query(
+            `
+            UPDATE products
+            SET name = $1,
+                description = CASE WHEN $2 IS NULL THEN description ELSE $2 END
+            WHERE id = $3
+        `,
+            [updatedName, description !== undefined ? description : existing.product_description, existing.product_id]
         );
-        const mapped = mapImageUrls(rows, req);
-        return res.json({ success: true, item: mapped[0] });
+
+        await client.query(
+            `
+            UPDATE restaurant_products
+            SET price = $1,
+                category_id = $2,
+                img_url = $3,
+                sku = $4
+            WHERE id = $5
+              AND restaurant_id = $6
+        `,
+            [priceNum, targetCategoryId, imageUrl, nextSku, id, restaurantId]
+        );
+
+        await client.query("COMMIT");
+
+        const item = await fetchMenuItemById(pool, restaurantId, id);
+        const formatted = formatMenuRow(item, req);
+        formatted.category = targetCategorySlug;
+        return res.json({ success: true, item: formatted });
     } catch (err) {
-        if (err && err.code === "23505") {
-            return res.status(400).json({ error: "Name already exists" });
+        await client.query("ROLLBACK").catch(() => { });
+        if (err && typeof err.message === "string") {
+            const lower = err.message.toLowerCase();
+            if (
+                lower.includes("image") ||
+                lower.includes("category") ||
+                lower.includes("name") ||
+                lower.includes("price")
+            ) {
+                return res.status(400).json({ error: err.message });
+            }
         }
         console.error("PUT /api/menu/:id error:", err);
         return res.status(500).json({ error: "Server error" });
+    } finally {
+        client.release();
     }
 });
 
-// Admin: delete menu item
 router.delete("/:id", requireAdmin, async (req, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = Number(req.params.id);
     if (!Number.isFinite(id) || id <= 0) {
         return res.status(400).json({ error: "Invalid id" });
     }
+
+    const restaurantId = pickRestaurantId(req);
+
     try {
-        const { rows: existingRows } = await pool.query("SELECT * FROM menu_items WHERE id = $1", [id]);
-        if (!existingRows.length) return res.status(404).json({ error: "Not found" });
-        const existing = existingRows[0];
+        const deleteRes = await pool.query(
+            `
+            DELETE FROM restaurant_products
+            WHERE id = $1
+              AND restaurant_id = $2
+            RETURNING product_id
+        `,
+            [id, restaurantId]
+        );
 
-        await pool.query("DELETE FROM menu_items WHERE id = $1", [id]);
-
-        // Best-effort delete of image file if in our images dir
-        if (existing.image_url && existing.image_url.includes("/uploads/images/")) {
-            const imagesDir = path.resolve(__dirname, "../uploads/images");
-            const oldPath = path.join(imagesDir, path.basename(existing.image_url));
-            try { await fs.promises.unlink(oldPath); } catch {}
+        if (!deleteRes.rowCount) {
+            return res.status(404).json({ error: "Not found" });
         }
 
-        return res.json({ success: true });
+        const productId = deleteRes.rows[0]?.product_id;
+        if (productId) {
+            await pool.query(
+                `
+                DELETE FROM products
+                WHERE id = $1
+                  AND NOT EXISTS (
+                      SELECT 1 FROM restaurant_products WHERE product_id = $1
+                  )
+            `,
+                [productId]
+            );
+        }
+
+        return res.json({ success: true, deleted: true });
     } catch (err) {
-        if (err && err.code === "23503") {
-            return res.status(400).json({ error: "Item is referenced by orders and cannot be deleted" });
+        if (err.code === "23503") {
+            try {
+                await pool.query(
+                    `
+                    UPDATE restaurant_products
+                    SET is_active = FALSE
+                    WHERE id = $1
+                      AND restaurant_id = $2
+                `,
+                    [id, restaurantId]
+                );
+                const item = await fetchMenuItemById(pool, restaurantId, id);
+                return res.json({
+                    success: true,
+                    deleted: false,
+                    note: "Item has historical orders and was marked inactive instead.",
+                    item: formatMenuRow(item, req),
+                });
+            } catch (fallbackErr) {
+                console.error("DELETE fallback failed:", fallbackErr);
+            }
         }
         console.error("DELETE /api/menu/:id error:", err);
-        return res.status(500).json({ error: "Server error" });
+        return res.status(500).json({ error: err.message || "Server error" });
     }
 });
 

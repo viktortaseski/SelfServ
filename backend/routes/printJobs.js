@@ -43,7 +43,7 @@ router.post("/claim", requirePrintAuth, async (req, res) => {
 router.post("/:id/done", requirePrintAuth, async (req, res) => {
     const id = Number(req.params.id);
     const r = await pool.query(
-        `UPDATE print_jobs SET status='done', finished_at=now(), last_error=NULL WHERE id=$1`,
+        `UPDATE print_jobs SET status='printed', finished_at=now(), last_error=NULL WHERE id=$1`,
         [id]
     );
     return res.json({ updated: r.rowCount === 1 });
@@ -53,7 +53,7 @@ router.post("/:id/error", requirePrintAuth, async (req, res) => {
     const id = Number(req.params.id);
     const msg = String(req.body?.error || "").slice(0, 500);
     const r = await pool.query(
-        `UPDATE print_jobs SET status='error', finished_at=now(), last_error=$2 WHERE id=$1`,
+        `UPDATE print_jobs SET status='failed', finished_at=now(), last_error=$2 WHERE id=$1`,
         [id, msg]
     );
     return res.json({ updated: r.rowCount === 1 });
