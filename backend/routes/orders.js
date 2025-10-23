@@ -249,6 +249,22 @@ router.post("/customer", async (req, res) => {
             [subtotal, orderId]
         );
 
+        const restaurantInfoRes = await client.query(
+            `
+            SELECT
+                id,
+                name,
+                address,
+                phone_number,
+                tax_id
+            FROM restaurants
+            WHERE id = $1
+            LIMIT 1
+        `,
+            [tokenData.restaurantId]
+        );
+        const restaurantInfo = restaurantInfoRes.rows[0] || null;
+
         await client.query("COMMIT");
 
         const tableName = tokenData.tableName || `Table ${tokenData.tableId}`;
@@ -270,8 +286,21 @@ router.post("/customer", async (req, res) => {
             taxRate: 0,
             payment: "PAYMENT DUE",
             headerTitle: RECEIPT_NAME,
-            phone: RECEIPT_PHONE,
-            address: RECEIPT_ADDRESS,
+            phone: restaurantInfo?.phone_number || RECEIPT_PHONE,
+            address: restaurantInfo?.address || RECEIPT_ADDRESS,
+            taxId: restaurantInfo?.tax_id || null,
+            restaurant: restaurantInfo
+                ? {
+                      id: restaurantInfo.id,
+                      name: restaurantInfo.name,
+                      address: restaurantInfo.address,
+                      phone_number: restaurantInfo.phone_number,
+                      tax_id: restaurantInfo.tax_id,
+                  }
+                : {
+                      id: tokenData.restaurantId,
+                      name: RECEIPT_NAME,
+                  },
         };
 
         await pool.query(
