@@ -96,7 +96,13 @@ async function fetchMenuItems(client, ids) {
     `,
         [ids]
     );
-    return rows;
+    return rows.map((row) => ({
+        ...row,
+        id: Number(row.id),
+        restaurant_id: Number(row.restaurant_id),
+        price: Number(row.price),
+        is_active: row.is_active === true || row.is_active === "t",
+    }));
 }
 
 async function insertOrderItems(client, orderId, items) {
