@@ -137,6 +137,7 @@ router.post("/customer", async (req, res) => {
         quantity: Math.max(1, Math.round(Number(it.quantity) || 0)),
         note: it.note ? String(it.note).slice(0, 45) : null,
     }));
+    console.log("[orders] normalized cart items:", normalizedItems);
 
     const client = await pool.connect();
     try {
@@ -149,19 +150,23 @@ router.post("/customer", async (req, res) => {
                 .status(400)
                 .json({ error: "Expired or already used token. Please rescan the QR." });
         }
+        console.log("[orders] token data:", tokenData);
 
         const ids = [...new Set(normalizedItems.map((it) => it.id).filter((id) => Number.isFinite(id) && id > 0))];
         if (!ids.length) {
             await client.query("ROLLBACK");
             return res.status(400).json({ error: "Cart items are invalid" });
         }
+        console.log("[orders] unique item ids:", ids);
 
         const rows = await fetchMenuItems(client, ids);
+        console.log("[orders] fetched restaurant_products:", rows);
         const productMap = new Map(rows.map((row) => [row.id, row]));
 
         const missingIds = ids.filter((id) => !productMap.has(id));
         if (missingIds.length) {
             await client.query("ROLLBACK");
+            console.warn("[orders] missing restaurant_products", { missingIds });
             return res.status(400).json({
                 error: "Some items are no longer available. Please refresh your cart.",
                 missingItems: missingIds,
@@ -175,6 +180,7 @@ router.post("/customer", async (req, res) => {
                 .map((id) => productMap.get(id)?.name)
                 .filter(Boolean);
             await client.query("ROLLBACK");
+            console.warn("[orders] items from different restaurant", { restaurantId: tokenData.restaurantId, foreignItems, foreignNames });
             return res.status(400).json({
                 error: "Some items are from a different restaurant. Please refresh your cart.",
                 invalidItems: foreignItems,
@@ -188,6 +194,7 @@ router.post("/customer", async (req, res) => {
                 .map((id) => productMap.get(id)?.name)
                 .filter(Boolean);
             await client.query("ROLLBACK");
+            console.warn("[orders] inactive items detected", { inactiveItems, inactiveNames });
             return res.status(400).json({
                 error: "Some items are no longer available. Please refresh your cart.",
                 inactiveItems,
