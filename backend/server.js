@@ -9,7 +9,8 @@ const orderRoutes = require("./routes/orders");
 const tokenRoutes = require("./routes/tokens");
 const printJobsRoutes = require("./routes/printJobs");
 // const tableRoutes = require("./routes/tables"); // removed in v1
-const usersRouter = require("./routes/users");  // removed in v1
+const usersRouter = require("./routes/users"); // removed in v1
+const { runMigrations } = require("./migrations");
 
 const app = express();
 
@@ -48,4 +49,16 @@ app.use("/api/users", usersRouter);
 // app.get("/api/debug/session", ...)
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+
+async function start() {
+    try {
+        await runMigrations();
+    } catch (err) {
+        console.error("[startup] Failed to run migrations", err);
+        process.exit(1);
+    }
+
+    app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+}
+
+start();

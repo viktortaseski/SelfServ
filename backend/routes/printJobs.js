@@ -12,13 +12,32 @@ function requirePrintAuth(req, res, next) {
 }
 
 router.post("/claim", requirePrintAuth, async (req, res) => {
-    const worker = req.body?.worker || req.ip || "unknown";
+    const rawWorker = req.body?.worker ?? req.body?.workerId ?? req.ip ?? "unknown";
+    const workerLabel = String(rawWorker || "").trim() || "unknown";
+    const workerName = workerLabel.slice(0, 120);
+
+    const claimedByRaw =
+        req.body?.claimedById ??
+        req.body?.employeeId ??
+        (typeof rawWorker === "number" ? rawWorker : undefined);
+
+    let claimedById = null;
+    const candidate = Number(claimedByRaw);
+    if (Number.isInteger(candidate) && candidate > 0) {
+        claimedById = candidate;
+    } else if (typeof rawWorker === "string" && /^\d+$/.test(rawWorker.trim())) {
+        claimedById = Number(rawWorker.trim());
+    }
+
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
         const q = `
       UPDATE print_jobs pj
-         SET status='claimed', claimed_at=now(), claimed_by=$1
+         SET status='claimed',
+             claimed_at=now(),
+             claimed_by=$1,
+             claimed_by_worker=$2
        WHERE pj.id = (
          SELECT id FROM print_jobs
           WHERE status='queued'
@@ -28,7 +47,7 @@ router.post("/claim", requirePrintAuth, async (req, res) => {
        )
       RETURNING id, order_id, payload;
     `;
-        const r = await client.query(q, [worker]);
+        const r = await client.query(q, [claimedById, workerName]);
         await client.query("COMMIT");
         return res.json({ job: r.rows[0] || null });
     } catch (e) {
