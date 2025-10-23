@@ -12,7 +12,18 @@ router.post("/exchange", async (req, res) => {
 
     try {
         const tRes = await pool.query(
-            "SELECT id, name FROM restaurant_tables WHERE token = $1",
+            `
+            SELECT
+                rt.id,
+                rt.name,
+                rt.restaurant_id,
+                r.name AS restaurant_name,
+                r.location AS restaurant_location,
+                r.radius AS restaurant_radius
+            FROM restaurant_tables rt
+            JOIN restaurants r ON r.id = rt.restaurant_id
+            WHERE rt.token = $1
+        `,
             [tableToken]
         );
         if (tRes.rowCount === 0) {
@@ -35,7 +46,14 @@ router.post("/exchange", async (req, res) => {
         return res.json({
             accessToken,
             expiresAt: expiresAt.toISOString(),
-            table: { id: table.id, name: table.name },
+            table: {
+                id: table.id,
+                name: table.name,
+                restaurant_id: table.restaurant_id,
+                restaurant_name: table.restaurant_name,
+                restaurant_location: table.restaurant_location,
+                restaurant_radius: table.restaurant_radius,
+            },
         });
     } catch (err) {
         console.error("POST /api/tokens/exchange error:", err);

@@ -62,6 +62,39 @@ function App() {
 
   const [accessToken, setAccessToken] = useState(null); // short-lived token
   const [tableName, setTableName] = useState(null);
+  const [restaurantGeo, setRestaurantGeo] = useState(null);
+
+  const parseRestaurantGeo = (source) => {
+    if (!source) return null;
+
+    if (typeof source.lat === "number" && typeof source.lng === "number") {
+      const radius = Number(source.radius);
+      return {
+        lat: source.lat,
+        lng: source.lng,
+        radius: Number.isFinite(radius) ? radius : null,
+        restaurantId: source.restaurantId ?? null,
+        name: source.name ?? null,
+      };
+    }
+
+    const locRaw = source.restaurant_location || source.location || null;
+    if (typeof locRaw !== "string") return null;
+    const parts = locRaw.split(",").map((part) => part.trim());
+    if (parts.length !== 2) return null;
+    const lat = parseFloat(parts[0]);
+    const lng = parseFloat(parts[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    const radiusRaw = source.restaurant_radius ?? source.radius;
+    const radius = Number(radiusRaw);
+    return {
+      lat,
+      lng,
+      radius: Number.isFinite(radius) ? radius : null,
+      restaurantId: source.restaurant_id ?? source.restaurantId ?? null,
+      name: source.restaurant_name || source.name || null,
+    };
+  };
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [pillHidden, setPillHidden] = useState(false);
@@ -185,17 +218,25 @@ function App() {
       try {
         const res = await api.post("/tokens/exchange", { tableToken: qrTok });
         const { accessToken, expiresAt, table } = res.data || {};
+        const geo = parseRestaurantGeo(table);
         setAccessToken(accessToken);
         setTableName(table?.name || null);
+        setRestaurantGeo(geo);
 
         localStorage.setItem(
           "accessToken",
-          JSON.stringify({ token: accessToken, exp: expiresAt, tableName: table?.name })
+          JSON.stringify({
+            token: accessToken,
+            exp: expiresAt,
+            tableName: table?.name,
+            restaurantGeo: geo,
+          })
         );
       } catch (e) {
         console.warn("Token exchange failed:", e?.response?.data || e.message);
         setAccessToken(null);
         setTableName(null);
+        setRestaurantGeo(null);
       }
     }
 
@@ -209,6 +250,10 @@ function App() {
           if (parsed?.token && parsed?.exp && new Date(parsed.exp) > new Date()) {
             setAccessToken(parsed.token);
             setTableName(parsed.tableName || null);
+            if (parsed.restaurantGeo) {
+              const storedGeo = parseRestaurantGeo(parsed.restaurantGeo);
+              if (storedGeo) setRestaurantGeo(storedGeo);
+            }
           } else {
             localStorage.removeItem("accessToken");
           }
@@ -412,6 +457,7 @@ function App() {
             removeFromCart={removeFromCart}
             tableToken={accessToken}
             tableName={tableName}
+            restaurantGeo={restaurantGeo}
             clearCart={() => setCart([])}
             notify={toast}
             activeTab={cartTab}

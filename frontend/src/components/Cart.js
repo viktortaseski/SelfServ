@@ -47,6 +47,7 @@ function Cart({
     cart = [],
     tableToken,
     tableName,
+    restaurantGeo = null,
     addToCart,
     removeFromCart,
     clearCart,
@@ -181,7 +182,7 @@ function Cart({
             alert("Missing or expired access token. Please scan the table QR again.");
             return;
         }
-        const allowed = await verifyWithinRestaurant();
+        const allowed = await verifyWithinRestaurant(restaurantGeo);
         if (!allowed) {
             return;
         }

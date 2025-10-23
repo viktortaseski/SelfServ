@@ -1,5 +1,4 @@
-const RESTAURANT_COORDS = { lat: 45.546492, lng: 13.729156 };
-const DELIVERY_RADIUS_METERS = 100;
+const DEFAULT_RADIUS_METERS = 100;
 const GEO_OPTIONS = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
 const deg2rad = (deg) => deg * (Math.PI / 180);
@@ -23,10 +22,41 @@ const getPosition = () =>
         navigator.geolocation.getCurrentPosition(resolve, reject, GEO_OPTIONS)
     );
 
-export async function verifyWithinRestaurant() {
+function normalizeGeoInput(input) {
+    if (!input) return null;
+
+    if (typeof input === "string") {
+        const parts = input.split(",").map((p) => parseFloat(p.trim()));
+        if (parts.length === 2 && parts.every(Number.isFinite)) {
+            return { lat: parts[0], lng: parts[1], radius: DEFAULT_RADIUS_METERS };
+        }
+        return null;
+    }
+
+    const lat = Number(input.lat ?? input.latitude);
+    const lng = Number(input.lng ?? input.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    const radiusRaw = input.radius ?? input.restaurant_radius ?? input.radius_meters;
+    const radius = Number(radiusRaw);
+
+    return {
+        lat,
+        lng,
+        radius: Number.isFinite(radius) && radius > 0 ? radius : DEFAULT_RADIUS_METERS,
+    };
+}
+
+export async function verifyWithinRestaurant(geo) {
     if (!navigator.geolocation) {
         alert("Location services are required to place an order.");
         return false;
+    }
+
+    const center = normalizeGeoInput(geo);
+    if (!center) {
+        // If we don't have location data, don't block ordering.
+        return true;
     }
 
     try {
@@ -35,8 +65,8 @@ export async function verifyWithinRestaurant() {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
         };
-        const distance = distanceInMeters(userPos, RESTAURANT_COORDS);
-        if (distance > DELIVERY_RADIUS_METERS) {
+        const distance = distanceInMeters(userPos, center);
+        if (distance > center.radius) {
             alert("You must be at the restaurant to place an order.");
             return false;
         }
@@ -47,4 +77,3 @@ export async function verifyWithinRestaurant() {
         return false;
     }
 }
-
