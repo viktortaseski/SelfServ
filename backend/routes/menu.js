@@ -187,21 +187,42 @@ async function getCategoryId(client, restaurantId, categoryInput, employeeId) {
         throw new Error("Unable to resolve category");
     }
 
-    try {
-        await client.query(
-            `
-            INSERT INTO restaurant_categories (restaurant_id, category_id)
-            VALUES ($1, $2)
-            ON CONFLICT (restaurant_id, category_id) DO NOTHING
+    const { rowCount: alreadyLinked } = await client.query(
+        `
+        SELECT 1
+        FROM restaurant_categories
+        WHERE restaurant_id = $1
+          AND category_id = $2
         `,
-            [restaurantId, categoryId]
-        );
-    } catch (err) {
-        if (err.code === "P0001") {
-            throw new Error("Restaurant already has maximum categories assigned");
-        }
+        [restaurantId, categoryId]
+    );
+    if (alreadyLinked) {
+        return { categoryId, slug };
+    }
+
+    const { rows: countRows } = await client.query(
+        `
+        SELECT COUNT(*)::int AS cnt
+        FROM restaurant_categories
+        WHERE restaurant_id = $1
+        `,
+        [restaurantId]
+    );
+    const currentCount = Number(countRows[0]?.cnt || 0);
+    if (currentCount >= 4) {
+        const err = new Error("Restaurant already has maximum categories assigned. Choose one of the existing categories.");
+        err.code = "MAX_CATEGORIES";
         throw err;
     }
+
+    await client.query(
+        `
+        INSERT INTO restaurant_categories (restaurant_id, category_id)
+        VALUES ($1, $2)
+        ON CONFLICT (restaurant_id, category_id) DO NOTHING
+    `,
+        [restaurantId, categoryId]
+    );
 
     return { categoryId, slug };
 }
@@ -608,6 +629,9 @@ router.post("/", requireAdmin, async (req, res) => {
         if (err && err.code === "23505") {
             return res.status(400).json({ error: "Item already exists" });
         }
+        if (err && err.code === "MAX_CATEGORIES") {
+            return res.status(400).json({ error: err.message });
+        }
         if (err && typeof err.message === "string") {
             const lower = err.message.toLowerCase();
             if (
@@ -738,6 +762,9 @@ router.put("/:id", requireAdmin, async (req, res) => {
         return res.json({ success: true, item: formatted });
     } catch (err) {
         await client.query("ROLLBACK").catch(() => { });
+        if (err && err.code === "MAX_CATEGORIES") {
+            return res.status(400).json({ error: err.message });
+        }
         if (err && typeof err.message === "string") {
             const lower = err.message.toLowerCase();
             if (
