@@ -5,6 +5,8 @@ import MenuItem from "./menu/MenuItem";
 import PickCard from "./menu/PickCard";
 import { t } from "../i18n";
 
+const FALLBACK_CATEGORIES = ["coffee", "drinks", "food", "desserts", "other"];
+
 function Menu({
     addToCart,
     removeFromCart,
@@ -16,6 +18,7 @@ function Menu({
 }) {
     const [items, setItems] = useState([]);
     const [topPicks, setTopPicks] = useState([]);
+    const [availableCategories, setAvailableCategories] = useState([]);
 
     const [localSearch, setLocalSearch] = useState("");
     const hasExternalSearch = typeof search === "string";
@@ -63,7 +66,34 @@ function Menu({
 
     // Load entire menu once (client filters by category/search)
     useEffect(() => {
-        api.get("/menu").then((res) => setItems(res.data));
+        api
+            .get("/menu")
+            .then((res) => {
+                const data = Array.isArray(res.data) ? res.data : [];
+                const normalized = data.map((it) => ({
+                    ...it,
+                    price: Number(it.price) || 0,
+                    category: it.category || "other",
+                }));
+                setItems(normalized);
+            })
+            .catch(() => setItems([]));
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+        api
+            .get("/menu/categories")
+            .then((res) => {
+                if (!mounted) return;
+                const rows = Array.isArray(res.data) ? res.data : [];
+                const slugs = [...new Set(rows.map((row) => row?.slug).filter(Boolean))];
+                setAvailableCategories(slugs);
+            })
+            .catch(() => setAvailableCategories([]));
+        return () => {
+            mounted = false;
+        };
     }, []);
 
     // Load Top Picks for the active category (most-ordered 8)
@@ -71,13 +101,18 @@ function Menu({
         if (!category) return;
         api
             .get("/menu/top-picks", { params: { category, limit: 8 } })
-            .then((res) => setTopPicks(res.data))
+            .then((res) => setTopPicks(Array.isArray(res.data) ? res.data : []))
             .catch(() => setTopPicks([]));
     }, [category]);
 
+    const derivedCategories = useMemo(() => {
+        const unique = [...new Set(availableCategories.filter(Boolean))];
+        return unique.length ? unique : FALLBACK_CATEGORIES;
+    }, [availableCategories]);
+
     const categoriesToRender = useMemo(
-        () => (category ? [category] : ["coffee", "drinks", "food", "desserts"]),
-        [category]
+        () => (category ? [category] : derivedCategories),
+        [category, derivedCategories]
     );
 
     const perCategoryLimit = category ? 9999 : 4;

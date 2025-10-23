@@ -104,6 +104,16 @@ export function fmtMKD(n) {
     return `${x.toLocaleString("mk-MK")} MKD`;
 }
 
+export async function apiFetchCategories() {
+    try {
+        const { data } = await api.get(`/menu/categories`);
+        if (!Array.isArray(data)) return [];
+        return data;
+    } catch {
+        return [];
+    }
+}
+
 // --- Admin: create menu item ---
 export async function apiCreateMenuItem({ name, price, category, imageDataUrl }) {
     const token = getToken();
@@ -125,6 +135,7 @@ export async function apiListMenuItems({ search, category, minPrice, maxPrice } 
     const token = getToken();
     if (!token) throw new Error("No token");
     const params = new URLSearchParams();
+    params.set("includeInactive", "true");
     if (search) params.set("search", search);
     if (category) params.set("category", category);
     if (minPrice != null && minPrice !== "") params.set("minPrice", String(minPrice));

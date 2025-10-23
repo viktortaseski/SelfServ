@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { apiCreateMenuItem } from "./dashboardApi";
+import { useEffect, useMemo, useState } from "react";
+import { apiCreateMenuItem, apiFetchCategories } from "./dashboardApi";
 import "./dashboard.css";
 
 function slugify(str) {
@@ -13,6 +13,22 @@ function slugify(str) {
         .toLowerCase();
 }
 
+function humanizeSlug(slug) {
+    if (!slug) return "";
+    return slug
+        .split("-")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+}
+
+const FALLBACK_CATEGORIES = [
+    { slug: "other", name: "Other" },
+    { slug: "coffee", name: "Coffee" },
+    { slug: "drinks", name: "Drinks" },
+    { slug: "food", name: "Food" },
+    { slug: "desserts", name: "Desserts" },
+];
+
 function ItemUpload() {
     const [name, setName] = useState("");
     const [price, setPrice] = useState("");
@@ -21,6 +37,48 @@ function ItemUpload() {
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState("");
     const [ok, setOk] = useState("");
+    const [serverCategories, setServerCategories] = useState([]);
+
+    useEffect(() => {
+        let mounted = true;
+        apiFetchCategories()
+            .then((rows) => {
+                if (!mounted) return;
+                if (Array.isArray(rows) && rows.length) {
+                    setServerCategories(
+                        rows
+                            .map((row) => ({
+                                slug: row.slug,
+                                name: row.name || humanizeSlug(row.slug),
+                            }))
+                            .filter((row) => row.slug)
+                    );
+                }
+            })
+            .catch(() => { /* ignore */ });
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const categoryOptions = useMemo(() => {
+        if (!serverCategories.length) return FALLBACK_CATEGORIES;
+        const map = new Map();
+        serverCategories.forEach((cat) => {
+            if (cat?.slug) map.set(cat.slug, cat);
+        });
+        FALLBACK_CATEGORIES.forEach((cat) => {
+            if (!map.has(cat.slug)) map.set(cat.slug, cat);
+        });
+        return Array.from(map.values());
+    }, [serverCategories]);
+
+    useEffect(() => {
+        if (!categoryOptions.length) return;
+        if (!categoryOptions.some((opt) => opt.slug === category)) {
+            setCategory(categoryOptions[0].slug);
+        }
+    }, [categoryOptions, category]);
 
     const onFile = (e) => {
         const f = e.target.files?.[0] || null;
@@ -86,11 +144,11 @@ function ItemUpload() {
                 <label className="form-label">
                     Category
                     <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
-                        <option value="other">other</option>
-                        <option value="coffee">coffee</option>
-                        <option value="drinks">drinks</option>
-                        <option value="food">food</option>
-                        <option value="desserts">desserts</option>
+                        {categoryOptions.map((opt) => (
+                            <option key={opt.slug} value={opt.slug}>
+                                {opt.name}
+                            </option>
+                        ))}
                     </select>
                 </label>
                 <label className="form-label">

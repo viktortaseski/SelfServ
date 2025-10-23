@@ -6,6 +6,7 @@ import {
     apiDeleteMenuItem,
     apiAddItemToMenu,
     apiRemoveItemFromMenu,
+    apiFetchCategories,
     fmtMKD,
 } from "./dashboardApi";
 import "./dashboard.css";
@@ -30,6 +31,14 @@ function slugify(str) {
         .toLowerCase();
 }
 
+function humanizeSlug(slug) {
+    if (!slug) return "";
+    return slug
+        .split("-")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+}
+
 function MenuManager() {
     const [items, setItems] = useState([]);
     const [search, setSearch] = useState("");
@@ -37,6 +46,7 @@ function MenuManager() {
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
     const [activeSection, setActiveSection] = useState("menu"); // "menu" | "all"
+    const [serverCategories, setServerCategories] = useState([]);
 
     // Create form state
     const [name, setName] = useState("");
@@ -70,15 +80,101 @@ function MenuManager() {
     const load = useCallback(async () => {
         try {
             const data = await apiListMenuItems();
-            const normalized = (Array.isArray(data) ? data : []).map((it) => ({
-                ...it,
-                isOnMenu: Boolean(it.is_on_menu),
-            }));
+            const normalized = (Array.isArray(data) ? data : []).map((it) => {
+                const active = Boolean(it.is_active ?? it.is_on_menu);
+                return {
+                    ...it,
+                    category: it.category || "other",
+                    isActive: active,
+                    isOnMenu: active,
+                };
+            });
             setItems(normalized);
         } catch { }
     }, []);
 
     useEffect(() => { load(); }, [load]);
+
+    useEffect(() => {
+        let mounted = true;
+        apiFetchCategories()
+            .then((rows) => {
+                if (!mounted) return;
+                if (Array.isArray(rows) && rows.length) {
+                    const mapped = rows
+                        .map((row) => ({
+                            slug: row?.slug,
+                            name: row?.name || CATEGORY_LABELS[row?.slug] || humanizeSlug(row?.slug),
+                        }))
+                        .filter((row) => row.slug);
+                    setServerCategories(mapped);
+                }
+            })
+            .catch(() => { /* ignore */ });
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const categoryOptions = useMemo(() => {
+        const fallback = CATEGORY_ORDER.map((slug) => ({
+            slug,
+            name: CATEGORY_LABELS[slug] || humanizeSlug(slug),
+        }));
+        if (!serverCategories.length) {
+            return fallback;
+        }
+        const map = new Map();
+        serverCategories.forEach((cat) => {
+            if (cat?.slug) {
+                map.set(cat.slug, {
+                    slug: cat.slug,
+                    name: cat.name || CATEGORY_LABELS[cat.slug] || humanizeSlug(cat.slug),
+                });
+            }
+        });
+        fallback.forEach((cat) => {
+            if (!map.has(cat.slug)) map.set(cat.slug, cat);
+        });
+        if (!map.has("other")) {
+            map.set("other", { slug: "other", name: CATEGORY_LABELS.other });
+        }
+        return Array.from(map.values());
+    }, [serverCategories]);
+
+    const categoryLabelMap = useMemo(() => {
+        const map = {};
+        categoryOptions.forEach((cat) => {
+            map[cat.slug] = cat.name || humanizeSlug(cat.slug);
+        });
+        return map;
+    }, [categoryOptions]);
+
+    const categorySortOrder = useMemo(
+        () => categoryOptions.map((cat) => cat.slug),
+        [categoryOptions]
+    );
+
+    useEffect(() => {
+        if (!categoryOptions.length) return;
+        if (!categoryOptions.some((opt) => opt.slug === category)) {
+            setCategory(categoryOptions[0].slug);
+        }
+    }, [categoryOptions, category]);
+
+    useEffect(() => {
+        if (!categoryOptions.length) return;
+        if (editing && !categoryOptions.some((opt) => opt.slug === eCategory)) {
+            setECategory(categoryOptions[0].slug);
+        }
+    }, [categoryOptions, editing, eCategory]);
+
+    useEffect(() => {
+        if (!categoryOptions.length) return;
+        if (filterCategory && !categoryOptions.some((opt) => opt.slug === filterCategory)) {
+            setFilterCategory("");
+        }
+    }, [categoryOptions, filterCategory]);
 
     const filteredItems = useMemo(() => {
         const min = minPrice !== "" ? Number(minPrice) : null;
@@ -95,7 +191,7 @@ function MenuManager() {
     }, [items, filterCategory, minPrice, maxPrice, search]);
 
     const currentMenu = useMemo(
-        () => items.filter((it) => it.isOnMenu),
+        () => items.filter((it) => it.isActive),
         [items]
     );
 
@@ -109,19 +205,19 @@ function MenuManager() {
 
         const sorted = Array.from(groups.entries()).map(([cat, list]) => ({
             category: cat,
-            label: CATEGORY_LABELS[cat] || (cat ? cat : "Other"),
+            label: categoryLabelMap[cat] || (cat ? humanizeSlug(cat) : "Other"),
             items: list.sort((a, b) => (a.name || "").localeCompare(b.name || "")),
         }));
 
         return sorted.sort((a, b) => {
-            const idxA = CATEGORY_ORDER.indexOf(a.category);
-            const idxB = CATEGORY_ORDER.indexOf(b.category);
+            const idxA = categorySortOrder.indexOf(a.category);
+            const idxB = categorySortOrder.indexOf(b.category);
             const orderA = idxA === -1 ? Number.MAX_SAFE_INTEGER : idxA;
             const orderB = idxB === -1 ? Number.MAX_SAFE_INTEGER : idxB;
             if (orderA !== orderB) return orderA - orderB;
             return a.label.localeCompare(b.label);
         });
-    }, [currentMenu]);
+    }, [currentMenu, categoryLabelMap, categorySortOrder]);
 
     const handleCreate = async (e) => {
         e.preventDefault();
@@ -191,7 +287,11 @@ function MenuManager() {
         try {
             const res = await apiDeleteMenuItem(it.id);
             if (!res?.success) throw new Error(res?.error || "Failed to delete item");
-            setOk("Item deleted");
+            const msg =
+                res?.deleted === false && res?.note
+                    ? res.note
+                    : "Item deleted";
+            setOk(msg);
             await load();
         } catch (e2) {
             setErr(e2?.message || "Delete failed");
@@ -245,12 +345,16 @@ function MenuManager() {
                     </label>
                     <label className="form-label">
                         Category
-                        <select className="input" value={editing ? eCategory : category} onChange={(e) => (editing ? setECategory(e.target.value) : setCategory(e.target.value))}>
-                            <option value="other">other</option>
-                            <option value="coffee">coffee</option>
-                            <option value="drinks">drinks</option>
-                            <option value="food">food</option>
-                            <option value="desserts">desserts</option>
+                        <select
+                            className="input"
+                            value={editing ? eCategory : category}
+                            onChange={(e) => (editing ? setECategory(e.target.value) : setCategory(e.target.value))}
+                        >
+                            {categoryOptions.map((opt) => (
+                                <option key={opt.slug} value={opt.slug}>
+                                    {opt.name}
+                                </option>
+                            ))}
                         </select>
                     </label>
                     <label className="form-label">
@@ -347,11 +451,11 @@ function MenuManager() {
                             Category
                             <select className="input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
                                 <option value="">(any)</option>
-                                <option value="other">other</option>
-                                <option value="coffee">coffee</option>
-                                <option value="drinks">drinks</option>
-                                <option value="food">food</option>
-                                <option value="desserts">desserts</option>
+                                {categoryOptions.map((opt) => (
+                                    <option key={`filter-${opt.slug}`} value={opt.slug}>
+                                        {opt.name}
+                                    </option>
+                                ))}
                             </select>
                         </label>
                         <label className="form-label">
@@ -371,7 +475,7 @@ function MenuManager() {
                     ) : (
                         <div className="grid" style={{ gap: 8 }}>
                             {filteredItems.map((it) => {
-                                const onMenu = Boolean(it.isOnMenu);
+                                const onMenu = Boolean(it.isActive);
                                 return (
                                     <div key={it.id} className="month-row" style={{ gridTemplateColumns: '60px 1fr 120px 140px 240px' }}>
                                         <div>
@@ -384,7 +488,7 @@ function MenuManager() {
                                             </div>
                                         </div>
                                         <div>{fmtMKD(it.price)}</div>
-                                        <div className="muted">{it.category}</div>
+                                        <div className="muted">{categoryLabelMap[it.category] || humanizeSlug(it.category) || "Other"}</div>
                                         <div className="row gap-8">
                                             <button
                                                 className={`btn ${onMenu ? "btn-danger" : "btn-primary"}`}

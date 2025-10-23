@@ -19,12 +19,17 @@ function Stat({ label, value }) {
 
 function OrderCard({ order }) {
     const [open, setOpen] = useState(false);
-    const badgeClass =
-        order.status === "completed"
-            ? "badge badge--completed"
-            : order.status === "canceled"
-                ? "badge badge--canceled"
-                : "badge badge--pending";
+    const statusToBadge = {
+        open: "badge badge--open",
+        paid: "badge badge--paid",
+        canceled: "badge badge--canceled",
+        void: "badge badge--void",
+    };
+    const badgeClass = statusToBadge[order.status] || "badge";
+    const statusLabel =
+        order.status && typeof order.status === "string"
+            ? order.status.charAt(0).toUpperCase() + order.status.slice(1)
+            : "Open";
 
     return (
         <div className="order-card">
@@ -34,7 +39,7 @@ function OrderCard({ order }) {
                     <span className="muted">{new Date(order.created_at).toLocaleString()}</span>
                 </div>
                 <div className="row gap-10">
-                    <span className={badgeClass}>{order.status}</span>
+                    <span className={badgeClass}>{statusLabel}</span>
                     <strong>{fmtMKD(Number(order.subtotal || 0) + Number(order.tip || 0))}</strong>
                 </div>
             </div>
@@ -150,9 +155,10 @@ export default function Dashboard() {
                         Status
                         <select value={status} onChange={(e) => setStatus(e.target.value)} className="input">
                             <option value="">(any)</option>
-                            <option value="pending">pending</option>
-                            <option value="completed">completed</option>
+                            <option value="open">open</option>
+                            <option value="paid">paid</option>
                             <option value="canceled">canceled</option>
+                            <option value="void">void</option>
                         </select>
                     </label>
 

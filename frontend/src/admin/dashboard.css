@@ -305,7 +305,12 @@
     display: inline-block;
 }
 
-.badge--completed {
+.badge--open {
+    background: #eef2ff;
+    color: #3730a3;
+}
+
+.badge--paid {
     background: #e6ffed;
     color: #065f46;
 }
@@ -315,7 +320,7 @@
     color: #991b1b;
 }
 
-.badge--pending {
-    background: #eef2ff;
-    color: #3730a3;
+.badge--void {
+    background: #f3f4f6;
+    color: #4b5563;
 }
