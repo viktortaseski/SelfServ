@@ -1,6 +1,32 @@
 // migrations.js
 const pool = require("./db");
 
+async function ensureRestaurantPrinterTable() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS restaurant_printer (
+            id BIGSERIAL PRIMARY KEY,
+            restaurant_id BIGINT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+            label TEXT NOT NULL,
+            queue_name TEXT NOT NULL,
+            api_base TEXT NOT NULL,
+            api_token TEXT NOT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_restaurant_printer_api_token
+            ON restaurant_printer (api_token)
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_restaurant_printer_restaurant_id
+            ON restaurant_printer (restaurant_id)
+    `);
+}
+
 async function addClaimedByWorkerColumn() {
     try {
         await pool.query(
@@ -21,6 +47,7 @@ async function addClaimedByWorkerColumn() {
 }
 
 async function runMigrations() {
+    await ensureRestaurantPrinterTable();
     await addClaimedByWorkerColumn();
 }
 
