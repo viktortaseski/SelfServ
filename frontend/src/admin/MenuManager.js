@@ -130,29 +130,13 @@ function MenuManager({ user }) {
     }, [restaurantId]);
 
     const categoryOptions = useMemo(() => {
-        const fallback = CATEGORY_ORDER.map((slug) => ({
+        if (serverCategories.length) {
+            return serverCategories;
+        }
+        return CATEGORY_ORDER.map((slug) => ({
             slug,
             name: CATEGORY_LABELS[slug] || humanizeSlug(slug),
         }));
-        if (!serverCategories.length) {
-            return fallback;
-        }
-        const map = new Map();
-        serverCategories.forEach((cat) => {
-            if (cat?.slug) {
-                map.set(cat.slug, {
-                    slug: cat.slug,
-                    name: cat.name || CATEGORY_LABELS[cat.slug] || humanizeSlug(cat.slug),
-                });
-            }
-        });
-        fallback.forEach((cat) => {
-            if (!map.has(cat.slug)) map.set(cat.slug, cat);
-        });
-        if (!map.has("other")) {
-            map.set("other", { slug: "other", name: CATEGORY_LABELS.other });
-        }
-        return Array.from(map.values());
     }, [serverCategories]);
 
     const categoryLabelMap = useMemo(() => {
