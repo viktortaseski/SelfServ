@@ -72,8 +72,8 @@ async function consumeAccessToken(client, accessToken) {
         [accessToken]
     );
     return {
-        tableId: row.table_id,
-        restaurantId: row.restaurant_id,
+        tableId: Number(row.table_id),
+        restaurantId: Number(row.restaurant_id),
         tableName: row.table_name,
     };
 }
