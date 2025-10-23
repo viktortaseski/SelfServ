@@ -48,7 +48,7 @@ function Cart({
     tableToken,
     tableName,
     restaurantGeo = null,
-    setCartItems,
+    setCartItems = null,
     addToCart,
     removeFromCart,
     clearCart,
@@ -278,6 +278,14 @@ function Cart({
                 ...(Array.isArray(data.inactiveNames) ? data.inactiveNames : []),
                 ...(Array.isArray(data.invalidNames) ? data.invalidNames : []),
             ].filter(Boolean);
+            if (!names.length && removedIds.length) {
+                const idSet = new Set(removedIds.map((raw) => Number(raw)));
+                cart.forEach((item) => {
+                    if (idSet.has(Number(item.id)) && item.name) {
+                        names.push(item.name);
+                    }
+                });
+            }
             let msg =
                 data.error ||
                 err?.message ||

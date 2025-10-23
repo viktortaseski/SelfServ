@@ -15,6 +15,7 @@ function Menu({
     category,
     setCategory,
     notify,
+    onMenuLoaded,
 }) {
     const [items, setItems] = useState([]);
     const [topPicks, setTopPicks] = useState([]);
@@ -72,13 +73,20 @@ function Menu({
                 const data = Array.isArray(res.data) ? res.data : [];
                 const normalized = data.map((it) => ({
                     ...it,
+                    id: Number(it.id),
                     price: Number(it.price) || 0,
                     category: it.category || "other",
                 }));
                 setItems(normalized);
+                if (typeof onMenuLoaded === "function") {
+                    onMenuLoaded(normalized);
+                }
             })
-            .catch(() => setItems([]));
-    }, []);
+            .catch(() => {
+                setItems([]);
+                if (typeof onMenuLoaded === "function") onMenuLoaded([]);
+            });
+    }, [onMenuLoaded]);
 
     useEffect(() => {
         let mounted = true;

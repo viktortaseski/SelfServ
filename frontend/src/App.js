@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
 import Notification from "./components/Notification";
@@ -220,6 +220,16 @@ function App() {
     try { sessionStorage.setItem("cart", JSON.stringify(cart)); } catch { }
   }, [cart]);
 
+  const handleMenuLoaded = useCallback((items) => {
+    if (!Array.isArray(items)) return;
+    const validIds = new Set(
+      items
+        .map((it) => Number(it.id))
+        .filter((id) => Number.isFinite(id))
+    );
+    setCart((prev) => prev.filter((item) => validIds.has(Number(item.id))));
+  }, []);
+
   // Token exchange on load (customer)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -250,6 +260,7 @@ function App() {
         setAccessToken(null);
         setTableName(null);
         setRestaurantGeo(null);
+        setRestaurantId(null);
       }
     }
 
@@ -272,6 +283,10 @@ function App() {
             }
           } else {
             localStorage.removeItem("accessToken");
+            setAccessToken(null);
+            setTableName(null);
+            setRestaurantGeo(null);
+            setRestaurantId(null);
           }
         }
       } catch { }
@@ -463,6 +478,7 @@ function App() {
             category={category}
             setCategory={setCategoryFromScroll}
             search={searchText}
+            onMenuLoaded={handleMenuLoaded}
           />
         )}
 
