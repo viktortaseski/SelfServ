@@ -467,7 +467,6 @@ router.get("/admin", requireAdmin, async (req, res) => {
                 rp.img_url,
                 rp.is_active,
                 rp.sku,
-                rp.created_at,
                 p.name,
                 p.description,
                 c.slug AS category,
@@ -476,7 +475,7 @@ router.get("/admin", requireAdmin, async (req, res) => {
             JOIN products p ON p.id = rp.product_id
             JOIN categories c ON c.id = rp.category_id
             ${whereSql}
-            ORDER BY rp.created_at DESC, rp.id DESC
+            ORDER BY rp.id DESC
         `,
             params
         );
