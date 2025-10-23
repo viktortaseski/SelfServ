@@ -48,6 +48,7 @@ function Cart({
     tableToken,
     tableName,
     restaurantGeo = null,
+    setCartItems,
     addToCart,
     removeFromCart,
     clearCart,
@@ -209,6 +210,17 @@ function Cart({
             total: totalVal,
         });
 
+        const removeInvalidCartItems = (ids = []) => {
+            if (!Array.isArray(ids) || !ids.length || typeof setCartItems !== "function") return;
+            const idSet = new Set(ids.map((raw) => Number(raw)));
+            setCartItems((prev) => prev.filter((item) => !idSet.has(Number(item.id))));
+            setItemNotes((prev) => {
+                const next = { ...prev };
+                idSet.forEach((id) => delete next[id]);
+                return next;
+            });
+        };
+
         try {
 
             const payload = {
@@ -252,8 +264,27 @@ function Cart({
 
             localStorage.removeItem("accessToken");
         } catch (err) {
-            const msg =
-                err?.response?.data?.error || err?.message || "Something went wrong";
+            const data = err?.response?.data || {};
+            const removedIds = [
+                ...(Array.isArray(data.missingItems) ? data.missingItems : []),
+                ...(Array.isArray(data.inactiveItems) ? data.inactiveItems : []),
+                ...(Array.isArray(data.invalidItems) ? data.invalidItems : []),
+            ];
+            if (removedIds.length) {
+                removeInvalidCartItems(removedIds);
+            }
+            const names = [
+                ...(Array.isArray(data.missingNames) ? data.missingNames : []),
+                ...(Array.isArray(data.inactiveNames) ? data.inactiveNames : []),
+                ...(Array.isArray(data.invalidNames) ? data.invalidNames : []),
+            ].filter(Boolean);
+            let msg =
+                data.error ||
+                err?.message ||
+                "Something went wrong";
+            if (names.length) {
+                msg = `${msg} (${names.join(", ")})`;
+            }
             console.error(err);
             if (typeof notify === "function") notify(msg, 6000);
             else alert(msg);

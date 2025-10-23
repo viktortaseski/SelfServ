@@ -165,24 +165,33 @@ router.post("/customer", async (req, res) => {
             return res.status(400).json({
                 error: "Some items are no longer available. Please refresh your cart.",
                 missingItems: missingIds,
+                missingNames: [],
             });
         }
 
         const foreignItems = ids.filter((id) => productMap.get(id)?.restaurant_id !== tokenData.restaurantId);
         if (foreignItems.length) {
+            const foreignNames = foreignItems
+                .map((id) => productMap.get(id)?.name)
+                .filter(Boolean);
             await client.query("ROLLBACK");
             return res.status(400).json({
                 error: "Some items are from a different restaurant. Please refresh your cart.",
                 invalidItems: foreignItems,
+                invalidNames: foreignNames,
             });
         }
 
         const inactiveItems = ids.filter((id) => !productMap.get(id)?.is_active);
         if (inactiveItems.length) {
+            const inactiveNames = inactiveItems
+                .map((id) => productMap.get(id)?.name)
+                .filter(Boolean);
             await client.query("ROLLBACK");
             return res.status(400).json({
                 error: "Some items are no longer available. Please refresh your cart.",
                 inactiveItems,
+                inactiveNames,
             });
         }
 

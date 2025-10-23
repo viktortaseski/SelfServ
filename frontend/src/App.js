@@ -63,6 +63,8 @@ function App() {
   const [accessToken, setAccessToken] = useState(null); // short-lived token
   const [tableName, setTableName] = useState(null);
   const [restaurantGeo, setRestaurantGeo] = useState(null);
+  const [restaurantId, setRestaurantId] = useState(null);
+  const prevRestaurantId = useRef(null);
 
   const parseRestaurantGeo = (source) => {
     if (!source) return null;
@@ -127,10 +129,10 @@ function App() {
   useEffect(() => {
     const onScroll = () => {
       // 👇 Freeze navbar state in cart/order view
-      if (view === "cart") {
-        setIsCollapsed(false);
-        return;
-      }
+    if (view === "cart") {
+      setIsCollapsed(false);
+      return;
+    }
 
       const y = getScrollY();
       setIsCollapsed(y > 30);
@@ -165,6 +167,15 @@ function App() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    const prev = prevRestaurantId.current;
+    if (prev && prev !== restaurantId) {
+      setCart([]);
+    }
+    prevRestaurantId.current = restaurantId;
+  }, [restaurantId]);
 
   useEffect(() => {
     if (view !== "cart") {
@@ -222,6 +233,7 @@ function App() {
         setAccessToken(accessToken);
         setTableName(table?.name || null);
         setRestaurantGeo(geo);
+        setRestaurantId(table?.restaurant_id ?? null);
 
         localStorage.setItem(
           "accessToken",
@@ -230,6 +242,7 @@ function App() {
             exp: expiresAt,
             tableName: table?.name,
             restaurantGeo: geo,
+            restaurantId: table?.restaurant_id ?? null,
           })
         );
       } catch (e) {
@@ -253,6 +266,9 @@ function App() {
             if (parsed.restaurantGeo) {
               const storedGeo = parseRestaurantGeo(parsed.restaurantGeo);
               if (storedGeo) setRestaurantGeo(storedGeo);
+            }
+            if (parsed.restaurantId) {
+              setRestaurantId(parsed.restaurantId);
             }
           } else {
             localStorage.removeItem("accessToken");
@@ -458,6 +474,7 @@ function App() {
             tableToken={accessToken}
             tableName={tableName}
             restaurantGeo={restaurantGeo}
+            setCartItems={setCart}
             clearCart={() => setCart([])}
             notify={toast}
             activeTab={cartTab}
