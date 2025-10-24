@@ -68,6 +68,14 @@ async function requirePrintAuth(req, res, next) {
         }
 
         const printer = printerRes.rows[0];
+        const printerId = Number(printer.id);
+        const printerRestaurantId = Number(printer.restaurant_id);
+        if (Number.isFinite(printerId)) {
+            printer.id = printerId;
+        }
+        if (Number.isFinite(printerRestaurantId)) {
+            printer.restaurant_id = printerRestaurantId;
+        }
         if (!printer.api_base) {
             printer.api_base = process.env.API_BASE || "";
         }
