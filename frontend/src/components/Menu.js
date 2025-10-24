@@ -16,6 +16,7 @@ function Menu({
     setCategory,
     notify,
     onMenuLoaded,
+    restaurantId,
 }) {
     const [items, setItems] = useState([]);
     const [topPicks, setTopPicks] = useState([]);
@@ -67,9 +68,17 @@ function Menu({
 
     // Load entire menu once (client filters by category/search)
     useEffect(() => {
+        let cancelled = false;
+        const params = {};
+        const parsedRestaurantId = Number(restaurantId);
+        if (Number.isFinite(parsedRestaurantId) && parsedRestaurantId > 0) {
+            params.restaurantId = parsedRestaurantId;
+        }
+
         api
-            .get("/menu")
+            .get("/menu", { params })
             .then((res) => {
+                if (cancelled) return;
                 const data = Array.isArray(res.data) ? res.data : [];
                 const normalized = data.map((it) => ({
                     ...it,
@@ -83,15 +92,26 @@ function Menu({
                 }
             })
             .catch(() => {
+                if (cancelled) return;
                 setItems([]);
                 if (typeof onMenuLoaded === "function") onMenuLoaded([]);
             });
-    }, [onMenuLoaded]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [onMenuLoaded, restaurantId]);
 
     useEffect(() => {
         let mounted = true;
+        const params = {};
+        const parsedRestaurantId = Number(restaurantId);
+        if (Number.isFinite(parsedRestaurantId) && parsedRestaurantId > 0) {
+            params.restaurantId = parsedRestaurantId;
+        }
+
         api
-            .get("/menu/categories")
+            .get("/menu/categories", { params })
             .then((res) => {
                 if (!mounted) return;
                 const rows = Array.isArray(res.data) ? res.data : [];
@@ -102,16 +122,31 @@ function Menu({
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [restaurantId]);
 
     // Load Top Picks for the active category (most-ordered 8)
     useEffect(() => {
         if (!category) return;
+        let cancelled = false;
+        const params = { category, limit: 8 };
+        const parsedRestaurantId = Number(restaurantId);
+        if (Number.isFinite(parsedRestaurantId) && parsedRestaurantId > 0) {
+            params.restaurantId = parsedRestaurantId;
+        }
         api
-            .get("/menu/top-picks", { params: { category, limit: 8 } })
-            .then((res) => setTopPicks(Array.isArray(res.data) ? res.data : []))
-            .catch(() => setTopPicks([]));
-    }, [category]);
+            .get("/menu/top-picks", { params })
+            .then((res) => {
+                if (cancelled) return;
+                setTopPicks(Array.isArray(res.data) ? res.data : []);
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setTopPicks([]);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [category, restaurantId]);
 
     const derivedCategories = useMemo(() => {
         const unique = [...new Set(availableCategories.filter(Boolean))];

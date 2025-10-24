@@ -4,13 +4,39 @@ const pool = require("../db");
 const crypto = require("crypto");
 
 
+function parseRestaurantId(raw) {
+    if (raw == null) return null;
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return null;
+    return num > 0 ? num : null;
+}
+
 router.post("/exchange", async (req, res) => {
-    const { tableToken } = req.body || {};
+    const {
+        tableToken,
+        restaurantId: bodyRestaurantId,
+        restaurant_id: bodyRestaurantIdSnake,
+    } = req.body || {};
+
     if (!tableToken) {
         return res.status(400).json({ error: "tableToken is required" });
     }
 
+    const requestedRestaurantId =
+        parseRestaurantId(bodyRestaurantId) ??
+        parseRestaurantId(bodyRestaurantIdSnake) ??
+        parseRestaurantId(req?.query?.restaurantId) ??
+        parseRestaurantId(req?.query?.restaurant_id);
+
     try {
+        const conditions = ["rt.token = $1"];
+        const params = [tableToken];
+
+        if (requestedRestaurantId != null) {
+            conditions.push(`rt.restaurant_id = $${params.length + 1}`);
+            params.push(requestedRestaurantId);
+        }
+
         const tRes = await pool.query(
             `
             SELECT
@@ -22,9 +48,9 @@ router.post("/exchange", async (req, res) => {
                 r.radius AS restaurant_radius
             FROM restaurant_tables rt
             JOIN restaurants r ON r.id = rt.restaurant_id
-            WHERE rt.token = $1
+            WHERE ${conditions.join(" AND ")}
         `,
-            [tableToken]
+            params
         );
         if (tRes.rowCount === 0) {
             return res.status(404).json({ error: "Invalid table token" });

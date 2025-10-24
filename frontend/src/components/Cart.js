@@ -48,6 +48,7 @@ function Cart({
     tableToken,
     tableName,
     restaurantGeo = null,
+    restaurantId = null,
     setCartItems = null,
     addToCart,
     removeFromCart,
@@ -119,8 +120,14 @@ function Cart({
 
     useEffect(() => {
         let mounted = true;
+        setSuggestions([]);
+        const params = {};
+        const parsedRestaurantId = Number(restaurantId);
+        if (Number.isFinite(parsedRestaurantId) && parsedRestaurantId > 0) {
+            params.restaurantId = parsedRestaurantId;
+        }
         api
-            .get("/menu")
+            .get("/menu", { params })
             .then((res) => {
                 if (!mounted) return;
                 const all = Array.isArray(res.data) ? res.data : [];
@@ -133,11 +140,14 @@ function Cart({
                 }
                 setSuggestions(picked.slice(0, 3));
             })
-            .catch(() => setSuggestions([]));
+            .catch(() => {
+                if (!mounted) return;
+                setSuggestions([]);
+            });
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [restaurantId]);
 
     const subtotal = useMemo(
         () =>

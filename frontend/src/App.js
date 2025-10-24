@@ -21,6 +21,15 @@ const FIRST_CAT = CATS[0];
 const LAST_CAT = CATS[CATS.length - 1];
 const ACTIVE_CAT_KEY = "activeCategory";
 
+const parseRestaurantIdFromRaw = (raw) => {
+  if (raw == null) return null;
+  const str = String(raw).trim();
+  if (!str) return null;
+  const num = Number(str);
+  if (!Number.isFinite(num) || num <= 0) return null;
+  return num;
+};
+
 function App() {
 
   const [lang, _setLang] = useState(detectLang);
@@ -63,7 +72,16 @@ function App() {
   const [accessToken, setAccessToken] = useState(null); // short-lived token
   const [tableName, setTableName] = useState(null);
   const [restaurantGeo, setRestaurantGeo] = useState(null);
-  const [restaurantId, setRestaurantId] = useState(null);
+  const [restaurantId, setRestaurantId] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const raw =
+        params.get("restaurant_id") ?? params.get("restaurantId");
+      return parseRestaurantIdFromRaw(raw);
+    } catch {
+      return null;
+    }
+  });
   const prevRestaurantId = useRef(null);
 
   const parseRestaurantGeo = (source) => {
@@ -234,16 +252,40 @@ function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const qrToken = urlParams.get("token");
+    const rawRestaurantParam =
+      urlParams.get("restaurant_id") ?? urlParams.get("restaurantId");
+    const urlRestaurantId = parseRestaurantIdFromRaw(rawRestaurantParam);
+    if (urlRestaurantId && urlRestaurantId !== restaurantId) {
+      setRestaurantId(urlRestaurantId);
+    }
 
-    async function exchange(qrTok) {
+    const resolvedStateRestaurantId = parseRestaurantIdFromRaw(restaurantId);
+
+    async function exchange(qrTok, requestedRestaurantId) {
+      const payload = { tableToken: qrTok };
+      const desiredRestaurantId =
+        parseRestaurantIdFromRaw(requestedRestaurantId) ??
+        urlRestaurantId ??
+        resolvedStateRestaurantId ??
+        null;
+      if (desiredRestaurantId) {
+        payload.restaurantId = desiredRestaurantId;
+      }
+
       try {
-        const res = await api.post("/tokens/exchange", { tableToken: qrTok });
+        const res = await api.post("/tokens/exchange", payload);
         const { accessToken, expiresAt, table } = res.data || {};
         const geo = parseRestaurantGeo(table);
+        const tableRestaurantId = parseRestaurantIdFromRaw(
+          table?.restaurant_id ?? table?.restaurantId
+        );
+
         setAccessToken(accessToken);
         setTableName(table?.name || null);
         setRestaurantGeo(geo);
-        setRestaurantId(table?.restaurant_id ?? null);
+        setRestaurantId(
+          tableRestaurantId ?? urlRestaurantId ?? resolvedStateRestaurantId ?? null
+        );
 
         localStorage.setItem(
           "accessToken",
@@ -252,7 +294,7 @@ function App() {
             exp: expiresAt,
             tableName: table?.name,
             restaurantGeo: geo,
-            restaurantId: table?.restaurant_id ?? null,
+            restaurantId: tableRestaurantId ?? null,
           })
         );
       } catch (e) {
@@ -260,12 +302,12 @@ function App() {
         setAccessToken(null);
         setTableName(null);
         setRestaurantGeo(null);
-        setRestaurantId(null);
+        setRestaurantId(urlRestaurantId ?? resolvedStateRestaurantId ?? null);
       }
     }
 
     if (qrToken) {
-      exchange(qrToken);
+      exchange(qrToken, urlRestaurantId);
     } else {
       try {
         const raw = localStorage.getItem("accessToken");
@@ -278,16 +320,25 @@ function App() {
               const storedGeo = parseRestaurantGeo(parsed.restaurantGeo);
               if (storedGeo) setRestaurantGeo(storedGeo);
             }
-            if (parsed.restaurantId) {
-              setRestaurantId(parsed.restaurantId);
+            const storedRestaurantId = parseRestaurantIdFromRaw(
+              parsed.restaurantId
+            );
+            if (storedRestaurantId) {
+              setRestaurantId(storedRestaurantId);
+            } else if (urlRestaurantId) {
+              setRestaurantId(urlRestaurantId);
+            } else {
+              setRestaurantId(null);
             }
           } else {
             localStorage.removeItem("accessToken");
             setAccessToken(null);
             setTableName(null);
             setRestaurantGeo(null);
-            setRestaurantId(null);
+            setRestaurantId(urlRestaurantId ?? null);
           }
+        } else if (urlRestaurantId) {
+          setRestaurantId(urlRestaurantId);
         }
       } catch { }
     }
@@ -479,6 +530,7 @@ function App() {
             setCategory={setCategoryFromScroll}
             search={searchText}
             onMenuLoaded={handleMenuLoaded}
+            restaurantId={restaurantId}
           />
         )}
 
@@ -490,6 +542,7 @@ function App() {
             tableToken={accessToken}
             tableName={tableName}
             restaurantGeo={restaurantGeo}
+            restaurantId={restaurantId}
             setCartItems={setCart}
             clearCart={() => setCart([])}
             notify={toast}

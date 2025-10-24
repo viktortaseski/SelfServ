@@ -54,6 +54,9 @@ function pickRestaurantId(req) {
     const fromUser = Number(req?.user?.restaurant_id);
     if (Number.isFinite(fromUser) && fromUser > 0) return fromUser;
 
+    const fromQuerySnake = Number(req?.query?.restaurant_id);
+    if (Number.isFinite(fromQuerySnake) && fromQuerySnake > 0) return fromQuerySnake;
+
     const fromQuery = Number(req?.query?.restaurantId);
     if (Number.isFinite(fromQuery) && fromQuery > 0) return fromQuery;
 
