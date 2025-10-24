@@ -91,6 +91,7 @@ export default function Dashboard({ user: _user }) {
     const [restaurantIsActive, setRestaurantIsActive] = useState(true);
     const [statusLoading, setStatusLoading] = useState(false);
     const [statusError, setStatusError] = useState("");
+    const [activePanel, setActivePanel] = useState("filters");
 
     const fetchOrders = async () => {
         setBusy(true);
@@ -200,127 +201,146 @@ export default function Dashboard({ user: _user }) {
                 ) : null}
             </section>
 
-            {/* Filters */}
-            <section className="card">
-                <h3 className="mt-0">
-                    Filters
-                    {restaurantName ? ` · ${restaurantName}` : ""}
-                </h3>
-                <div className="filters-grid">
-                    <label className="form-label">
-                        From date
-                        <input
-                            type="date"
-                            value={fromDate}
-                            onChange={(e) => setFromDate(e.target.value)}
-                            className="input"
-                        />
-                    </label>
-                    <label className="form-label">
-                        From time
-                        <input
-                            type="time"
-                            value={fromTime}
-                            onChange={(e) => setFromTime(e.target.value)}
-                            className="input"
-                        />
-                    </label>
-                    <label className="form-label">
-                        To date
-                        <input
-                            type="date"
-                            value={toDate}
-                            onChange={(e) => setToDate(e.target.value)}
-                            className="input"
-                        />
-                    </label>
-                    <label className="form-label">
-                        To time
-                        <input
-                            type="time"
-                            value={toTime}
-                            onChange={(e) => setToTime(e.target.value)}
-                            className="input"
-                        />
-                    </label>
+            <div className="row gap-8" style={{ margin: "16px 0" }}>
+                {[
+                    { id: "filters", label: "Filters" },
+                    { id: "stats", label: "Quick stats" },
+                    { id: "employees", label: "Employee Management" },
+                ].map((btn) => (
+                    <button
+                        key={btn.id}
+                        type="button"
+                        className={`btn ${activePanel === btn.id ? "btn-primary" : "btn-ghost"}`}
+                        onClick={() => setActivePanel(btn.id)}
+                    >
+                        {btn.label}
+                    </button>
+                ))}
+            </div>
 
-                    <label className="form-label">
-                        Status
-                        <select value={status} onChange={(e) => setStatus(e.target.value)} className="input">
-                            <option value="">(any)</option>
-                            <option value="open">open</option>
-                            <option value="paid">paid</option>
-                            <option value="canceled">canceled</option>
-                            <option value="void">void</option>
-                        </select>
-                    </label>
+            {activePanel === "filters" && (
+                <section className="card">
+                    <h3 className="mt-0">
+                        Filters
+                        {restaurantName ? ` · ${restaurantName}` : ""}
+                    </h3>
+                    <div className="filters-grid">
+                        <label className="form-label">
+                            From date
+                            <input
+                                type="date"
+                                value={fromDate}
+                                onChange={(e) => setFromDate(e.target.value)}
+                                className="input"
+                            />
+                        </label>
+                        <label className="form-label">
+                            From time
+                            <input
+                                type="time"
+                                value={fromTime}
+                                onChange={(e) => setFromTime(e.target.value)}
+                                className="input"
+                            />
+                        </label>
+                        <label className="form-label">
+                            To date
+                            <input
+                                type="date"
+                                value={toDate}
+                                onChange={(e) => setToDate(e.target.value)}
+                                className="input"
+                            />
+                        </label>
+                        <label className="form-label">
+                            To time
+                            <input
+                                type="time"
+                                value={toTime}
+                                onChange={(e) => setToTime(e.target.value)}
+                                className="input"
+                            />
+                        </label>
 
-                    <label className="form-label">
-                        Table ID
-                        <input
-                            type="number"
-                            min="1"
-                            placeholder="e.g. 1"
-                            value={tableId}
-                            onChange={(e) => setTableId(e.target.value)}
-                            className="input"
-                        />
-                    </label>
+                        <label className="form-label">
+                            Status
+                            <select value={status} onChange={(e) => setStatus(e.target.value)} className="input">
+                                <option value="">(any)</option>
+                                <option value="open">open</option>
+                                <option value="paid">paid</option>
+                                <option value="canceled">canceled</option>
+                                <option value="void">void</option>
+                            </select>
+                        </label>
 
-                    <label className="form-label">
-                        Search
-                        <input
-                            placeholder="order id, table/name, item name…"
-                            value={q}
-                            onChange={(e) => setQ(e.target.value)}
-                            className="input"
-                        />
-                    </label>
+                        <label className="form-label">
+                            Table ID
+                            <input
+                                type="number"
+                                min="1"
+                                placeholder="e.g. 1"
+                                value={tableId}
+                                onChange={(e) => setTableId(e.target.value)}
+                                className="input"
+                            />
+                        </label>
 
-                    <label className="form-label">
-                        Limit
-                        <input
-                            type="number"
-                            min="1"
-                            max="1000"
-                            value={limit}
-                            onChange={(e) => setLimit(Number(e.target.value) || 100)}
-                            className="input"
-                        />
-                    </label>
+                        <label className="form-label">
+                            Search
+                            <input
+                                placeholder="order id, table/name, item name…"
+                                value={q}
+                                onChange={(e) => setQ(e.target.value)}
+                                className="input"
+                            />
+                        </label>
 
-                    <div className="self-end">
-                        <button onClick={fetchOrders} disabled={busy} className="btn btn-primary">
-                            {busy ? "Loading…" : "Apply filters"}
-                        </button>
-                    </div>
-                </div>
-                {err ? <div className="error-text">{err}</div> : null}
-            </section>
+                        <label className="form-label">
+                            Limit
+                            <input
+                                type="number"
+                                min="1"
+                                max="1000"
+                                value={limit}
+                                onChange={(e) => setLimit(Number(e.target.value) || 100)}
+                                className="input"
+                            />
+                        </label>
 
-            {/* Stats */}
-            <section className="card mt-16">
-                <h3 className="mt-0">Quick stats</h3>
-                <div className="stats-row">
-                    <Stat label="Orders" value={stats.totalOrders} />
-                    <Stat label="Items" value={stats.totalItems} />
-                    <Stat label="Revenue" value={fmtMKD(stats.revenue)} />
-                </div>
-                {stats.monthRows.length ? (
-                    <div className="mt-12">
-                        <h4 className="mb-8">By month</h4>
-                        <div className="grid gap-8">
-                            {stats.monthRows.map((m) => (
-                                <div key={m.month} className="month-row">
-                                    <div>{m.month}</div>
-                                    <div>{m.orders} orders</div>
-                                    <div>{fmtMKD(m.revenue)}</div>
-                                </div>
-                            ))}
+                        <div className="self-end">
+                            <button onClick={fetchOrders} disabled={busy} className="btn btn-primary">
+                                {busy ? "Loading…" : "Apply filters"}
+                            </button>
                         </div>
                     </div>
-                ) : null}
-            </section>
+                    {err ? <div className="error-text">{err}</div> : null}
+                </section>
+            )}
+
+            {activePanel === "stats" && (
+                <section className="card">
+                    <h3 className="mt-0">Quick stats</h3>
+                    <div className="stats-row">
+                        <Stat label="Orders" value={stats.totalOrders} />
+                        <Stat label="Items" value={stats.totalItems} />
+                        <Stat label="Revenue" value={fmtMKD(stats.revenue)} />
+                    </div>
+                    {stats.monthRows.length ? (
+                        <div className="mt-12">
+                            <h4 className="mb-8">By month</h4>
+                            <div className="grid gap-8">
+                                {stats.monthRows.map((m) => (
+                                    <div key={m.month} className="month-row">
+                                        <div>{m.month}</div>
+                                        <div>{m.orders} orders</div>
+                                        <div>{fmtMKD(m.revenue)}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
+                </section>
+            )}
 
             {/* Data table */}
             <section className="card mt-16">
@@ -336,7 +356,9 @@ export default function Dashboard({ user: _user }) {
                 )}
             </section>
 
-            <EmployeeManager currentUser={_user} />
+            {activePanel === "employees" && (
+                <EmployeeManager currentUser={_user} />
+            )}
         </div>
     );
 }
