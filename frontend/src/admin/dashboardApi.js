@@ -199,3 +199,41 @@ export async function apiRemoveItemFromMenu(id) {
     });
     return data;
 }
+
+// --- Admin: employee management ---
+export async function apiListEmployees() {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const { data } = await api.get(`/users/admin/employees`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return Array.isArray(data?.employees) ? data.employees : [];
+}
+
+export async function apiCreateEmployee({ username, password, role, isActive }) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const payload = {
+        username,
+        password,
+        role,
+        isActive,
+    };
+    const { data } = await api.post(`/users/admin/employees`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data?.employee || null;
+}
+
+export async function apiUpdateEmployee(id, { role, isActive, password }) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const payload = {};
+    if (role !== undefined) payload.role = role;
+    if (isActive !== undefined) payload.isActive = isActive;
+    if (password !== undefined) payload.password = password;
+    const { data } = await api.patch(`/users/admin/employees/${id}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data?.employee || null;
+}

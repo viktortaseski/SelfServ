@@ -7,6 +7,7 @@ import {
     fmtMKD,
 } from "./dashboardApi";
 import "./dashboard.css";
+import EmployeeManager from "./EmployeeManager";
 
 function Stat({ label, value }) {
     return (
@@ -246,6 +247,8 @@ export default function Dashboard({ user: _user }) {
                     </div>
                 )}
             </section>
+
+            <EmployeeManager currentUser={_user} />
         </div>
     );
 }
