@@ -65,10 +65,26 @@ async function addPrinterIdColumn() {
     }
 }
 
+async function ensureRestaurantIsActiveColumn() {
+    try {
+        await pool.query(`
+            ALTER TABLE restaurants
+            ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE
+        `);
+    } catch (err) {
+        if (err.code === "42P01") {
+            console.warn("[migrations] restaurants table missing; skipping is_active column");
+            return;
+        }
+        throw err;
+    }
+}
+
 async function runMigrations() {
     await ensureRestaurantPrinterTable();
     await addClaimedByWorkerColumn();
     await addPrinterIdColumn();
+    await ensureRestaurantIsActiveColumn();
 }
 
 module.exports = {

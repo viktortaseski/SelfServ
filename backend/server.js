@@ -23,7 +23,7 @@ app.use(
             "https://selfservscaled.onrender.com",
             "http://localhost:3000",
         ],
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"],
         credentials: true,
     })
