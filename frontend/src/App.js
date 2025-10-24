@@ -52,6 +52,27 @@ function App() {
     } catch { }
   }, []);
 
+  useEffect(() => {
+    if (!restaurantId) {
+      setRestaurantActive(true);
+      return;
+    }
+    let cancelled = false;
+    api
+      .get("/restaurants/status", { params: { restaurantId } })
+      .then((res) => {
+        if (cancelled) return;
+        const isActive = res?.data?.restaurant?.is_active;
+        setRestaurantActive(isActive !== false);
+      })
+      .catch(() => {
+        if (!cancelled) setRestaurantActive(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantId]);
+
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
   const [cartTab, setCartTab] = useState("current");
@@ -82,6 +103,7 @@ function App() {
       return null;
     }
   });
+  const [restaurantActive, setRestaurantActive] = useState(true);
   const prevRestaurantId = useRef(null);
 
   const parseRestaurantGeo = (source) => {
@@ -279,6 +301,10 @@ function App() {
         const tableRestaurantId = parseRestaurantIdFromRaw(
           table?.restaurant_id ?? table?.restaurantId
         );
+        const rawActive =
+          table?.restaurant_is_active ?? table?.restaurantIsActive ?? null;
+        const normalizedActive =
+          rawActive == null ? null : Boolean(rawActive);
 
         setAccessToken(accessToken);
         setTableName(table?.name || null);
@@ -286,6 +312,9 @@ function App() {
         setRestaurantId(
           tableRestaurantId ?? urlRestaurantId ?? resolvedStateRestaurantId ?? null
         );
+        if (normalizedActive != null) {
+          setRestaurantActive(normalizedActive);
+        }
 
         localStorage.setItem(
           "accessToken",
@@ -295,6 +324,8 @@ function App() {
             tableName: table?.name,
             restaurantGeo: geo,
             restaurantId: tableRestaurantId ?? null,
+            restaurantActive:
+              normalizedActive != null ? normalizedActive : undefined,
           })
         );
       } catch (e) {
@@ -303,6 +334,7 @@ function App() {
         setTableName(null);
         setRestaurantGeo(null);
         setRestaurantId(urlRestaurantId ?? resolvedStateRestaurantId ?? null);
+        setRestaurantActive(true);
       }
     }
 
@@ -330,12 +362,16 @@ function App() {
             } else {
               setRestaurantId(null);
             }
+            if (parsed.restaurantActive != null) {
+              setRestaurantActive(Boolean(parsed.restaurantActive));
+            }
           } else {
             localStorage.removeItem("accessToken");
             setAccessToken(null);
             setTableName(null);
             setRestaurantGeo(null);
             setRestaurantId(urlRestaurantId ?? null);
+            setRestaurantActive(true);
           }
         } else if (urlRestaurantId) {
           setRestaurantId(urlRestaurantId);
@@ -500,28 +536,30 @@ function App() {
               )}
             </div>
 
-            <div className="category-row category-row--tabs">
-              {CATS.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  data-cat={cat}
-                  className={`category-chip ${category === cat ? "is-active" : ""}`}
-                  onClick={() => selectCategory(cat)}
-                >
-                  <img src={ICONS[cat]} alt="" className="chip-icon-img" draggable="false" />
-                  <span className="chip-label" style={{ textTransform: "capitalize" }}>
-                    {labelForCat(cat)}
-                  </span>
-                </button>
-              ))}
-            </div>
+            {restaurantActive && (
+              <div className="category-row category-row--tabs">
+                {CATS.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    data-cat={cat}
+                    className={`category-chip ${category === cat ? "is-active" : ""}`}
+                    onClick={() => selectCategory(cat)}
+                  >
+                    <img src={ICONS[cat]} alt="" className="chip-icon-img" draggable="false" />
+                    <span className="chip-label" style={{ textTransform: "capitalize" }}>
+                      {labelForCat(cat)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
       </nav>
 
       <>
-        {view === "menu" && (
+        {view === "menu" && (restaurantActive ? (
           <Menu
             addToCart={addToCart}
             removeFromCart={removeFromCart}
@@ -532,7 +570,21 @@ function App() {
             onMenuLoaded={handleMenuLoaded}
             restaurantId={restaurantId}
           />
-        )}
+        ) : (
+          <div
+            className="menu-container"
+            style={{
+              padding: "80px 24px",
+              textAlign: "center",
+              color: "#444",
+            }}
+          >
+            <h2 style={{ marginBottom: 12 }}>Currently unavailable</h2>
+            <p style={{ margin: 0, lineHeight: 1.6 }}>
+              This restaurant is not accepting orders right now. Please check back during working hours.
+            </p>
+          </div>
+        ))}
 
         {view === "cart" && (
           <Cart
@@ -543,6 +595,7 @@ function App() {
             tableName={tableName}
             restaurantGeo={restaurantGeo}
             restaurantId={restaurantId}
+            restaurantActive={restaurantActive}
             setCartItems={setCart}
             clearCart={() => setCart([])}
             notify={toast}
@@ -552,9 +605,10 @@ function App() {
             isClosing={isCartClosing}
           />
         )}
+
       </>
 
-      {view === "menu" && cartCount > 0 && (
+      {view === "menu" && restaurantActive && cartCount > 0 && (
         <ViewOrderPill
           count={cartCount}
           text={t("viewOrder")}

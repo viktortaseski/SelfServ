@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     apiFetchOrdersAdmin,
+    apiFetchRestaurantStatus,
+    apiUpdateRestaurantStatus,
     DEFAULT_FROM_STR,
     DEFAULT_TO_STR,
     computeStats,
@@ -83,8 +85,12 @@ export default function Dashboard({ user: _user }) {
     // Data
     const [orders, setOrders] = useState([]);
     const restaurantName = _user?.restaurant_name || "";
+    const restaurantId = _user?.restaurant_id || null;
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState("");
+    const [restaurantIsActive, setRestaurantIsActive] = useState(true);
+    const [statusLoading, setStatusLoading] = useState(false);
+    const [statusError, setStatusError] = useState("");
 
     const fetchOrders = async () => {
         setBusy(true);
@@ -110,8 +116,90 @@ export default function Dashboard({ user: _user }) {
 
     const stats = useMemo(() => computeStats(orders), [orders]);
 
+    useEffect(() => {
+        let cancelled = false;
+        if (!restaurantId) {
+            setRestaurantIsActive(true);
+            return;
+        }
+        setStatusLoading(true);
+        setStatusError("");
+        apiFetchRestaurantStatus(restaurantId)
+            .then((restaurant) => {
+                if (cancelled) return;
+                if (restaurant && typeof restaurant.is_active === "boolean") {
+                    setRestaurantIsActive(Boolean(restaurant.is_active));
+                } else {
+                    setRestaurantIsActive(true);
+                }
+            })
+            .catch((error) => {
+                if (cancelled) return;
+                setStatusError(error?.message || "Failed to load restaurant status");
+            })
+            .finally(() => {
+                if (!cancelled) setStatusLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [restaurantId]);
+
+    const handleToggleRestaurantStatus = async () => {
+        if (statusLoading) return;
+        try {
+            setStatusLoading(true);
+            setStatusError("");
+            const updated = await apiUpdateRestaurantStatus(!restaurantIsActive);
+            if (updated && typeof updated.is_active === "boolean") {
+                setRestaurantIsActive(Boolean(updated.is_active));
+            }
+        } catch (error) {
+            const message =
+                error?.response?.data?.error ||
+                error?.message ||
+                "Failed to update restaurant status";
+            setStatusError(message);
+        } finally {
+            setStatusLoading(false);
+        }
+    };
+
     return (
         <div>
+            <section className="card">
+                <div className="row space-between align-center">
+                    <div>
+                        <h3 className="mt-0 mb-8">Restaurant availability</h3>
+                        <span
+                            className={restaurantIsActive ? "badge badge--active" : "badge badge--inactive"}
+                            style={{ display: "inline-block", marginTop: 4 }}
+                        >
+                            {restaurantIsActive ? "Active" : "Inactive"}
+                        </span>
+                    </div>
+                    <button
+                        className="btn btn-ghost"
+                        onClick={handleToggleRestaurantStatus}
+                        disabled={statusLoading}
+                    >
+                        {statusLoading
+                            ? "Saving…"
+                            : restaurantIsActive
+                                ? "Set to inactive"
+                                : "Set to active"}
+                    </button>
+                </div>
+                <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>
+                    Control whether guests can access and order from your menu.
+                </p>
+                {statusError ? (
+                    <div className="error-text" style={{ marginTop: 8 }}>
+                        {statusError}
+                    </div>
+                ) : null}
+            </section>
+
             {/* Filters */}
             <section className="card">
                 <h3 className="mt-0">

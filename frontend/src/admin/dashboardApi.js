@@ -237,3 +237,22 @@ export async function apiUpdateEmployee(id, { role, isActive, password }) {
     });
     return data?.employee || null;
 }
+
+// --- Admin: restaurant status ---
+export async function apiFetchRestaurantStatus(restaurantId) {
+    const params = new URLSearchParams();
+    if (restaurantId) params.set("restaurantId", String(restaurantId));
+    const qs = params.toString();
+    const { data } = await api.get(`/restaurants/status${qs ? `?${qs}` : ""}`);
+    return data?.restaurant || null;
+}
+
+export async function apiUpdateRestaurantStatus(isActive) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const payload = { isActive };
+    const { data } = await api.patch(`/restaurants/admin/status`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data?.restaurant || null;
+}

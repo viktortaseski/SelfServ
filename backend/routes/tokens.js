@@ -45,7 +45,8 @@ router.post("/exchange", async (req, res) => {
                 rt.restaurant_id,
                 r.name AS restaurant_name,
                 r.location AS restaurant_location,
-                r.radius AS restaurant_radius
+                r.radius AS restaurant_radius,
+                r.is_active AS restaurant_is_active
             FROM restaurant_tables rt
             JOIN restaurants r ON r.id = rt.restaurant_id
             WHERE ${conditions.join(" AND ")}
@@ -79,6 +80,7 @@ router.post("/exchange", async (req, res) => {
                 restaurant_name: table.restaurant_name,
                 restaurant_location: table.restaurant_location,
                 restaurant_radius: table.restaurant_radius,
+                restaurant_is_active: table.restaurant_is_active,
             },
         });
     } catch (err) {

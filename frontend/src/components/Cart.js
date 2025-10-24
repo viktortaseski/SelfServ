@@ -49,6 +49,7 @@ function Cart({
     tableName,
     restaurantGeo = null,
     restaurantId = null,
+    restaurantActive = true,
     setCartItems = null,
     addToCart,
     removeFromCart,
@@ -191,6 +192,12 @@ function Cart({
         if (!cart.length) return;
         if (!tableToken) {
             alert("Missing or expired access token. Please scan the table QR again.");
+            return;
+        }
+        if (!restaurantActive) {
+            const msg = "This restaurant is currently not accepting orders.";
+            if (typeof notify === "function") notify(msg, 6000);
+            else alert(msg);
             return;
         }
         const allowed = await verifyWithinRestaurant(restaurantGeo);
@@ -340,6 +347,17 @@ function Cart({
     return (
         <div className={`menu-container cart-container ${isEntering ? "is-sliding-in" : ""} ${isClosing ? "is-sliding-out" : ""}`}>
 
+            {!restaurantActive && (
+                <div className="card card--light" style={{ marginBottom: 16 }}>
+                    <strong style={{ display: "block", marginBottom: 4 }}>
+                        Restaurant unavailable
+                    </strong>
+                    <span className="muted small">
+                        This restaurant is not accepting new orders right now.
+                    </span>
+                </div>
+            )}
+
             {!isPreviousTab ? (
                 <>
 
@@ -430,8 +448,11 @@ function Cart({
                     variant="center"
                     text={isPlacing ? t("cart.placing") : t("cart.placeOrder")}
                     totalText={fmtMKD(total)}
-                    onClick={() => setShowConfirm(true)}
-                    disabled={isPlacing}
+                    onClick={() => {
+                        if (isPlacing || !restaurantActive) return;
+                        setShowConfirm(true);
+                    }}
+                    disabled={isPlacing || !restaurantActive}
                     className="cart-bottom-pill"
                 />
             )}

@@ -8,6 +8,7 @@ const menuRoutes = require("./routes/menu");
 const orderRoutes = require("./routes/orders");
 const tokenRoutes = require("./routes/tokens");
 const printJobsRoutes = require("./routes/printJobs");
+const restaurantRoutes = require("./routes/restaurants");
 // const tableRoutes = require("./routes/tables"); // removed in v1
 const usersRouter = require("./routes/users"); // removed in v1
 const { runMigrations } = require("./migrations");
@@ -40,6 +41,7 @@ app.use("/api/menu", menuRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/tokens", tokenRoutes);
 app.use("/api/print-jobs", printJobsRoutes);
+app.use("/api/restaurants", restaurantRoutes);
 
 // Removed waiter-only routes:
 // app.use("/api/tables", tableRoutes);
