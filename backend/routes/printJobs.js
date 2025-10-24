@@ -4,11 +4,31 @@ const router = express.Router();
 const pool = require("../db");
 const { DEFAULT_RESTAURANT_ID } = require("../config");
 
+function extractPrinterId(req) {
+    const candidates = [
+        req.query?.printerId,
+        req.query?.printer_id,
+        req.body?.printerId,
+        req.body?.printer_id,
+        req.params?.printerId,
+        req.params?.printer_id,
+        req.headers?.["x-printer-id"],
+        req.headers?.["x-printer_id"],
+    ];
+    for (const raw of candidates) {
+        const n = Number(raw);
+        if (Number.isInteger(n) && n > 0) return n;
+    }
+    return null;
+}
+
 async function requirePrintAuth(req, res, next) {
     const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
     if (!token) {
         return res.status(401).json({ error: "Unauthorized" });
     }
+
+    const requestedPrinterId = extractPrinterId(req);
 
     try {
         const printerRes = await pool.query(
@@ -22,21 +42,26 @@ async function requirePrintAuth(req, res, next) {
                    is_active
               FROM restaurant_printer
              WHERE api_token = $1
+               AND ($2::BIGINT IS NULL OR id = $2)
                AND coalesce(is_active, true) = true
              LIMIT 1
             `,
-            [token]
+            [token, requestedPrinterId]
         );
 
         if (printerRes.rowCount === 0) {
             if (process.env.PRINT_API_TOKEN && token === process.env.PRINT_API_TOKEN) {
+                if (!requestedPrinterId) {
+                    return res.status(400).json({ error: "printerId is required" });
+                }
                 req.printer = {
-                    id: null,
+                    id: requestedPrinterId,
                     restaurant_id: Number(process.env.DEFAULT_RESTAURANT_ID || DEFAULT_RESTAURANT_ID || 1),
                     label: "Default Printer",
                     queue_name: process.env.PRINTER_QUEUE || "PrinterCMD_ESCPO_POS80_Printer_USB",
                     api_base: process.env.API_BASE || "",
                 };
+                req.printerId = requestedPrinterId;
                 return next();
             }
             return res.status(401).json({ error: "Unauthorized" });
@@ -46,7 +71,11 @@ async function requirePrintAuth(req, res, next) {
         if (!printer.api_base) {
             printer.api_base = process.env.API_BASE || "";
         }
+        if (requestedPrinterId && printer.id !== requestedPrinterId) {
+            return res.status(403).json({ error: "Printer mismatch for token" });
+        }
         req.printer = printer;
+        req.printerId = printer.id;
         return next();
     } catch (err) {
         console.error("[print-jobs/auth]", err);
@@ -72,6 +101,9 @@ router.post("/claim", requirePrintAuth, async (req, res) => {
     const rawWorker = req.body?.worker ?? req.body?.workerId ?? req.ip ?? "unknown";
     const workerLabel = String(rawWorker || "").trim() || "unknown";
     const workerName = workerLabel.slice(0, 120);
+    const targetPrinterId = Number.isInteger(Number(req.printerId))
+        ? Number(req.printerId)
+        : (Number.isInteger(Number(printer.id)) ? Number(printer.id) : null);
 
     const claimedByRaw =
         req.body?.claimedById ??
@@ -96,6 +128,7 @@ router.post("/claim", requirePrintAuth, async (req, res) => {
                   JOIN orders o ON o.id = pj.order_id
                  WHERE pj.status = 'queued'
                    AND o.restaurant_id = $1
+                   AND ($2::BIGINT IS NULL OR pj.printer_id = $2 OR pj.printer_id IS NULL)
                  ORDER BY pj.id
                  FOR UPDATE SKIP LOCKED
                  LIMIT 1
@@ -103,14 +136,29 @@ router.post("/claim", requirePrintAuth, async (req, res) => {
             UPDATE print_jobs pj
                SET status='claimed',
                    claimed_at=now(),
-                   claimed_by=$2,
-                   claimed_by_worker=$3
+                   claimed_by=$3,
+                   claimed_by_worker=$4,
+                   printer_id = COALESCE(pj.printer_id, $2)
              WHERE pj.id = (SELECT id FROM next_job)
-            RETURNING id, order_id, payload;
+            RETURNING id, order_id, payload, printer_id;
         `;
-        const r = await client.query(q, [printer.restaurant_id, claimedById, workerName]);
+        const r = await client.query(q, [
+            printer.restaurant_id,
+            targetPrinterId,
+            claimedById,
+            workerName,
+        ]);
         await client.query("COMMIT");
-        return res.json({ job: r.rows[0] || null });
+        if (r.rowCount === 0) {
+            return res.json({ job: null });
+        }
+        const job = r.rows[0];
+        if (!job.payload) {
+            job.payload = null;
+        }
+        job.printerId = job.printer_id ?? targetPrinterId ?? null;
+        delete job.printer_id;
+        return res.json({ job });
     } catch (e) {
         await client.query("ROLLBACK");
         console.error("[print-jobs/claim]", e);
@@ -123,6 +171,9 @@ router.post("/claim", requirePrintAuth, async (req, res) => {
 router.post("/:id/done", requirePrintAuth, async (req, res) => {
     const { printer } = req;
     const id = Number(req.params.id);
+    const targetPrinterId = Number.isInteger(Number(req.body?.printerId))
+        ? Number(req.body.printerId)
+        : (Number.isInteger(Number(req.printerId)) ? Number(req.printerId) : null);
     const r = await pool.query(
         `
         UPDATE print_jobs pj
@@ -136,8 +187,9 @@ router.post("/:id/done", requirePrintAuth, async (req, res) => {
                  WHERE o.id = pj.order_id
                    AND o.restaurant_id = $2
            )
+           AND ($3::BIGINT IS NULL OR pj.printer_id = $3)
         `,
-        [id, printer.restaurant_id]
+        [id, printer.restaurant_id, targetPrinterId]
     );
     return res.json({ updated: r.rowCount === 1 });
 });
@@ -146,6 +198,9 @@ router.post("/:id/error", requirePrintAuth, async (req, res) => {
     const { printer } = req;
     const id = Number(req.params.id);
     const msg = String(req.body?.error || "").slice(0, 500);
+    const targetPrinterId = Number.isInteger(Number(req.body?.printerId))
+        ? Number(req.body.printerId)
+        : (Number.isInteger(Number(req.printerId)) ? Number(req.printerId) : null);
     const r = await pool.query(
         `
         UPDATE print_jobs pj
@@ -159,8 +214,9 @@ router.post("/:id/error", requirePrintAuth, async (req, res) => {
                  WHERE o.id = pj.order_id
                    AND o.restaurant_id = $3
            )
+           AND ($4::BIGINT IS NULL OR pj.printer_id = $4)
         `,
-        [id, msg, printer.restaurant_id]
+        [id, msg, printer.restaurant_id, targetPrinterId]
     );
     return res.json({ updated: r.rowCount === 1 });
 });

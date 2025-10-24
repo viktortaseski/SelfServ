@@ -46,9 +46,29 @@ async function addClaimedByWorkerColumn() {
     }
 }
 
+async function addPrinterIdColumn() {
+    try {
+        await pool.query(
+            `
+            ALTER TABLE print_jobs
+                ADD COLUMN IF NOT EXISTS printer_id BIGINT
+            `
+        );
+    } catch (err) {
+        if (err.code === "42P01") {
+            console.warn(
+                "[migrations] print_jobs table missing; skipping printer_id column"
+            );
+            return;
+        }
+        throw err;
+    }
+}
+
 async function runMigrations() {
     await ensureRestaurantPrinterTable();
     await addClaimedByWorkerColumn();
+    await addPrinterIdColumn();
 }
 
 module.exports = {

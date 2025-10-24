@@ -50,6 +50,24 @@ function roundMoney(value) {
     return Math.round(num * 100) / 100;
 }
 
+async function findDefaultPrinterId(dbOrPool, restaurantId) {
+    if (!Number.isFinite(Number(restaurantId))) return null;
+    const runner = dbOrPool && typeof dbOrPool.query === "function" ? dbOrPool : pool;
+    const { rows } = await runner.query(
+        `
+        SELECT id
+          FROM restaurant_printer
+         WHERE restaurant_id = $1
+           AND COALESCE(is_active, TRUE) = TRUE
+         ORDER BY id
+         LIMIT 1
+    `,
+        [restaurantId]
+    );
+    if (rows.length === 0) return null;
+    return Number(rows[0].id);
+}
+
 async function consumeAccessToken(client, accessToken) {
     const q = `
         SELECT
@@ -276,6 +294,7 @@ router.post("/customer", async (req, res) => {
             image_url: item.img_url,
         }));
 
+        const targetPrinterId = await findDefaultPrinterId(client, tokenData.restaurantId);
         const printPayload = {
             orderId,
             tableName,
@@ -301,11 +320,12 @@ router.post("/customer", async (req, res) => {
                       id: tokenData.restaurantId,
                       name: RECEIPT_NAME,
                   },
+            printerId: targetPrinterId,
         };
 
         await pool.query(
-            `INSERT INTO print_jobs (order_id, payload, status) VALUES ($1, $2, 'queued')`,
-            [orderId, printPayload]
+            `INSERT INTO print_jobs (order_id, payload, status, printer_id) VALUES ($1, $2, 'queued', $3)`,
+            [orderId, printPayload, targetPrinterId]
         );
 
         return res.status(201).json({ orderId });
