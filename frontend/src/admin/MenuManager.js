@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
     apiCreateMenuItem,
     apiListMenuItems,
@@ -65,11 +65,49 @@ function MenuManager({ user }) {
 
     // UX state
     const [busy, setBusy] = useState(false);
-    const [err, setErr] = useState("");
-    const [ok, setOk] = useState("");
+    const [createError, setCreateError] = useState("");
+    const [createOk, setCreateOk] = useState("");
+    const [editError, setEditError] = useState("");
+    const [editOk, setEditOk] = useState("");
+    const [removeImage, setRemoveImage] = useState(false);
+    const [editPreview, setEditPreview] = useState(null);
+    const previewUrlRef = useRef(null);
+    const editFileInputRef = useRef(null);
+
+    const updatePreview = useCallback((url) => {
+        if (previewUrlRef.current && previewUrlRef.current.startsWith("blob:")) {
+            URL.revokeObjectURL(previewUrlRef.current);
+        }
+        previewUrlRef.current = url && typeof url === "string" && url.startsWith("blob:")
+            ? url
+            : null;
+        setEditPreview(url || null);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (previewUrlRef.current && previewUrlRef.current.startsWith("blob:")) {
+                URL.revokeObjectURL(previewUrlRef.current);
+            }
+        };
+    }, []);
 
     const onFile = (e) => setFile(e.target.files?.[0] || null);
-    const onEditFile = (e) => setEFile(e.target.files?.[0] || null);
+    const onEditFile = (e) => {
+        const selected = e.target.files?.[0] || null;
+        setEFile(selected);
+        setEditError("");
+        setEditOk("");
+        if (selected) {
+            const blobUrl = URL.createObjectURL(selected);
+            updatePreview(blobUrl);
+            setRemoveImage(false);
+        } else if (editing) {
+            updatePreview(editing.image_url || null);
+        } else {
+            updatePreview(null);
+        }
+    };
 
     const toDataUrl = (f) => new Promise((resolve, reject) => {
         if (!f) return resolve(null);
@@ -218,25 +256,32 @@ function MenuManager({ user }) {
 
     const handleCreate = async (e) => {
         e.preventDefault();
-        setErr(""); setOk(""); setBusy(true);
+        setCreateError("");
+        setCreateOk("");
+        setBusy(true);
         try {
             if (!name.trim()) throw new Error("Name is required");
             const p = Number(price);
             if (!Number.isFinite(p) || p <= 0) throw new Error("Price must be positive");
-            const imageDataUrl = await toDataUrl(file);
+            const imageDataUrl = file ? await toDataUrl(file) : undefined;
             const res = await apiCreateMenuItem({ name: name.trim(), price: p, category, imageDataUrl });
             if (!res?.success) throw new Error(res?.error || "Failed to create item");
-            const base = slugify(name.trim());
-            let ext = "";
-            if (file?.type === "image/png") ext = ".png";
-            else if (file?.type === "image/jpeg") ext = ".jpg";
-            else if (file?.type === "image/webp") ext = ".webp";
-            setOk(`Item created. Image saved as ${base}${ext}`);
+            if (file) {
+                const base = slugify(name.trim());
+                let ext = "";
+                if (file.type === "image/png") ext = ".png";
+                else if (file.type === "image/jpeg") ext = ".jpg";
+                else if (file.type === "image/webp") ext = ".webp";
+                setCreateOk(`Item created. Image saved as ${base}${ext}`);
+            } else {
+                setCreateOk("Item created.");
+            }
             setName(""); setPrice(""); setCategory("other"); setFile(null);
             await load();
             e.target.reset?.();
         } catch (e2) {
-            setErr(e2?.message || "Upload failed");
+            const serverMsg = e2?.response?.data?.error;
+            setCreateError(serverMsg || e2?.message || "Upload failed");
         } finally {
             setBusy(false);
         }
@@ -248,39 +293,90 @@ function MenuManager({ user }) {
         setEPrice(String(it.price ?? ""));
         setECategory(it.category || "other");
         setEFile(null);
-        setErr(""); setOk("");
+        setRemoveImage(false);
+        if (editFileInputRef.current) editFileInputRef.current.value = "";
+        updatePreview(it.image_url || null);
+        setEditError("");
+        setEditOk("");
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const cancelEdit = () => {
         setEditing(null);
-        setEName(""); setEPrice(""); setECategory("other"); setEFile(null);
+        setEName("");
+        setEPrice("");
+        setECategory("other");
+        setEFile(null);
+        setRemoveImage(false);
+        if (editFileInputRef.current) editFileInputRef.current.value = "";
+        updatePreview(null);
+        setEditError("");
+        setEditOk("");
     };
 
     const handleSave = async (e) => {
         e.preventDefault();
         if (!editing) return;
-        setErr(""); setOk(""); setBusy(true);
+        setEditError("");
+        setEditOk("");
+        setBusy(true);
         try {
             if (!eName.trim()) throw new Error("Name is required");
             const p = Number(ePrice);
             if (!Number.isFinite(p) || p <= 0) throw new Error("Price must be positive");
-            const imageDataUrl = await toDataUrl(eFile);
-            const res = await apiUpdateMenuItem(editing.id, { name: eName.trim(), price: p, category: eCategory, imageDataUrl });
+            const imageDataUrl = eFile ? await toDataUrl(eFile) : undefined;
+            const res = await apiUpdateMenuItem(editing.id, {
+                name: eName.trim(),
+                price: p,
+                category: eCategory,
+                imageDataUrl,
+                removeImage,
+            });
             if (!res?.success) throw new Error(res?.error || "Failed to update item");
-            setOk("Item updated");
+            setEditOk("Item updated");
             await load();
             cancelEdit();
         } catch (e2) {
-            setErr(e2?.message || "Edit failed");
+            const serverMsg = e2?.response?.data?.error;
+            setEditError(serverMsg || e2?.message || "Edit failed");
         } finally {
             setBusy(false);
         }
     };
 
+    const handleRemoveImageToggle = (checked) => {
+        setRemoveImage(checked);
+        setEditError("");
+        setEditOk("");
+        if (checked) {
+            setEFile(null);
+            if (editFileInputRef.current) {
+                editFileInputRef.current.value = "";
+            }
+            updatePreview(null);
+        } else if (editing) {
+            updatePreview(editing.image_url || null);
+        }
+    };
+
+    const handleClearSelectedImage = () => {
+        setEFile(null);
+        if (editFileInputRef.current) {
+            editFileInputRef.current.value = "";
+        }
+        setRemoveImage(false);
+        if (editing) {
+            updatePreview(editing.image_url || null);
+        } else {
+            updatePreview(null);
+        }
+    };
+
     const handleDelete = async (it) => {
         if (!window.confirm(`Delete "${it.name}"? This cannot be undone.`)) return;
-        setErr(""); setOk(""); setBusy(true);
+        setCreateError("");
+        setCreateOk("");
+        setBusy(true);
         try {
             const res = await apiDeleteMenuItem(it.id);
             if (!res?.success) throw new Error(res?.error || "Failed to delete item");
@@ -288,40 +384,44 @@ function MenuManager({ user }) {
                 res?.deleted === false && res?.note
                     ? res.note
                     : "Item deleted";
-            setOk(msg);
+            setCreateOk(msg);
             await load();
         } catch (e2) {
-            setErr(e2?.message || "Delete failed");
+            setCreateError(e2?.message || "Delete failed");
         } finally {
             setBusy(false);
         }
     };
 
     const handleAddToMenu = async (it) => {
-        setErr(""); setOk(""); setBusy(true);
+        setCreateError("");
+        setCreateOk("");
+        setBusy(true);
         try {
             const res = await apiAddItemToMenu(it.id);
             if (!res?.success) throw new Error(res?.error || "Failed to add to menu");
-            setOk(`"${it.name}" added to the menu`);
+            setCreateOk(`"${it.name}" added to the menu`);
             await load();
         } catch (e2) {
             const msg = e2?.response?.data?.error || e2?.message || "Failed to add to menu";
-            setErr(msg);
+            setCreateError(msg);
         } finally {
             setBusy(false);
         }
     };
 
     const handleRemoveFromMenu = async (it) => {
-        setErr(""); setOk(""); setBusy(true);
+        setCreateError("");
+        setCreateOk("");
+        setBusy(true);
         try {
             const res = await apiRemoveItemFromMenu(it.id);
             if (!res?.success) throw new Error(res?.error || "Failed to remove from menu");
-            setOk(`"${it.name}" removed from the menu`);
+            setCreateOk(`"${it.name}" removed from the menu`);
             await load();
         } catch (e2) {
             const msg = e2?.response?.data?.error || e2?.message || "Failed to remove from menu";
-            setErr(msg);
+            setCreateError(msg);
         } finally {
             setBusy(false);
         }
@@ -338,16 +438,16 @@ function MenuManager({ user }) {
                 <>
                     <div className="card">
                         <h3 className="mt-0">
-                            {editing ? "Edit Menu Item" : "Add Menu Item"}
+                            Add Menu Item
                             {restaurantName ? ` · ${restaurantName}` : ""}
                         </h3>
-                        <form onSubmit={editing ? handleSave : handleCreate} className="filters-grid">
+                        <form onSubmit={handleCreate} className="filters-grid">
                             <label className="form-label">
                                 Name
                                 <input
                                     className="input"
-                                    value={editing ? eName : name}
-                                    onChange={(e) => (editing ? setEName(e.target.value) : setName(e.target.value))}
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
                                     required
                                 />
                             </label>
@@ -357,8 +457,8 @@ function MenuManager({ user }) {
                                     className="input"
                                     type="number"
                                     step="0.01"
-                                    value={editing ? ePrice : price}
-                                    onChange={(e) => (editing ? setEPrice(e.target.value) : setPrice(e.target.value))}
+                                    value={price}
+                                    onChange={(e) => setPrice(e.target.value)}
                                     required
                                 />
                             </label>
@@ -366,8 +466,8 @@ function MenuManager({ user }) {
                                 Category
                                 <select
                                     className="input"
-                                    value={editing ? eCategory : category}
-                                    onChange={(e) => (editing ? setECategory(e.target.value) : setCategory(e.target.value))}
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
                                 >
                                     {categoryOptions.map((opt) => (
                                         <option key={opt.slug} value={opt.slug}>
@@ -377,38 +477,147 @@ function MenuManager({ user }) {
                                 </select>
                             </label>
                             <label className="form-label">
-                                {editing ? "New Image (optional)" : "Image"}
+                                Image
                                 <input
                                     className="input"
                                     type="file"
                                     accept="image/png,image/jpeg,image/webp"
-                                    onChange={editing ? onEditFile : onFile}
+                                    onChange={onFile}
                                 />
                             </label>
                             <div className="self-end">
-                                {!editing ? (
-                                    <button className="btn btn-primary" disabled={busy}>
-                                        {busy ? "Uploading…" : "Create item"}
-                                    </button>
-                                ) : (
-                                    <div className="row gap-8">
-                                        <button className="btn btn-primary" disabled={busy}>
-                                            {busy ? "Saving…" : "Save changes"}
-                                        </button>
-                                        <button type="button" className="btn btn-ghost" onClick={cancelEdit} disabled={busy}>
-                                            Cancel
-                                        </button>
-                                    </div>
-                                )}
+                                <button className="btn btn-primary" disabled={busy}>
+                                    {busy ? "Uploading…" : "Create item"}
+                                </button>
                             </div>
                         </form>
-                        {err ? <div className="error-text">{err}</div> : null}
-                        {ok ? (
+                        {createError ? <div className="error-text">{createError}</div> : null}
+                        {createOk ? (
                             <div className="mt-12" style={{ color: "#065f46", fontWeight: 700 }}>
-                                {ok}
+                                {createOk}
                             </div>
                         ) : null}
                     </div>
+
+                    {editing && (
+                        <div className="card card--light">
+                            <div className="row space-between align-center" style={{ marginBottom: 12 }}>
+                                <h3 className="mt-0 mb-0">
+                                    Edit Menu Item
+                                    {restaurantName ? ` · ${restaurantName}` : ""}
+                                </h3>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost"
+                                    onClick={cancelEdit}
+                                    disabled={busy}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                            <form onSubmit={handleSave} className="filters-grid">
+                                <label className="form-label">
+                                    Name
+                                    <input
+                                        className="input"
+                                        value={eName}
+                                        onChange={(e) => setEName(e.target.value)}
+                                        required
+                                    />
+                                </label>
+                                <label className="form-label">
+                                    Price (MKD)
+                                    <input
+                                        className="input"
+                                        type="number"
+                                        step="0.01"
+                                        value={ePrice}
+                                        onChange={(e) => setEPrice(e.target.value)}
+                                        required
+                                    />
+                                </label>
+                                <label className="form-label">
+                                    Category
+                                    <select
+                                        className="input"
+                                        value={eCategory}
+                                        onChange={(e) => setECategory(e.target.value)}
+                                    >
+                                        {categoryOptions.map((opt) => (
+                                            <option key={`edit-${opt.slug}`} value={opt.slug}>
+                                                {opt.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <div className="form-label">
+                                    <span>Current preview</span>
+                                    {editPreview ? (
+                                        <img
+                                            src={editPreview}
+                                            alt={eName || "preview"}
+                                            style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 12, border: "1px solid #e5e7eb" }}
+                                        />
+                                    ) : (
+                                        <span className="muted small">
+                                            {removeImage ? "Image will be removed" : "No image"}
+                                        </span>
+                                    )}
+                                </div>
+                                <label className="form-label">
+                                    New Image (optional)
+                                    <input
+                                        ref={editFileInputRef}
+                                        className="input"
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
+                                        onChange={onEditFile}
+                                        disabled={removeImage}
+                                    />
+                                    {eFile ? (
+                                        <button
+                                            type="button"
+                                            className="btn btn-ghost"
+                                            style={{ justifySelf: "start" }}
+                                            onClick={handleClearSelectedImage}
+                                            disabled={busy}
+                                        >
+                                            Remove selected file
+                                        </button>
+                                    ) : null}
+                                </label>
+                                {editing.image_url ? (
+                                    <label className="form-label">
+                                        Remove current image
+                                        <input
+                                            type="checkbox"
+                                            checked={removeImage}
+                                            onChange={(e) => handleRemoveImageToggle(e.target.checked)}
+                                        />
+                                    </label>
+                                ) : null}
+                                <div className="self-end row gap-8">
+                                    <button className="btn btn-primary" disabled={busy}>
+                                        {busy ? "Saving…" : "Save changes"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={cancelEdit}
+                                        disabled={busy}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                            {editError ? <div className="error-text">{editError}</div> : null}
+                            {editOk ? (
+                                <div className="mt-12" style={{ color: "#065f46", fontWeight: 700 }}>
+                                    {editOk}
+                                </div>
+                            ) : null}
+                        </div>
+                    )}
 
                     <div className="row gap-8" style={{ marginBottom: 16 }}>
                         <button

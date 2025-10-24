@@ -157,15 +157,19 @@ export async function apiListMenuItems({ search, category, minPrice, maxPrice } 
 }
 
 // --- Admin: update menu item ---
-export async function apiUpdateMenuItem(id, { name, price, category, imageDataUrl }) {
+export async function apiUpdateMenuItem(id, { name, price, category, imageDataUrl, removeImage = false }) {
     const token = getToken();
     if (!token) throw new Error("No token");
     const payload = {
         name,
         price,
         category,
-        image: imageDataUrl || undefined,
     };
+    if (removeImage) {
+        payload.image = null;
+    } else if (imageDataUrl !== undefined) {
+        payload.image = imageDataUrl || null;
+    }
     const { data } = await api.put(`/menu/${id}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
     });
