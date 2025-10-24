@@ -52,27 +52,6 @@ function App() {
     } catch { }
   }, []);
 
-  useEffect(() => {
-    if (!restaurantId) {
-      setRestaurantActive(true);
-      return;
-    }
-    let cancelled = false;
-    api
-      .get("/restaurants/status", { params: { restaurantId } })
-      .then((res) => {
-        if (cancelled) return;
-        const isActive = res?.data?.restaurant?.is_active;
-        setRestaurantActive(isActive !== false);
-      })
-      .catch(() => {
-        if (!cancelled) setRestaurantActive(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [restaurantId]);
-
   const [cart, setCart] = useState([]);
   const [view, setView] = useState("menu");
   const [cartTab, setCartTab] = useState("current");
@@ -137,6 +116,27 @@ function App() {
       name: source.restaurant_name || source.name || null,
     };
   };
+
+  useEffect(() => {
+    if (!restaurantId) {
+      setRestaurantActive(true);
+      return;
+    }
+    let cancelled = false;
+    api
+      .get("/restaurants/status", { params: { restaurantId } })
+      .then((res) => {
+        if (cancelled) return;
+        const isActive = res?.data?.restaurant?.is_active;
+        setRestaurantActive(isActive !== false);
+      })
+      .catch(() => {
+        if (!cancelled) setRestaurantActive(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantId]);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [pillHidden, setPillHidden] = useState(false);
