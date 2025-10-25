@@ -847,7 +847,7 @@ const handleClearSelectedImage = () => {
                                     onChange={onFile}
                                 />
                             </label>
-                            <div className="self-end">
+                            <div className="form-label form-label--actions">
                                 <button className="btn btn-primary" disabled={busy}>
                                     {busy ? "Uploading…" : "Create item"}
                                 </button>

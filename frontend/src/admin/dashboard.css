@@ -395,6 +395,7 @@
 
 .category-input-wrapper {
     position: relative;
+    overflow: visible;
 }
 
 .category-suggestions {
@@ -402,7 +403,7 @@
     top: 100%;
     left: 0;
     right: 0;
-    z-index: 5;
+    z-index: 30;
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
@@ -479,4 +480,11 @@
 
 .restaurant-category-actions input[type="file"] {
     display: none;
+}
+
+.form-label--actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+    gap: 10px;
 }
