@@ -80,11 +80,27 @@ async function ensureRestaurantIsActiveColumn() {
     }
 }
 
+async function ensureRestaurantCategoryImageColumn() {
+    try {
+        await pool.query(`
+            ALTER TABLE restaurant_categories
+            ADD COLUMN IF NOT EXISTS img_url TEXT
+        `);
+    } catch (err) {
+        if (err.code === "42P01") {
+            console.warn("[migrations] restaurant_categories table missing; skipping img_url column");
+            return;
+        }
+        throw err;
+    }
+}
+
 async function runMigrations() {
     await ensureRestaurantPrinterTable();
     await addClaimedByWorkerColumn();
     await addPrinterIdColumn();
     await ensureRestaurantIsActiveColumn();
+    await ensureRestaurantCategoryImageColumn();
 }
 
 module.exports = {

@@ -106,16 +106,17 @@ export function fmtMKD(n) {
 
 export async function apiFetchCategories({ restaurantId, auth } = {}) {
     try {
+        if (auth) {
+            const categories = await apiListRestaurantCategories();
+            return (categories || []).map((cat) => ({
+                slug: cat.slug,
+                name: cat.name,
+            }));
+        }
         const params = new URLSearchParams();
         if (restaurantId) params.set("restaurantId", String(restaurantId));
         const qs = params.toString();
-        const config = {};
-        if (auth) {
-            const token = getToken();
-            if (!token) throw new Error("No token");
-            config.headers = { Authorization: `Bearer ${token}` };
-        }
-        const { data } = await api.get(`/menu/categories${qs ? `?${qs}` : ""}`, config);
+        const { data } = await api.get(`/menu/categories${qs ? `?${qs}` : ""}`);
         if (!Array.isArray(data)) return [];
         return data;
     } catch {
@@ -174,6 +175,61 @@ export async function apiUpdateMenuItem(id, { name, price, category, imageDataUr
         headers: { Authorization: `Bearer ${token}` },
     });
     return data;
+}
+
+export async function apiListRestaurantCategories() {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const { data } = await api.get(`/menu/categories/admin`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return Array.isArray(data?.categories) ? data.categories : [];
+}
+
+export async function apiAddRestaurantCategory({ categoryId, name, imageDataUrl }) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const payload = {};
+    if (categoryId != null) payload.categoryId = categoryId;
+    if (name) payload.name = name;
+    if (imageDataUrl !== undefined) payload.image = imageDataUrl || null;
+    const { data } = await api.post(`/menu/categories/admin`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data?.category || null;
+}
+
+export async function apiUpdateRestaurantCategory(id, { imageDataUrl, removeImage = false }) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const payload = {};
+    if (removeImage) payload.removeImage = true;
+    if (imageDataUrl !== undefined) payload.image = imageDataUrl || null;
+    const { data } = await api.patch(`/menu/categories/admin/${id}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data?.category || null;
+}
+
+export async function apiDeleteRestaurantCategory(id) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const { data } = await api.delete(`/menu/categories/admin/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data;
+}
+
+export async function apiSearchCategoriesByName(query) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    const qs = params.toString();
+    const { data } = await api.get(`/menu/categories/search${qs ? `?${qs}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return Array.isArray(data?.categories) ? data.categories : [];
 }
 
 // --- Admin: delete menu item ---

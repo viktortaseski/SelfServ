@@ -41,7 +41,7 @@ function ItemUpload() {
 
     useEffect(() => {
         let mounted = true;
-        apiFetchCategories()
+        apiFetchCategories({ auth: true })
             .then((rows) => {
                 if (!mounted) return;
                 if (Array.isArray(rows) && rows.length) {

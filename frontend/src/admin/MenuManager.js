@@ -6,7 +6,11 @@ import {
     apiDeleteMenuItem,
     apiAddItemToMenu,
     apiRemoveItemFromMenu,
-    apiFetchCategories,
+    apiListRestaurantCategories,
+    apiAddRestaurantCategory,
+    apiUpdateRestaurantCategory,
+    apiDeleteRestaurantCategory,
+    apiSearchCategoriesByName,
     fmtMKD,
 } from "./dashboardApi";
 import "./dashboard.css";
@@ -14,11 +18,12 @@ import "./dashboard.css";
 const CATEGORY_ORDER = ["coffee", "drinks", "food", "desserts", "other"];
 const CATEGORY_LABELS = {
     coffee: "Coffee",
-    drinks: "Drinks",
+   drinks: "Drinks",
     food: "Food",
     desserts: "Desserts",
     other: "Other",
 };
+const MAX_RESTAURANT_CATEGORIES = 4;
 
 function slugify(str) {
     return (str || "")
@@ -48,7 +53,16 @@ function MenuManager({ user }) {
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
     const [activeSection, setActiveSection] = useState("menu"); // "menu" | "all"
-    const [serverCategories, setServerCategories] = useState([]);
+    const [restaurantCategories, setRestaurantCategories] = useState([]);
+    const [categoryInput, setCategoryInput] = useState("");
+    const [selectedCategorySuggestion, setSelectedCategorySuggestion] = useState(null);
+    const [categoryImageFile, setCategoryImageFile] = useState(null);
+    const categoryImageInputRef = useRef(null);
+    const [categorySuggestions, setCategorySuggestions] = useState([]);
+    const [categoryBusy, setCategoryBusy] = useState(false);
+    const [categoryError, setCategoryError] = useState("");
+    const [categoryOk, setCategoryOk] = useState("");
+    const [categorySearchLoading, setCategorySearchLoading] = useState(false);
 
     // Create form state
     const [name, setName] = useState("");
@@ -133,49 +147,85 @@ function MenuManager({ user }) {
         } catch { }
     }, []);
 
+    const refreshRestaurantCategories = useCallback(async () => {
+        if (!restaurantId) {
+            setRestaurantCategories([]);
+            return;
+        }
+        try {
+            const rows = await apiListRestaurantCategories();
+            setRestaurantCategories(Array.isArray(rows) ? rows : []);
+        } catch {
+            setRestaurantCategories([]);
+        }
+    }, [restaurantId]);
+
     useEffect(() => {
         if (!restaurantId) return;
         load();
     }, [load, restaurantId]);
 
     useEffect(() => {
-        if (!restaurantId) {
-            setServerCategories([]);
-            return;
-        }
-        let mounted = true;
-        apiFetchCategories({ restaurantId, auth: true })
-            .then((rows) => {
-                if (!mounted) return;
-                if (Array.isArray(rows) && rows.length) {
-                    const mapped = rows
-                        .map((row) => ({
-                            slug: row?.slug,
-                            name: row?.name || CATEGORY_LABELS[row?.slug] || humanizeSlug(row?.slug),
-                        }))
-                        .filter((row) => row.slug);
-                    setServerCategories(mapped);
-                } else {
-                    setServerCategories([]);
-                }
-            })
-            .catch(() => {
-                if (mounted) setServerCategories([]);
-            });
-        return () => {
-            mounted = false;
-        };
+        refreshRestaurantCategories();
+    }, [refreshRestaurantCategories]);
+
+    useEffect(() => {
+        setCategoryInput("");
+        setSelectedCategorySuggestion(null);
+        setCategoryImageFile(null);
+        setCategorySuggestions([]);
+        if (categoryImageInputRef.current) categoryImageInputRef.current.value = "";
     }, [restaurantId]);
 
+    useEffect(() => {
+        const trimmed = categoryInput.trim();
+        if (!trimmed) {
+            setCategorySuggestions([]);
+            setCategorySearchLoading(false);
+            return;
+        }
+
+        let cancelled = false;
+        setCategorySearchLoading(true);
+        const handle = setTimeout(async () => {
+            try {
+                const results = await apiSearchCategoriesByName(trimmed);
+                if (cancelled) return;
+                const filtered = (Array.isArray(results) ? results : []).filter(
+                    (cat) =>
+                        !restaurantCategories.some(
+                            (existing) => existing.categoryId === Number(cat.id)
+                        )
+                );
+                setCategorySuggestions(filtered);
+            } catch {
+                if (!cancelled) setCategorySuggestions([]);
+            } finally {
+                if (!cancelled) setCategorySearchLoading(false);
+            }
+        }, 200);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(handle);
+        };
+    }, [categoryInput, restaurantCategories]);
+
     const categoryOptions = useMemo(() => {
-        if (serverCategories.length) {
-            return serverCategories;
+        if (restaurantCategories.length) {
+            const mapped = restaurantCategories
+                .filter((cat) => cat?.slug)
+                .map((cat) => ({
+                    slug: cat.slug,
+                    name: cat.name || humanizeSlug(cat.slug),
+                }));
+            if (mapped.length) return mapped;
         }
         return CATEGORY_ORDER.map((slug) => ({
             slug,
             name: CATEGORY_LABELS[slug] || humanizeSlug(slug),
         }));
-    }, [serverCategories]);
+    }, [restaurantCategories]);
 
     const categoryLabelMap = useMemo(() => {
         const map = {};
@@ -359,16 +409,158 @@ function MenuManager({ user }) {
         }
     };
 
-    const handleClearSelectedImage = () => {
-        setEFile(null);
-        if (editFileInputRef.current) {
-            editFileInputRef.current.value = "";
+const handleClearSelectedImage = () => {
+    setEFile(null);
+    if (editFileInputRef.current) {
+        editFileInputRef.current.value = "";
+    }
+    setRemoveImage(false);
+    if (editing) {
+        updatePreview(editing.image_url || null);
+    } else {
+        updatePreview(null);
+    }
+};
+
+    const handleCategoryInputChange = (value) => {
+        setCategoryInput(value);
+        setCategoryError("");
+        setCategoryOk("");
+        if (
+            !value ||
+            !selectedCategorySuggestion ||
+            value.trim().toLowerCase() !==
+                (selectedCategorySuggestion.name || selectedCategorySuggestion.slug || "").toLowerCase()
+        ) {
+            setSelectedCategorySuggestion(null);
         }
-        setRemoveImage(false);
-        if (editing) {
-            updatePreview(editing.image_url || null);
-        } else {
-            updatePreview(null);
+    };
+
+    const handleCategoryImageFileChange = (e) => {
+        const file = e.target.files?.[0] || null;
+        setCategoryImageFile(file);
+        setCategoryError("");
+        setCategoryOk("");
+    };
+
+    const handleSuggestionSelect = (suggestion) => {
+        setSelectedCategorySuggestion(suggestion);
+        setCategoryInput(suggestion.name || humanizeSlug(suggestion.slug));
+        setCategorySuggestions([]);
+        setCategoryError("");
+        setCategoryOk("");
+    };
+
+    const handleAddRestaurantCategory = async (e) => {
+        e.preventDefault();
+        setCategoryError("");
+        setCategoryOk("");
+        if (restaurantCategories.length >= MAX_RESTAURANT_CATEGORIES) {
+            setCategoryError(`You can only have ${MAX_RESTAURANT_CATEGORIES} categories.`);
+            return;
+        }
+        const trimmed = categoryInput.trim();
+        if (!trimmed) {
+            setCategoryError("Category name is required.");
+            return;
+        }
+        setCategoryBusy(true);
+        try {
+            const payload = {};
+            if (
+                selectedCategorySuggestion &&
+                selectedCategorySuggestion.id &&
+                trimmed.toLowerCase() ===
+                    (selectedCategorySuggestion.name || selectedCategorySuggestion.slug).toLowerCase()
+            ) {
+                payload.categoryId = selectedCategorySuggestion.id;
+            } else if (selectedCategorySuggestion && selectedCategorySuggestion.id) {
+                payload.categoryId = selectedCategorySuggestion.id;
+            } else {
+                payload.name = trimmed;
+            }
+            if (categoryImageFile) {
+                payload.imageDataUrl = await toDataUrl(categoryImageFile);
+            }
+            const added = await apiAddRestaurantCategory(payload);
+            if (!added) {
+                throw new Error("Failed to add category");
+            }
+            setCategoryOk(`Category "${added.name || trimmed}" saved.`);
+            setCategoryInput("");
+            setSelectedCategorySuggestion(null);
+            setCategorySuggestions([]);
+            setCategoryImageFile(null);
+            if (categoryImageInputRef.current) categoryImageInputRef.current.value = "";
+            await refreshRestaurantCategories();
+        } catch (e2) {
+            const serverMsg = e2?.response?.data?.error;
+            setCategoryError(serverMsg || e2?.message || "Failed to save category");
+        } finally {
+            setCategoryBusy(false);
+        }
+    };
+
+    const handleUploadCategoryImage = async (restaurantCategoryId, file) => {
+        if (!file) return;
+        setCategoryError("");
+        setCategoryOk("");
+        setCategoryBusy(true);
+        try {
+            const imageDataUrl = await toDataUrl(file);
+            await apiUpdateRestaurantCategory(restaurantCategoryId, { imageDataUrl });
+            setCategoryOk("Category image updated.");
+            await refreshRestaurantCategories();
+        } catch (e2) {
+            const serverMsg = e2?.response?.data?.error;
+            setCategoryError(serverMsg || e2?.message || "Failed to update category image");
+        } finally {
+            setCategoryBusy(false);
+        }
+    };
+
+    const handleCategoryImageUploadChange = async (restaurantCategoryId, event) => {
+        const file = event.target.files?.[0] || null;
+        if (!file) return;
+        await handleUploadCategoryImage(restaurantCategoryId, file);
+        event.target.value = "";
+    };
+
+    const handleRemoveCategoryImage = async (restaurantCategoryId) => {
+        setCategoryError("");
+        setCategoryOk("");
+        setCategoryBusy(true);
+        try {
+            await apiUpdateRestaurantCategory(restaurantCategoryId, { removeImage: true });
+            setCategoryOk("Category image removed.");
+            await refreshRestaurantCategories();
+        } catch (e2) {
+            const serverMsg = e2?.response?.data?.error;
+            setCategoryError(serverMsg || e2?.message || "Failed to remove category image");
+        } finally {
+            setCategoryBusy(false);
+        }
+    };
+
+    const handleDeleteRestaurantCategory = async (restaurantCategoryId, name) => {
+        if (
+            !window.confirm(
+                `Remove category "${name}" from this restaurant? Items using this category must be reassigned first.`
+            )
+        )
+            return;
+        setCategoryError("");
+        setCategoryOk("");
+        setCategoryBusy(true);
+        try {
+            await apiDeleteRestaurantCategory(restaurantCategoryId);
+            setCategoryOk("Category removed.");
+            await refreshRestaurantCategories();
+        } catch (e2) {
+            const serverMsg = e2?.response?.data?.error;
+            setCategoryError(serverMsg || e2?.message || "Failed to remove category");
+        } finally {
+            setCategoryBusy(false);
         }
     };
 
@@ -618,6 +810,137 @@ function MenuManager({ user }) {
                             ) : null}
                         </div>
                     )}
+
+                    <div className="card">
+                        <h3 className="mt-0">
+                            Restaurant Categories
+                            {restaurantName ? ` · ${restaurantName}` : ""}
+                        </h3>
+                        <p className="muted small">
+                            You can assign up to {MAX_RESTAURANT_CATEGORIES} categories. These power the menu tabs and product forms.
+                        </p>
+                        <form onSubmit={handleAddRestaurantCategory} className="category-manager-grid">
+                            <label className="form-label category-input-wrapper">
+                                Category name
+                                <input
+                                    className="input"
+                                    value={categoryInput}
+                                    onChange={(e) => handleCategoryInputChange(e.target.value)}
+                                    placeholder="Type to search or create"
+                                    disabled={categoryBusy || restaurantCategories.length >= MAX_RESTAURANT_CATEGORIES}
+                                />
+                                {categorySearchLoading ? (
+                                    <span className="muted small">Searching…</span>
+                                ) : null}
+                                {!!categorySuggestions.length && (
+                                    <div className="category-suggestions">
+                                        {categorySuggestions.map((suggestion) => (
+                                            <button
+                                                type="button"
+                                                key={`suggest-${suggestion.id}`}
+                                                className="category-suggestion"
+                                                onClick={() => handleSuggestionSelect(suggestion)}
+                                                disabled={categoryBusy}
+                                            >
+                                                {suggestion.name || humanizeSlug(suggestion.slug)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </label>
+                            <label className="form-label">
+                                Category image (optional)
+                                <input
+                                    ref={categoryImageInputRef}
+                                    className="input"
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    onChange={handleCategoryImageFileChange}
+                                    disabled={categoryBusy}
+                                />
+                            </label>
+                            <div className="self-end">
+                                <button
+                                    className="btn btn-primary"
+                                    type="submit"
+                                    disabled={categoryBusy || restaurantCategories.length >= MAX_RESTAURANT_CATEGORIES}
+                                >
+                                    {categoryBusy ? "Saving…" : "Add category"}
+                                </button>
+                            </div>
+                        </form>
+                        {restaurantCategories.length >= MAX_RESTAURANT_CATEGORIES ? (
+                            <div className="muted small" style={{ marginTop: 8 }}>
+                                Maximum categories reached. Remove one to add another.
+                            </div>
+                        ) : null}
+                        {categoryError ? <div className="error-text">{categoryError}</div> : null}
+                        {categoryOk ? (
+                            <div className="mt-12" style={{ color: "#065f46", fontWeight: 700 }}>
+                                {categoryOk}
+                            </div>
+                        ) : null}
+
+                        <div className="restaurant-category-list">
+                            {restaurantCategories.length === 0 ? (
+                                <div className="muted small">No categories yet.</div>
+                            ) : (
+                                restaurantCategories.map((cat) => (
+                                    <div key={cat.restaurantCategoryId} className="restaurant-category-row">
+                                        <div className="restaurant-category-thumb">
+                                            {cat.image_url ? (
+                                                <img src={cat.image_url} alt={cat.name} />
+                                            ) : (
+                                                <span>{(cat.name || cat.slug || "?").slice(0, 1).toUpperCase()}</span>
+                                            )}
+                                        </div>
+                                        <div className="restaurant-category-info">
+                                            <div className="fw-700">{cat.name}</div>
+                                            <div className="muted small">/{cat.slug}</div>
+                                            <div className="muted small">
+                                                {cat.item_count} item{cat.item_count === 1 ? "" : "s"}
+                                            </div>
+                                        </div>
+                                        <div className="restaurant-category-actions">
+                                            <label className="btn btn-ghost btn-small">
+                                                Update image
+                                                <input
+                                                    type="file"
+                                                    accept="image/png,image/jpeg,image/webp"
+                                                    onChange={(e) =>
+                                                        handleCategoryImageUploadChange(cat.restaurantCategoryId, e)
+                                                    }
+                                                    disabled={categoryBusy}
+                                                    style={{ display: "none" }}
+                                                />
+                                            </label>
+                                            <button
+                                                type="button"
+                                                className="btn btn-ghost btn-small"
+                                                onClick={() => handleRemoveCategoryImage(cat.restaurantCategoryId)}
+                                                disabled={categoryBusy || !cat.raw_image_url}
+                                            >
+                                                Remove image
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-danger btn-small"
+                                                onClick={() =>
+                                                    handleDeleteRestaurantCategory(
+                                                        cat.restaurantCategoryId,
+                                                        cat.name || cat.slug
+                                                    )
+                                                }
+                                                disabled={categoryBusy}
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
 
                     <div className="row gap-8" style={{ marginBottom: 16 }}>
                         <button

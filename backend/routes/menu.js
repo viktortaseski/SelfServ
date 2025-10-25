@@ -11,6 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "devjwtsecret";
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || null;
 const MENU_IMAGES_DIR = path.resolve(__dirname, "../uploads/images");
 const fsp = fs.promises;
+const MAX_RESTAURANT_CATEGORIES = 4;
 
 function readBearer(req) {
     const auth = req.headers.authorization || "";
@@ -129,6 +130,27 @@ function formatMenuRow(row, req) {
     };
 }
 
+function formatRestaurantCategory(row, req) {
+    if (!row) return null;
+    const imageUrl = row.img_url ? makeAbsoluteImageUrl(row.img_url, req) : null;
+    return {
+        id: Number(row.category_id),
+        restaurantCategoryId: Number(row.restaurant_category_id ?? row.id),
+        categoryId: Number(row.category_id),
+        slug: row.slug,
+        name: row.name,
+        description: row.description || null,
+        image_url: imageUrl,
+        img_url: imageUrl,
+        raw_image_url: row.img_url || null,
+        created_at:
+            row.created_at instanceof Date
+                ? row.created_at.toISOString()
+                : row.created_at || null,
+        item_count: Number(row.item_count || 0),
+    };
+}
+
 async function fetchMenuItemById(db, restaurantId, id) {
     const { rows } = await db.query(
         `
@@ -154,6 +176,95 @@ async function fetchMenuItemById(db, restaurantId, id) {
         [id, restaurantId]
     );
     return rows[0] || null;
+}
+
+async function listRestaurantCategories(db, restaurantId, req) {
+    const runner = db || pool;
+    const { rows } = await runner.query(
+        `
+        SELECT
+            rc.id AS restaurant_category_id,
+            rc.restaurant_id,
+            rc.category_id,
+            rc.img_url,
+            rc.created_at,
+            c.slug,
+            c.name,
+            c.description,
+            COUNT(rp.id)::int AS item_count
+        FROM restaurant_categories rc
+        JOIN categories c ON c.id = rc.category_id
+        LEFT JOIN restaurant_products rp
+            ON rp.category_id = rc.category_id
+           AND rp.restaurant_id = rc.restaurant_id
+        WHERE rc.restaurant_id = $1
+          AND c.is_active = TRUE
+        GROUP BY rc.id, rc.img_url, rc.created_at, c.id
+        ORDER BY c.name ASC
+    `,
+        [restaurantId]
+    );
+    return rows.map((row) => formatRestaurantCategory(row, req));
+}
+
+async function ensureRestaurantCategoryLimit(client, restaurantId) {
+    const { rows } = await client.query(
+        `
+        SELECT COUNT(*)::int AS cnt
+        FROM restaurant_categories
+        WHERE restaurant_id = $1
+    `,
+        [restaurantId]
+    );
+    const currentCount = Number(rows[0]?.cnt || 0);
+    if (currentCount >= MAX_RESTAURANT_CATEGORIES) {
+        const err = new Error(
+            `Restaurant already has maximum categories assigned (${MAX_RESTAURANT_CATEGORIES}).`
+        );
+        err.code = "MAX_CATEGORIES";
+        throw err;
+    }
+}
+
+async function ensureRestaurantCategoryLink(client, restaurantId, categoryId) {
+    const { rows: existingRows } = await client.query(
+        `
+        SELECT id
+        FROM restaurant_categories
+        WHERE restaurant_id = $1
+          AND category_id = $2
+    `,
+        [restaurantId, categoryId]
+    );
+    if (existingRows.length) {
+        return Number(existingRows[0].id);
+    }
+
+    await ensureRestaurantCategoryLimit(client, restaurantId);
+
+    const { rows: inserted } = await client.query(
+        `
+        INSERT INTO restaurant_categories (restaurant_id, category_id)
+        VALUES ($1, $2)
+        ON CONFLICT (restaurant_id, category_id) DO NOTHING
+        RETURNING id
+    `,
+        [restaurantId, categoryId]
+    );
+    if (inserted[0]?.id) {
+        return Number(inserted[0].id);
+    }
+
+    const { rows: refetched } = await client.query(
+        `
+        SELECT id
+        FROM restaurant_categories
+        WHERE restaurant_id = $1
+          AND category_id = $2
+    `,
+        [restaurantId, categoryId]
+    );
+    return Number(refetched[0]?.id);
 }
 
 async function getCategoryId(client, restaurantId, categoryInput, employeeId) {
@@ -190,42 +301,7 @@ async function getCategoryId(client, restaurantId, categoryInput, employeeId) {
         throw new Error("Unable to resolve category");
     }
 
-    const { rowCount: alreadyLinked } = await client.query(
-        `
-        SELECT 1
-        FROM restaurant_categories
-        WHERE restaurant_id = $1
-          AND category_id = $2
-        `,
-        [restaurantId, categoryId]
-    );
-    if (alreadyLinked) {
-        return { categoryId, slug };
-    }
-
-    const { rows: countRows } = await client.query(
-        `
-        SELECT COUNT(*)::int AS cnt
-        FROM restaurant_categories
-        WHERE restaurant_id = $1
-        `,
-        [restaurantId]
-    );
-    const currentCount = Number(countRows[0]?.cnt || 0);
-    if (currentCount >= 4) {
-        const err = new Error("Restaurant already has maximum categories assigned. Choose one of the existing categories.");
-        err.code = "MAX_CATEGORIES";
-        throw err;
-    }
-
-    await client.query(
-        `
-        INSERT INTO restaurant_categories (restaurant_id, category_id)
-        VALUES ($1, $2)
-        ON CONFLICT (restaurant_id, category_id) DO NOTHING
-    `,
-        [restaurantId, categoryId]
-    );
+    await ensureRestaurantCategoryLink(client, restaurantId, categoryId);
 
     return { categoryId, slug };
 }
@@ -413,36 +489,302 @@ router.get("/top-picks", async (req, res) => {
 router.get("/categories", async (req, res) => {
     try {
         const restaurantId = pickRestaurantId(req);
+        const categories = await listRestaurantCategories(pool, restaurantId, req);
+        res.json(categories);
+    } catch (err) {
+        console.error("GET /api/menu/categories error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+router.get("/categories/admin", requireAdmin, async (req, res) => {
+    try {
+        const restaurantId = pickRestaurantId(req);
+        const categories = await listRestaurantCategories(pool, restaurantId, req);
+        return res.json({ categories });
+    } catch (err) {
+        console.error("GET /api/menu/categories/admin error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+
+router.get("/categories/search", requireAdmin, async (req, res) => {
+    try {
+        const q = String(req.query.q || "").trim();
+        if (!q) return res.json({ categories: [] });
+        const restaurantId = pickRestaurantId(req);
         const { rows } = await pool.query(
             `
             SELECT
                 c.id,
                 c.slug,
                 c.name,
-                rc.created_at
-            FROM restaurant_categories rc
-            JOIN categories c ON c.id = rc.category_id
-            WHERE rc.restaurant_id = $1
-              AND c.is_active = TRUE
+                c.description
+            FROM categories c
+            WHERE c.is_active = TRUE
+              AND (LOWER(c.name) LIKE LOWER($1) OR LOWER(c.slug) LIKE LOWER($1))
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM restaurant_categories rc
+                  WHERE rc.restaurant_id = $2
+                    AND rc.category_id = c.id
+              )
             ORDER BY c.name ASC
+            LIMIT 10
         `,
-            [restaurantId]
+            [`%${q}%`, restaurantId]
         );
-
-        res.json(
-            rows.map((row) => ({
-                id: row.id,
+        return res.json({
+            categories: rows.map((row) => ({
+                id: Number(row.id),
                 slug: row.slug,
                 name: row.name,
-                created_at:
-                    row.created_at instanceof Date
-                        ? row.created_at.toISOString()
-                        : row.created_at,
-            }))
-        );
+                description: row.description || null,
+            })),
+        });
     } catch (err) {
-        console.error("GET /api/menu/categories error:", err);
-        res.status(500).json({ error: "Server error" });
+        console.error("GET /api/menu/categories/search error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+
+router.post("/categories/admin", requireAdmin, async (req, res) => {
+    const restaurantId = pickRestaurantId(req);
+    const rawCategoryId = req.body?.categoryId ?? req.body?.category_id;
+    const categoryIdInput = rawCategoryId != null ? Number(rawCategoryId) : null;
+    const nameInput = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+    const imageInput = req.body?.image ?? req.body?.img ?? req.body?.imageDataUrl ?? req.body?.image_data_url;
+
+    if ((!categoryIdInput || !Number.isInteger(categoryIdInput)) && !nameInput) {
+        return res.status(400).json({ error: "Provide an existing categoryId or a name." });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        let categoryId = categoryIdInput;
+        let categorySlug = null;
+        let categoryName = nameInput;
+
+        if (categoryId) {
+            const { rows } = await client.query(
+                `
+                SELECT id, slug, name
+                  FROM categories
+                 WHERE id = $1
+                   AND is_active = TRUE
+                `,
+                [categoryId]
+            );
+            if (!rows.length) {
+                await client.query("ROLLBACK");
+                return res.status(404).json({ error: "Category not found" });
+            }
+            categorySlug = rows[0].slug;
+            categoryName = rows[0].name || categoryName || rows[0].slug;
+            const result = await getCategoryId(client, restaurantId, categorySlug, req.user?.id || null);
+            categoryId = result.categoryId;
+            categorySlug = result.slug;
+        } else {
+            const result = await getCategoryId(client, restaurantId, categoryName, req.user?.id || null);
+            categoryId = result.categoryId;
+            categorySlug = result.slug;
+        }
+
+        const { rows: rcRows } = await client.query(
+            `
+            SELECT rc.id AS restaurant_category_id,
+                   rc.img_url,
+                   c.name,
+                   c.slug
+              FROM restaurant_categories rc
+              JOIN categories c ON c.id = rc.category_id
+             WHERE rc.restaurant_id = $1
+               AND rc.category_id = $2
+             FOR UPDATE
+        `,
+            [restaurantId, categoryId]
+        );
+
+        if (!rcRows.length) {
+            await client.query("ROLLBACK");
+            return res.status(500).json({ error: "Failed to link category" });
+        }
+
+        const rc = rcRows[0];
+        let nextImageUrl = rc.img_url;
+
+        if (imageInput !== undefined) {
+            if (imageInput === null || imageInput === "") {
+                nextImageUrl = null;
+            } else {
+                nextImageUrl = await handleImageUpload(imageInput, rc.name || categoryName || categorySlug);
+            }
+            await client.query(
+                `
+                UPDATE restaurant_categories
+                   SET img_url = $1
+                 WHERE id = $2
+            `,
+                [nextImageUrl, rc.restaurant_category_id]
+            );
+        }
+
+        await client.query("COMMIT");
+
+        const categories = await listRestaurantCategories(pool, restaurantId, req);
+        const categoryData = categories.find(
+            (cat) => cat.restaurantCategoryId === Number(rc.restaurant_category_id)
+        );
+
+        return res.status(201).json({
+            success: true,
+            category: categoryData,
+        });
+    } catch (err) {
+        await client.query("ROLLBACK").catch(() => { });
+        if (err && err.code === "MAX_CATEGORIES") {
+            return res.status(400).json({ error: err.message });
+        }
+        if (err && typeof err.message === "string") {
+            const lower = err.message.toLowerCase();
+            if (lower.includes("category")) {
+                return res.status(400).json({ error: err.message });
+            }
+        }
+        console.error("POST /api/menu/categories/admin error:", err);
+        return res.status(500).json({ error: "Server error" });
+    } finally {
+        client.release();
+    }
+});
+
+router.patch("/categories/admin/:restaurantCategoryId", requireAdmin, async (req, res) => {
+    const restaurantId = pickRestaurantId(req);
+    const restaurantCategoryId = Number(req.params.restaurantCategoryId);
+    if (!Number.isInteger(restaurantCategoryId) || restaurantCategoryId <= 0) {
+        return res.status(400).json({ error: "Invalid restaurant category id" });
+    }
+
+    const imageInput = req.body?.image ?? req.body?.img ?? req.body?.imageDataUrl ?? req.body?.image_data_url;
+    const removeImage = Boolean(req.body?.removeImage ?? req.body?.remove_image);
+
+    if (imageInput === undefined && !removeImage) {
+        return res.status(400).json({ error: "Nothing to update" });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+        const { rows } = await client.query(
+            `
+            SELECT rc.id,
+                   rc.img_url,
+                   c.name,
+                   c.slug
+              FROM restaurant_categories rc
+              JOIN categories c ON c.id = rc.category_id
+             WHERE rc.id = $1
+               AND rc.restaurant_id = $2
+             FOR UPDATE
+        `,
+            [restaurantCategoryId, restaurantId]
+        );
+        if (!rows.length) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ error: "Category not found" });
+        }
+
+        const current = rows[0];
+        let nextImageUrl = current.img_url;
+        if (removeImage) {
+            nextImageUrl = null;
+        } else if (imageInput !== undefined) {
+            nextImageUrl = await handleImageUpload(
+                imageInput,
+                current.name || current.slug
+            );
+        }
+
+        await client.query(
+            `
+            UPDATE restaurant_categories
+               SET img_url = $1
+             WHERE id = $2
+        `,
+            [nextImageUrl, restaurantCategoryId]
+        );
+
+        await client.query("COMMIT");
+
+        const categories = await listRestaurantCategories(pool, restaurantId, req);
+        const categoryData = categories.find(
+            (cat) => cat.restaurantCategoryId === restaurantCategoryId
+        );
+        return res.json({ success: true, category: categoryData });
+    } catch (err) {
+        await client.query("ROLLBACK").catch(() => { });
+        console.error("PATCH /api/menu/categories/admin/:id error:", err);
+        return res.status(500).json({ error: "Server error" });
+    } finally {
+        client.release();
+    }
+});
+
+router.delete("/categories/admin/:restaurantCategoryId", requireAdmin, async (req, res) => {
+    const restaurantId = pickRestaurantId(req);
+    const restaurantCategoryId = Number(req.params.restaurantCategoryId);
+    if (!Number.isInteger(restaurantCategoryId) || restaurantCategoryId <= 0) {
+        return res.status(400).json({ error: "Invalid restaurant category id" });
+    }
+
+    try {
+        const { rows } = await pool.query(
+            `
+            SELECT rc.category_id,
+                   c.name
+              FROM restaurant_categories rc
+              JOIN categories c ON c.id = rc.category_id
+             WHERE rc.id = $1
+               AND rc.restaurant_id = $2
+        `,
+            [restaurantCategoryId, restaurantId]
+        );
+        if (!rows.length) {
+            return res.status(404).json({ error: "Category not found" });
+        }
+        const categoryId = rows[0].category_id;
+        const categoryName = rows[0].name;
+
+        const { rows: countRows } = await pool.query(
+            `
+            SELECT COUNT(*)::int AS cnt
+              FROM restaurant_products
+             WHERE restaurant_id = $1
+               AND category_id = $2
+        `,
+            [restaurantId, categoryId]
+        );
+        if (Number(countRows[0]?.cnt || 0) > 0) {
+            return res.status(400).json({
+                error: `Cannot remove category "${categoryName}" while menu items still reference it.`,
+            });
+        }
+
+        await pool.query(
+            `
+            DELETE FROM restaurant_categories
+             WHERE id = $1
+               AND restaurant_id = $2
+        `,
+            [restaurantCategoryId, restaurantId]
+        );
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error("DELETE /api/menu/categories/admin/:id error:", err);
+        return res.status(500).json({ error: "Server error" });
     }
 });
 

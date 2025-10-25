@@ -179,6 +179,11 @@
     padding: 8px 10px;
 }
 
+.btn-small {
+    padding: 6px 10px;
+    font-size: 13px;
+}
+
 .error-text {
     color: #b91c1c;
     font-weight: 700;
@@ -380,4 +385,98 @@
 
 .employee-form-grid {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.category-manager-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.category-input-wrapper {
+    position: relative;
+}
+
+.category-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-top: 6px;
+    box-shadow: 0 10px 25px -12px rgba(15, 23, 42, 0.3);
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.category-suggestion {
+    width: 100%;
+    display: block;
+    text-align: left;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.category-suggestion:hover,
+.category-suggestion:focus {
+    background: #f1f5f9;
+}
+
+.restaurant-category-list {
+    margin-top: 16px;
+    display: grid;
+    gap: 10px;
+}
+
+.restaurant-category-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f9fafb;
+}
+
+.restaurant-category-thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #475569;
+    overflow: hidden;
+}
+
+.restaurant-category-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.restaurant-category-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.restaurant-category-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.restaurant-category-actions input[type="file"] {
+    display: none;
 }
