@@ -151,6 +151,22 @@ function formatRestaurantCategory(row, req) {
     };
 }
 
+function formatProductSuggestion(row) {
+    if (!row) return null;
+    return {
+        id: Number(row.product_id),
+        name: row.name,
+        description: row.description || null,
+        restaurantPrice:
+            row.restaurant_price != null ? Number(row.restaurant_price) : null,
+        samplePrice: row.sample_price != null ? Number(row.sample_price) : null,
+        restaurantImageUrl: row.restaurant_image_url || null,
+        suggestedCategorySlug: row.suggested_category_slug || null,
+        suggestedCategoryName: row.suggested_category_name || null,
+        isLinked: row.is_linked === true || row.is_linked === "t",
+    };
+}
+
 async function fetchMenuItemById(db, restaurantId, id) {
     const { rows } = await db.query(
         `
@@ -788,6 +804,65 @@ router.delete("/categories/admin/:restaurantCategoryId", requireAdmin, async (re
     }
 });
 
+router.get("/products/search", requireAdmin, async (req, res) => {
+    try {
+        const restaurantId = pickRestaurantId(req);
+        const qRaw = String(req.query.q || "").trim();
+        if (!qRaw) {
+            return res.json({ products: [] });
+        }
+        const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 25);
+        const pattern = `%${qRaw}%`;
+
+        const { rows } = await pool.query(
+            `
+            SELECT
+                p.id AS product_id,
+                p.name,
+                p.description,
+                rp_self.price AS restaurant_price,
+                rp_self.img_url AS restaurant_image_url,
+                COALESCE(c_self.slug, c_any.slug) AS suggested_category_slug,
+                COALESCE(c_self.name, c_any.name) AS suggested_category_name,
+                rp_any.price AS sample_price,
+                (rp_self.price IS NOT NULL) AS is_linked
+            FROM products p
+            LEFT JOIN LATERAL (
+                SELECT rp.price, rp.img_url, rp.category_id
+                  FROM restaurant_products rp
+                 WHERE rp.product_id = p.id
+                   AND rp.restaurant_id = $2
+                 ORDER BY rp.id DESC
+                 LIMIT 1
+            ) rp_self ON true
+            LEFT JOIN LATERAL (
+                SELECT rp.price, rp.category_id
+                  FROM restaurant_products rp
+                 WHERE rp.product_id = p.id
+                 ORDER BY rp.id DESC
+                 LIMIT 1
+            ) rp_any ON true
+            LEFT JOIN categories c_self ON c_self.id = rp_self.category_id
+            LEFT JOIN categories c_any ON c_any.id = rp_any.category_id
+            WHERE p.is_active = TRUE
+              AND LOWER(p.name) LIKE LOWER($1)
+            ORDER BY
+                CASE WHEN rp_self.price IS NOT NULL THEN 0 ELSE 1 END,
+                p.name ASC
+            LIMIT $3
+        `,
+            [pattern, restaurantId, limit]
+        );
+
+        return res.json({
+            products: rows.map(formatProductSuggestion).filter(Boolean),
+        });
+    } catch (err) {
+        console.error("GET /api/menu/products/search error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+
 router.get("/admin", requireAdmin, async (req, res) => {
     try {
         const restaurantId = pickRestaurantId(req);
@@ -906,10 +981,22 @@ router.post("/", requireAdmin, async (req, res) => {
     const client = await pool.connect();
     try {
         const restaurantId = pickRestaurantId(req);
-        const { name, price, category = "other", image, description = null, sku = null } = req.body || {};
+        const {
+            name,
+            price,
+            category = "other",
+            image,
+            description = null,
+            sku = null,
+            productId: bodyProductId,
+            product_id: bodyProductIdAlt,
+        } = req.body || {};
+
+        const requestedProductIdRaw = bodyProductId ?? bodyProductIdAlt ?? null;
+        const requestedProductId = requestedProductIdRaw != null ? Number(requestedProductIdRaw) : null;
 
         const trimmedName = String(name || "").trim();
-        if (!trimmedName) {
+        if (!trimmedName && !requestedProductId) {
             return res.status(400).json({ error: "Name is required" });
         }
 
@@ -927,45 +1014,111 @@ router.post("/", requireAdmin, async (req, res) => {
             req.user?.id || null
         );
 
-        const imageUrl = await handleImageUpload(image, trimmedName);
+        let productId = requestedProductId || null;
+        let baseProductName = trimmedName;
+        let restaurantProductId = null;
 
-        const { rows: productRows } = await client.query(
-            `
-            INSERT INTO products (name, description, created_by_employee_id)
-            VALUES ($1, $2, $3)
-            RETURNING id
-        `,
-            [trimmedName, description || null, req.user?.id || null]
-        );
-        const productId = productRows[0]?.id;
-        if (!productId) {
-            throw new Error("Failed to create product");
-        }
+        if (productId) {
+            const { rows } = await client.query(
+                `
+                SELECT id, name, description
+                  FROM products
+                 WHERE id = $1
+                   AND is_active = TRUE
+            `,
+                [productId]
+            );
+            if (!rows.length) {
+                await client.query("ROLLBACK");
+                return res.status(404).json({ error: "Product not found" });
+            }
+            baseProductName = rows[0].name || trimmedName || `product-${productId}`;
 
-        const { rows: rpRows } = await client.query(
-            `
-            INSERT INTO restaurant_products (
-                restaurant_id,
-                product_id,
-                category_id,
-                price,
-                img_url,
-                is_active,
-                sku
-            )
-            VALUES ($1, $2, $3, $4, $5, TRUE, $6)
-            RETURNING id
-        `,
-            [restaurantId, productId, categoryId, priceNum, imageUrl, sku || null]
-        );
-        const rpId = rpRows[0]?.id;
-        if (!rpId) {
-            throw new Error("Failed to create restaurant product");
+            const { rows: existingRows } = await client.query(
+                `
+                SELECT 1
+                  FROM restaurant_products
+                 WHERE restaurant_id = $1
+                   AND product_id = $2
+                 LIMIT 1
+            `,
+                [restaurantId, productId]
+            );
+            if (existingRows.length) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ error: "Product already exists in this restaurant" });
+            }
+
+            let uploadedImageUrl = null;
+            if (image !== undefined) {
+                if (image === null || image === "") uploadedImageUrl = null;
+                else uploadedImageUrl = await handleImageUpload(image, baseProductName);
+            }
+
+            const insertRes = await client.query(
+                `
+                INSERT INTO restaurant_products (
+                    restaurant_id,
+                    product_id,
+                    category_id,
+                    price,
+                    img_url,
+                    is_active,
+                    sku
+                )
+                VALUES ($1, $2, $3, $4, $5, TRUE, $6)
+                RETURNING id
+            `,
+                [restaurantId, productId, categoryId, priceNum, uploadedImageUrl, sku || null]
+            );
+            restaurantProductId = insertRes.rows[0]?.id;
+            if (!restaurantProductId) {
+                throw new Error("Failed to add product to restaurant");
+            }
+        } else {
+            const uploadedImageUrl = image !== undefined
+                ? await handleImageUpload(image, trimmedName)
+                : null;
+
+            const { rows: productRows } = await client.query(
+                `
+                INSERT INTO products (name, description, created_by_employee_id)
+                VALUES ($1, $2, $3)
+                RETURNING id
+            `,
+                [trimmedName, description || null, req.user?.id || null]
+            );
+            productId = productRows[0]?.id;
+            if (!productId) {
+                throw new Error("Failed to create product");
+            }
+            baseProductName = trimmedName;
+
+            const { rows: rpRows } = await client.query(
+                `
+                INSERT INTO restaurant_products (
+                    restaurant_id,
+                    product_id,
+                    category_id,
+                    price,
+                    img_url,
+                    is_active,
+                    sku
+                )
+                VALUES ($1, $2, $3, $4, $5, TRUE, $6)
+                RETURNING id
+            `,
+                [restaurantId, productId, categoryId, priceNum, uploadedImageUrl, sku || null]
+            );
+            restaurantProductId = rpRows[0]?.id;
+            if (!restaurantProductId) {
+                throw new Error("Failed to create restaurant product");
+            }
         }
 
         await client.query("COMMIT");
 
-        const item = await fetchMenuItemById(pool, restaurantId, rpId);
+        const item = await fetchMenuItemById(pool, restaurantId, restaurantProductId);
         const formatted = formatMenuRow(item, req);
         formatted.category = slug;
         return res.json({ success: true, item: formatted });
@@ -982,7 +1135,9 @@ router.post("/", requireAdmin, async (req, res) => {
             if (
                 lower.includes("image") ||
                 lower.includes("category") ||
-                lower.includes("product")
+                lower.includes("product") ||
+                lower.includes("price") ||
+                lower.includes("name")
             ) {
                 return res.status(400).json({ error: err.message });
             }
