@@ -11,6 +11,7 @@ import {
     apiUpdateRestaurantCategory,
     apiDeleteRestaurantCategory,
     apiSearchCategoriesByName,
+    apiSearchProductsByName,
     fmtMKD,
 } from "./dashboardApi";
 import "./dashboard.css";
@@ -18,7 +19,7 @@ import "./dashboard.css";
 const CATEGORY_ORDER = ["coffee", "drinks", "food", "desserts", "other"];
 const CATEGORY_LABELS = {
     coffee: "Coffee",
-   drinks: "Drinks",
+    drinks: "Drinks",
     food: "Food",
     desserts: "Desserts",
     other: "Other",
@@ -69,6 +70,10 @@ function MenuManager({ user }) {
     const [price, setPrice] = useState("");
     const [category, setCategory] = useState("other");
     const [file, setFile] = useState(null);
+    const [description, setDescription] = useState("");
+    const [selectedProductSuggestion, setSelectedProductSuggestion] = useState(null);
+    const [productSuggestions, setProductSuggestions] = useState([]);
+    const [productSearchLoading, setProductSearchLoading] = useState(false);
 
     // Edit form state
     const [editing, setEditing] = useState(null); // item or null
@@ -120,6 +125,26 @@ function MenuManager({ user }) {
             updatePreview(editing.image_url || null);
         } else {
             updatePreview(null);
+        }
+    };
+
+    const clearProductSelection = useCallback(() => {
+        setSelectedProductSuggestion(null);
+        setProductSuggestions([]);
+        setDescription("");
+        setProductSearchLoading(false);
+        setCreateError("");
+        setCreateOk("");
+    }, []);
+
+    const handleNameInputChange = (value) => {
+        setName(value);
+        if (
+            selectedProductSuggestion &&
+            value.trim().toLowerCase() !==
+                (selectedProductSuggestion.name || "").toLowerCase()
+        ) {
+            clearProductSelection();
         }
     };
 
@@ -210,6 +235,46 @@ function MenuManager({ user }) {
             clearTimeout(handle);
         };
     }, [categoryInput, restaurantCategories]);
+
+    useEffect(() => {
+        const trimmed = name.trim();
+        if (!trimmed) {
+            setProductSuggestions([]);
+            setProductSearchLoading(false);
+            if (selectedProductSuggestion) {
+                clearProductSelection();
+            }
+            return;
+        }
+
+        if (
+            selectedProductSuggestion &&
+            trimmed.toLowerCase() === (selectedProductSuggestion.name || "").toLowerCase()
+        ) {
+            setProductSuggestions([]);
+            setProductSearchLoading(false);
+            return;
+        }
+
+        let cancelled = false;
+        setProductSearchLoading(true);
+        const handle = setTimeout(async () => {
+            try {
+                const results = await apiSearchProductsByName(trimmed);
+                if (cancelled) return;
+                setProductSuggestions(Array.isArray(results) ? results : []);
+            } catch {
+                if (!cancelled) setProductSuggestions([]);
+            } finally {
+                if (!cancelled) setProductSearchLoading(false);
+            }
+        }, 250);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(handle);
+        };
+    }, [name, selectedProductSuggestion, clearProductSelection]);
 
     const categoryOptions = useMemo(() => {
         if (restaurantCategories.length) {
@@ -310,14 +375,27 @@ function MenuManager({ user }) {
         setCreateOk("");
         setBusy(true);
         try {
-            if (!name.trim()) throw new Error("Name is required");
+            const trimmedName = name.trim() || selectedProductSuggestion?.name || "";
+            if (!trimmedName) throw new Error("Name is required");
             const p = Number(price);
             if (!Number.isFinite(p) || p <= 0) throw new Error("Price must be positive");
             const imageDataUrl = file ? await toDataUrl(file) : undefined;
-            const res = await apiCreateMenuItem({ name: name.trim(), price: p, category, imageDataUrl });
+            const payload = {
+                name: trimmedName,
+                price: p,
+                category,
+                imageDataUrl,
+            };
+            if (selectedProductSuggestion?.id) {
+                payload.productId = selectedProductSuggestion.id;
+            } else if (description.trim()) {
+                payload.description = description.trim();
+            }
+            const res = await apiCreateMenuItem(payload);
             if (!res?.success) throw new Error(res?.error || "Failed to create item");
+
             if (file) {
-                const base = slugify(name.trim());
+                const base = slugify(trimmedName);
                 let ext = "";
                 if (file.type === "image/png") ext = ".png";
                 else if (file.type === "image/jpeg") ext = ".jpg";
@@ -326,9 +404,15 @@ function MenuManager({ user }) {
             } else {
                 setCreateOk("Item created.");
             }
-            setName(""); setPrice(""); setCategory("other"); setFile(null);
-            await load();
+
+            setName("");
+            setPrice("");
+            setCategory("other");
+            setFile(null);
+            setDescription("");
+            clearProductSelection();
             e.target.reset?.();
+            await load();
         } catch (e2) {
             const serverMsg = e2?.response?.data?.error;
             setCreateError(serverMsg || e2?.message || "Upload failed");
@@ -564,6 +648,34 @@ const handleClearSelectedImage = () => {
         }
     };
 
+    const handleProductSuggestionSelect = (suggestion) => {
+        if (!suggestion) return;
+        setSelectedProductSuggestion(suggestion);
+        setProductSuggestions([]);
+        setProductSearchLoading(false);
+        setName(suggestion.name || "");
+        setDescription(suggestion.description || "");
+        const targetPrice =
+            suggestion.restaurantPrice != null
+                ? suggestion.restaurantPrice
+                : suggestion.samplePrice != null
+                    ? suggestion.samplePrice
+                    : null;
+        setPrice(
+            targetPrice != null && !Number.isNaN(Number(targetPrice))
+                ? String(targetPrice)
+                : ""
+        );
+        if (suggestion.suggestedCategorySlug) {
+            const slug = suggestion.suggestedCategorySlug;
+            if (categoryOptions.some((opt) => opt.slug === slug)) {
+                setCategory(slug);
+            }
+        }
+        setCreateError("");
+        setCreateOk("");
+    };
+
     const handleDelete = async (it) => {
         if (!window.confirm(`Delete "${it.name}"? This cannot be undone.`)) return;
         setCreateError("");
@@ -634,15 +746,62 @@ const handleClearSelectedImage = () => {
                             {restaurantName ? ` · ${restaurantName}` : ""}
                         </h3>
                         <form onSubmit={handleCreate} className="filters-grid">
-                            <label className="form-label">
+                            <label className="form-label category-input-wrapper">
                                 Name
                                 <input
                                     className="input"
                                     value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    onChange={(e) => handleNameInputChange(e.target.value)}
+                                    placeholder="Start typing to search existing products"
                                     required
                                 />
+                                {productSearchLoading ? (
+                                    <span className="muted small">Searching…</span>
+                                ) : null}
+                                {!!productSuggestions.length && (
+                                    <div className="category-suggestions">
+                                        {productSuggestions.map((suggestion) => {
+                                            const disabled = suggestion.isLinked;
+                                            const priceLine = suggestion.restaurantPrice != null
+                                                ? `Price here: ${fmtMKD(suggestion.restaurantPrice)}`
+                                                : suggestion.samplePrice != null
+                                                    ? `Sample price: ${fmtMKD(suggestion.samplePrice)}`
+                                                    : "";
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={`prod-suggest-${suggestion.id}`}
+                                                    className="category-suggestion"
+                                                    onClick={() => handleProductSuggestionSelect(suggestion)}
+                                                    disabled={disabled || productSearchLoading || busy}
+                                                >
+                                                    <div className="fw-700">{suggestion.name}</div>
+                                                    {priceLine ? (
+                                                        <div className="muted small">{priceLine}</div>
+                                                    ) : null}
+                                                    {disabled ? (
+                                                        <div className="muted small">Already on menu</div>
+                                                    ) : null}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </label>
+                            {selectedProductSuggestion ? (
+                                <div className="muted small" style={{ marginTop: -6 }}>
+                                    Using shared product. You can adjust price and image for this restaurant.
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost btn-small"
+                                        style={{ marginLeft: 8 }}
+                                        onClick={clearProductSelection}
+                                        disabled={busy}
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                            ) : null}
                             <label className="form-label">
                                 Price (MKD)
                                 <input
@@ -652,6 +811,17 @@ const handleClearSelectedImage = () => {
                                     value={price}
                                     onChange={(e) => setPrice(e.target.value)}
                                     required
+                                />
+                            </label>
+                            <label className="form-label">
+                                Description
+                                <textarea
+                                    className="input"
+                                    rows={3}
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="Optional description"
+                                    disabled={!!selectedProductSuggestion}
                                 />
                             </label>
                             <label className="form-label">
@@ -811,137 +981,6 @@ const handleClearSelectedImage = () => {
                         </div>
                     )}
 
-                    <div className="card">
-                        <h3 className="mt-0">
-                            Restaurant Categories
-                            {restaurantName ? ` · ${restaurantName}` : ""}
-                        </h3>
-                        <p className="muted small">
-                            You can assign up to {MAX_RESTAURANT_CATEGORIES} categories. These power the menu tabs and product forms.
-                        </p>
-                        <form onSubmit={handleAddRestaurantCategory} className="category-manager-grid">
-                            <label className="form-label category-input-wrapper">
-                                Category name
-                                <input
-                                    className="input"
-                                    value={categoryInput}
-                                    onChange={(e) => handleCategoryInputChange(e.target.value)}
-                                    placeholder="Type to search or create"
-                                    disabled={categoryBusy || restaurantCategories.length >= MAX_RESTAURANT_CATEGORIES}
-                                />
-                                {categorySearchLoading ? (
-                                    <span className="muted small">Searching…</span>
-                                ) : null}
-                                {!!categorySuggestions.length && (
-                                    <div className="category-suggestions">
-                                        {categorySuggestions.map((suggestion) => (
-                                            <button
-                                                type="button"
-                                                key={`suggest-${suggestion.id}`}
-                                                className="category-suggestion"
-                                                onClick={() => handleSuggestionSelect(suggestion)}
-                                                disabled={categoryBusy}
-                                            >
-                                                {suggestion.name || humanizeSlug(suggestion.slug)}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </label>
-                            <label className="form-label">
-                                Category image (optional)
-                                <input
-                                    ref={categoryImageInputRef}
-                                    className="input"
-                                    type="file"
-                                    accept="image/png,image/jpeg,image/webp"
-                                    onChange={handleCategoryImageFileChange}
-                                    disabled={categoryBusy}
-                                />
-                            </label>
-                            <div className="self-end">
-                                <button
-                                    className="btn btn-primary"
-                                    type="submit"
-                                    disabled={categoryBusy || restaurantCategories.length >= MAX_RESTAURANT_CATEGORIES}
-                                >
-                                    {categoryBusy ? "Saving…" : "Add category"}
-                                </button>
-                            </div>
-                        </form>
-                        {restaurantCategories.length >= MAX_RESTAURANT_CATEGORIES ? (
-                            <div className="muted small" style={{ marginTop: 8 }}>
-                                Maximum categories reached. Remove one to add another.
-                            </div>
-                        ) : null}
-                        {categoryError ? <div className="error-text">{categoryError}</div> : null}
-                        {categoryOk ? (
-                            <div className="mt-12" style={{ color: "#065f46", fontWeight: 700 }}>
-                                {categoryOk}
-                            </div>
-                        ) : null}
-
-                        <div className="restaurant-category-list">
-                            {restaurantCategories.length === 0 ? (
-                                <div className="muted small">No categories yet.</div>
-                            ) : (
-                                restaurantCategories.map((cat) => (
-                                    <div key={cat.restaurantCategoryId} className="restaurant-category-row">
-                                        <div className="restaurant-category-thumb">
-                                            {cat.image_url ? (
-                                                <img src={cat.image_url} alt={cat.name} />
-                                            ) : (
-                                                <span>{(cat.name || cat.slug || "?").slice(0, 1).toUpperCase()}</span>
-                                            )}
-                                        </div>
-                                        <div className="restaurant-category-info">
-                                            <div className="fw-700">{cat.name}</div>
-                                            <div className="muted small">/{cat.slug}</div>
-                                            <div className="muted small">
-                                                {cat.item_count} item{cat.item_count === 1 ? "" : "s"}
-                                            </div>
-                                        </div>
-                                        <div className="restaurant-category-actions">
-                                            <label className="btn btn-ghost btn-small">
-                                                Update image
-                                                <input
-                                                    type="file"
-                                                    accept="image/png,image/jpeg,image/webp"
-                                                    onChange={(e) =>
-                                                        handleCategoryImageUploadChange(cat.restaurantCategoryId, e)
-                                                    }
-                                                    disabled={categoryBusy}
-                                                    style={{ display: "none" }}
-                                                />
-                                            </label>
-                                            <button
-                                                type="button"
-                                                className="btn btn-ghost btn-small"
-                                                onClick={() => handleRemoveCategoryImage(cat.restaurantCategoryId)}
-                                                disabled={categoryBusy || !cat.raw_image_url}
-                                            >
-                                                Remove image
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="btn btn-danger btn-small"
-                                                onClick={() =>
-                                                    handleDeleteRestaurantCategory(
-                                                        cat.restaurantCategoryId,
-                                                        cat.name || cat.slug
-                                                    )
-                                                }
-                                                disabled={categoryBusy}
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-
                     <div className="row gap-8" style={{ marginBottom: 16 }}>
                         <button
                             type="button"
@@ -959,7 +998,148 @@ const handleClearSelectedImage = () => {
                         >
                             Menu Items
                         </button>
+                        <button
+                            type="button"
+                            className={`btn ${activeSection === "categories" ? "btn-primary" : "btn-ghost"}`}
+                            onClick={() => setActiveSection("categories")}
+                            disabled={busy || categoryBusy}
+                        >
+                            Category Management
+                        </button>
                     </div>
+
+                    {activeSection === "categories" && (
+                        <div className="card">
+                            <h3 className="mt-0">
+                                Restaurant Categories
+                                {restaurantName ? ` · ${restaurantName}` : ""}
+                            </h3>
+                            <p className="muted small">
+                                You can assign up to {MAX_RESTAURANT_CATEGORIES} categories. These power the menu tabs and product forms.
+                            </p>
+                            <form onSubmit={handleAddRestaurantCategory} className="category-manager-grid">
+                                <label className="form-label category-input-wrapper">
+                                    Category name
+                                    <input
+                                        className="input"
+                                        value={categoryInput}
+                                        onChange={(e) => handleCategoryInputChange(e.target.value)}
+                                        placeholder="Type to search or create"
+                                        disabled={categoryBusy || restaurantCategories.length >= MAX_RESTAURANT_CATEGORIES}
+                                    />
+                                    {categorySearchLoading ? (
+                                        <span className="muted small">Searching…</span>
+                                    ) : null}
+                                    {!!categorySuggestions.length && (
+                                        <div className="category-suggestions">
+                                            {categorySuggestions.map((suggestion) => (
+                                                <button
+                                                    type="button"
+                                                    key={`suggest-${suggestion.id}`}
+                                                    className="category-suggestion"
+                                                    onClick={() => handleSuggestionSelect(suggestion)}
+                                                    disabled={categoryBusy}
+                                                >
+                                                    {suggestion.name || humanizeSlug(suggestion.slug)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </label>
+                                <label className="form-label">
+                                    Category image (optional)
+                                    <input
+                                        ref={categoryImageInputRef}
+                                        className="input"
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
+                                        onChange={handleCategoryImageFileChange}
+                                        disabled={categoryBusy}
+                                    />
+                                </label>
+                                <div className="self-end">
+                                    <button
+                                        className="btn btn-primary"
+                                        type="submit"
+                                        disabled={categoryBusy || restaurantCategories.length >= MAX_RESTAURANT_CATEGORIES}
+                                    >
+                                        {categoryBusy ? "Saving…" : "Add category"}
+                                    </button>
+                                </div>
+                            </form>
+                            {restaurantCategories.length >= MAX_RESTAURANT_CATEGORIES ? (
+                                <div className="muted small" style={{ marginTop: 8 }}>
+                                    Maximum categories reached. Remove one to add another.
+                                </div>
+                            ) : null}
+                            {categoryError ? <div className="error-text">{categoryError}</div> : null}
+                            {categoryOk ? (
+                                <div className="mt-12" style={{ color: "#065f46", fontWeight: 700 }}>
+                                    {categoryOk}
+                                </div>
+                            ) : null}
+
+                            <div className="restaurant-category-list">
+                                {restaurantCategories.length === 0 ? (
+                                    <div className="muted small">No categories yet.</div>
+                                ) : (
+                                    restaurantCategories.map((cat) => (
+                                        <div key={cat.restaurantCategoryId} className="restaurant-category-row">
+                                            <div className="restaurant-category-thumb">
+                                                {cat.image_url ? (
+                                                    <img src={cat.image_url} alt={cat.name} />
+                                                ) : (
+                                                    <span>{(cat.name || cat.slug || "?").slice(0, 1).toUpperCase()}</span>
+                                                )}
+                                            </div>
+                                            <div className="restaurant-category-info">
+                                                <div className="fw-700">{cat.name}</div>
+                                                <div className="muted small">/{cat.slug}</div>
+                                                <div className="muted small">
+                                                    {cat.item_count} item{cat.item_count === 1 ? "" : "s"}
+                                                </div>
+                                            </div>
+                                            <div className="restaurant-category-actions">
+                                                <label className="btn btn-ghost btn-small">
+                                                    Update image
+                                                    <input
+                                                        type="file"
+                                                        accept="image/png,image/jpeg,image/webp"
+                                                        onChange={(e) =>
+                                                            handleCategoryImageUploadChange(cat.restaurantCategoryId, e)
+                                                        }
+                                                        disabled={categoryBusy}
+                                                        style={{ display: "none" }}
+                                                    />
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-small"
+                                                    onClick={() => handleRemoveCategoryImage(cat.restaurantCategoryId)}
+                                                    disabled={categoryBusy || !cat.raw_image_url}
+                                                >
+                                                    Remove image
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-danger btn-small"
+                                                    onClick={() =>
+                                                        handleDeleteRestaurantCategory(
+                                                            cat.restaurantCategoryId,
+                                                            cat.name || cat.slug
+                                                        )
+                                                    }
+                                                    disabled={categoryBusy}
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {activeSection === "menu" && (
                         <div className="card">

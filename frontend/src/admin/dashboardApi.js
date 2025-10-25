@@ -125,7 +125,7 @@ export async function apiFetchCategories({ restaurantId, auth } = {}) {
 }
 
 // --- Admin: create menu item ---
-export async function apiCreateMenuItem({ name, price, category, imageDataUrl }) {
+export async function apiCreateMenuItem({ name, price, category, imageDataUrl, description, productId }) {
     const token = getToken();
     if (!token) throw new Error("No token");
     const payload = {
@@ -134,6 +134,8 @@ export async function apiCreateMenuItem({ name, price, category, imageDataUrl })
         category,
         image: imageDataUrl || null,
     };
+    if (description != null && description !== "") payload.description = description;
+    if (productId != null) payload.productId = productId;
     const { data } = await api.post(`/menu`, payload, {
         headers: { Authorization: `Bearer ${token}` },
     });
@@ -230,6 +232,25 @@ export async function apiSearchCategoriesByName(query) {
         headers: { Authorization: `Bearer ${token}` },
     });
     return Array.isArray(data?.categories) ? data.categories : [];
+}
+
+export async function apiSearchProductsByName(query) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    const qs = params.toString();
+    const { data } = await api.get(`/menu/products/search${qs ? `?${qs}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    const list = Array.isArray(data?.products) ? data.products : [];
+    return list.map((prod) => ({
+        ...prod,
+        restaurantPrice:
+            prod?.restaurantPrice != null ? Number(prod.restaurantPrice) : null,
+        samplePrice:
+            prod?.samplePrice != null ? Number(prod.samplePrice) : null,
+    }));
 }
 
 // --- Admin: delete menu item ---
