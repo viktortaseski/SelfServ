@@ -15,10 +15,18 @@ import backIcon from "./assets/other-images/back-button.svg";
 
 import { t, labelForCat, detectLang, setLang } from "./i18n";
 
-const ICONS = { coffee: coffeeIcon, drinks: drinksIcon, food: foodIcon, desserts: dessertsIcon };
-const CATS = ["coffee", "drinks", "food", "desserts"];
-const FIRST_CAT = CATS[0];
-const LAST_CAT = CATS[CATS.length - 1];
+const FALLBACK_NAV_CATEGORIES = [
+  { slug: "coffee", name: labelForCat("coffee"), image_url: coffeeIcon },
+  { slug: "drinks", name: labelForCat("drinks"), image_url: drinksIcon },
+  { slug: "food", name: labelForCat("food"), image_url: foodIcon },
+  { slug: "desserts", name: labelForCat("desserts"), image_url: dessertsIcon },
+];
+const CATEGORY_ICON_FALLBACKS = {
+  coffee: coffeeIcon,
+  drinks: drinksIcon,
+  food: foodIcon,
+  desserts: dessertsIcon,
+};
 const ACTIVE_CAT_KEY = "activeCategory";
 
 const parseRestaurantIdFromRaw = (raw) => {
@@ -56,14 +64,14 @@ function App() {
   const [view, setView] = useState("menu");
   const [cartTab, setCartTab] = useState("current");
 
-  const [category, _setCategory] = useState(() => {
+  const getInitialCategory = () => {
     try {
       const saved = sessionStorage.getItem(ACTIVE_CAT_KEY);
-      return CATS.includes(saved) ? saved : "coffee";
-    } catch {
-      return "coffee";
-    }
-  });
+      if (saved) return saved;
+    } catch { }
+    return FALLBACK_NAV_CATEGORIES[0].slug;
+  };
+  const [category, _setCategory] = useState(getInitialCategory);
 
   const [searchText, setSearchText] = useState("");
   const [notice, setNotice] = useState(null);
@@ -83,7 +91,20 @@ function App() {
     }
   });
   const [restaurantActive, setRestaurantActive] = useState(true);
+  const [navCategories, setNavCategories] = useState([]);
   const prevRestaurantId = useRef(null);
+  const effectiveCategories = useMemo(
+    () => (navCategories.length ? navCategories : FALLBACK_NAV_CATEGORIES),
+    [navCategories]
+  );
+  const firstCategorySlug = effectiveCategories[0]?.slug || null;
+  const lastCategorySlug =
+    effectiveCategories[effectiveCategories.length - 1]?.slug || null;
+  const getCategoryIconSource = useCallback(
+    (slug, imageUrl) =>
+      imageUrl || CATEGORY_ICON_FALLBACKS[slug] || CATEGORY_ICON_FALLBACKS.coffee,
+    []
+  );
 
   const parseRestaurantGeo = (source) => {
     if (!source) return null;
@@ -138,6 +159,53 @@ function App() {
     };
   }, [restaurantId]);
 
+  useEffect(() => {
+    if (!restaurantId) {
+      setNavCategories([]);
+      return;
+    }
+    let cancelled = false;
+    api
+      .get("/menu/categories", { params: { restaurantId } })
+      .then((res) => {
+        if (cancelled) return;
+        const rows = Array.isArray(res.data) ? res.data : [];
+        const mapped = rows
+          .map((row) => {
+            const slug = row?.slug || null;
+            if (!slug) return null;
+            const name =
+              row?.name ||
+              labelForCat(slug) ||
+              slug.replace(/[-_]/g, " ");
+            const imageUrl = row?.image_url || row?.img_url || null;
+            return { slug, name, image_url: imageUrl };
+          })
+          .filter(Boolean);
+        setNavCategories(mapped);
+      })
+      .catch(() => {
+        if (!cancelled) setNavCategories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantId]);
+
+  useEffect(() => {
+    if (!effectiveCategories.length) return;
+    _setCategory((prev) => {
+      if (prev && effectiveCategories.some((cat) => cat.slug === prev)) {
+        return prev;
+      }
+      const fallback = effectiveCategories[0]?.slug || null;
+      if (fallback) {
+        try { sessionStorage.setItem(ACTIVE_CAT_KEY, fallback); } catch { }
+      }
+      return fallback;
+    });
+  }, [effectiveCategories]);
+
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [pillHidden, setPillHidden] = useState(false);
   const lastY = useRef(0);
@@ -158,7 +226,7 @@ function App() {
   const isAtBottom = () => Math.abs(getScrollY() - getMaxScroll()) <= 2;
 
   const setCategory = (cat) => {
-    if (!CATS.includes(cat)) return;
+    if (!effectiveCategories.some((item) => item.slug === cat)) return;
     _setCategory((prev) => {
       if (prev === cat) return prev;
       try { sessionStorage.setItem(ACTIVE_CAT_KEY, cat); } catch { }
@@ -428,8 +496,11 @@ function App() {
 
   const setCategoryFromScroll = (cat) => {
     if (performance.now() < userLockUntil.current) return;
-    if ((isAtTop() && cat === FIRST_CAT && category !== FIRST_CAT) ||
-      (isAtBottom() && cat === LAST_CAT && category !== LAST_CAT)) return;
+    if (
+      (isAtTop() && firstCategorySlug && cat === firstCategorySlug && category !== firstCategorySlug) ||
+      (isAtBottom() && lastCategorySlug && cat === lastCategorySlug && category !== lastCategorySlug)
+    )
+      return;
     if (category === cat) return;
     setCategory(cat);
   };
@@ -538,20 +609,26 @@ function App() {
 
             {restaurantActive && (
               <div className="category-row category-row--tabs">
-                {CATS.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    data-cat={cat}
-                    className={`category-chip ${category === cat ? "is-active" : ""}`}
-                    onClick={() => selectCategory(cat)}
-                  >
-                    <img src={ICONS[cat]} alt="" className="chip-icon-img" draggable="false" />
-                    <span className="chip-label" style={{ textTransform: "capitalize" }}>
-                      {labelForCat(cat)}
-                    </span>
-                  </button>
-                ))}
+                {effectiveCategories.map((cat) => {
+                  const iconSrc = getCategoryIconSource(cat.slug, cat.image_url);
+                  const isActive = category === cat.slug;
+                  return (
+                    <button
+                      key={cat.slug}
+                      type="button"
+                      data-cat={cat.slug}
+                      className={`category-chip ${isActive ? "is-active" : ""}`}
+                      onClick={() => selectCategory(cat.slug)}
+                    >
+                      {iconSrc ? (
+                        <img src={iconSrc} alt="" className="chip-icon-img" draggable="false" />
+                      ) : null}
+                      <span className="chip-label" style={{ textTransform: "capitalize" }}>
+                        {cat.name || labelForCat(cat.slug)}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </>
@@ -569,6 +646,7 @@ function App() {
             search={searchText}
             onMenuLoaded={handleMenuLoaded}
             restaurantId={restaurantId}
+            categories={effectiveCategories}
           />
         ) : (
           <div

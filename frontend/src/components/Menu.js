@@ -17,6 +17,7 @@ function Menu({
     notify,
     onMenuLoaded,
     restaurantId,
+    categories = [],
 }) {
     const [items, setItems] = useState([]);
     const [topPicks, setTopPicks] = useState([]);
@@ -103,6 +104,12 @@ function Menu({
     }, [onMenuLoaded, restaurantId]);
 
     useEffect(() => {
+        if (Array.isArray(categories) && categories.length) {
+            const slugs = [...new Set(categories.map((cat) => cat?.slug || cat).filter(Boolean))];
+            setAvailableCategories(slugs);
+            return;
+        }
+
         let mounted = true;
         const params = {};
         const parsedRestaurantId = Number(restaurantId);
@@ -122,7 +129,7 @@ function Menu({
         return () => {
             mounted = false;
         };
-    }, [restaurantId]);
+    }, [categories, restaurantId]);
 
     // Load Top Picks for the active category (most-ordered 8)
     useEffect(() => {
