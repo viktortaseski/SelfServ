@@ -18,9 +18,9 @@ if (BUCKET && REGION) {
     const credentials =
         process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
             ? {
-                  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-              }
+                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            }
             : undefined;
 
     s3Client = new S3Client({
@@ -70,7 +70,16 @@ async function uploadMenuImage({ buffer, contentType, extension }) {
     });
 }
 
+async function uploadRestaurantLogo({ buffer, contentType, extension }) {
+    return uploadBufferToS3({
+        buffer,
+        contentType,
+        extension,
+        folder: "restaurant-logos",
+    });
+}
+
 module.exports = {
     uploadMenuImage,
+    uploadRestaurantLogo,
 };
-

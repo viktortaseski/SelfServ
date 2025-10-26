@@ -80,6 +80,21 @@ async function ensureRestaurantIsActiveColumn() {
     }
 }
 
+async function ensureRestaurantLogoColumn() {
+    try {
+        await pool.query(`
+            ALTER TABLE restaurants
+            ADD COLUMN IF NOT EXISTS logo_url TEXT
+        `);
+    } catch (err) {
+        if (err.code === "42P01") {
+            console.warn("[migrations] restaurants table missing; skipping logo_url column");
+            return;
+        }
+        throw err;
+    }
+}
+
 async function ensureRestaurantCategoryImageColumn() {
     try {
         await pool.query(`
@@ -100,6 +115,7 @@ async function runMigrations() {
     await addClaimedByWorkerColumn();
     await addPrinterIdColumn();
     await ensureRestaurantIsActiveColumn();
+    await ensureRestaurantLogoColumn();
     await ensureRestaurantCategoryImageColumn();
 }
 

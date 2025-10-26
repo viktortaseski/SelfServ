@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     apiFetchOrdersAdmin,
     apiFetchRestaurantStatus,
     apiUpdateRestaurantStatus,
+    apiUpdateRestaurantLogo,
+    apiRemoveRestaurantLogo,
     DEFAULT_FROM_STR,
     DEFAULT_TO_STR,
     computeStats,
@@ -92,6 +94,13 @@ export default function Dashboard({ user: _user }) {
     const [statusLoading, setStatusLoading] = useState(false);
     const [statusError, setStatusError] = useState("");
     const [activePanel, setActivePanel] = useState("filters");
+    const [logoUrl, setLogoUrl] = useState("");
+    const [logoFile, setLogoFile] = useState(null);
+    const [logoPreview, setLogoPreview] = useState("");
+    const [logoBusy, setLogoBusy] = useState(false);
+    const [logoError, setLogoError] = useState("");
+    const [logoSuccess, setLogoSuccess] = useState("");
+    const logoInputRef = useRef(null);
 
     const fetchOrders = async () => {
         setBusy(true);
@@ -118,9 +127,34 @@ export default function Dashboard({ user: _user }) {
     const stats = useMemo(() => computeStats(orders), [orders]);
 
     useEffect(() => {
+        if (typeof window === "undefined") return;
+        if (!logoFile) {
+            setLogoPreview("");
+            return;
+        }
+        let objectUrl = "";
+        try {
+            objectUrl = URL.createObjectURL(logoFile);
+            setLogoPreview(objectUrl);
+        } catch (previewErr) {
+            setLogoError("Could not preview selected image");
+            setLogoPreview("");
+            return;
+        }
+        return () => {
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+        };
+    }, [logoFile]);
+
+    useEffect(() => {
         let cancelled = false;
         if (!restaurantId) {
             setRestaurantIsActive(true);
+            setLogoUrl("");
+            setLogoError("");
+            setLogoSuccess("");
             return;
         }
         setStatusLoading(true);
@@ -133,6 +167,9 @@ export default function Dashboard({ user: _user }) {
                 } else {
                     setRestaurantIsActive(true);
                 }
+                setLogoUrl(restaurant?.logo_url || "");
+                setLogoError("");
+                setLogoSuccess("");
             })
             .catch((error) => {
                 if (cancelled) return;
@@ -155,6 +192,9 @@ export default function Dashboard({ user: _user }) {
             if (updated && typeof updated.is_active === "boolean") {
                 setRestaurantIsActive(Boolean(updated.is_active));
             }
+            if (updated && Object.prototype.hasOwnProperty.call(updated, "logo_url")) {
+                setLogoUrl(updated.logo_url || "");
+            }
         } catch (error) {
             const message =
                 error?.response?.data?.error ||
@@ -165,6 +205,91 @@ export default function Dashboard({ user: _user }) {
             setStatusLoading(false);
         }
     };
+
+    const handleLogoFileChange = (event) => {
+        const file = event.target.files?.[0] || null;
+        setLogoFile(file || null);
+        setLogoError("");
+        setLogoSuccess("");
+    };
+
+    const fileToDataUrl = (file) =>
+        new Promise((resolve, reject) => {
+            if (!file) {
+                resolve(null);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error("Unable to read file"));
+            reader.readAsDataURL(file);
+        });
+
+    const handleUploadLogo = async () => {
+        if (logoBusy) return;
+        setLogoError("");
+        setLogoSuccess("");
+        if (!logoFile) {
+            setLogoError("Select an image before uploading");
+            return;
+        }
+        try {
+            setLogoBusy(true);
+            const dataUrl = await fileToDataUrl(logoFile);
+            if (!dataUrl) throw new Error("Unable to read selected image");
+            const updated = await apiUpdateRestaurantLogo(dataUrl);
+            setLogoUrl(updated?.logo_url || "");
+            setLogoSuccess("Logo updated successfully.");
+            setLogoFile(null);
+            if (logoInputRef.current) {
+                logoInputRef.current.value = "";
+            }
+        } catch (error) {
+            const message =
+                error?.response?.data?.error ||
+                error?.message ||
+                "Failed to update logo";
+            setLogoError(message);
+        } finally {
+            setLogoBusy(false);
+        }
+    };
+
+    const handleClearLogoSelection = () => {
+        if (logoBusy) return;
+        setLogoFile(null);
+        setLogoError("");
+        setLogoSuccess("");
+        if (logoInputRef.current) {
+            logoInputRef.current.value = "";
+        }
+    };
+
+    const handleRemoveLogo = async () => {
+        if (logoBusy) return;
+        setLogoError("");
+        setLogoSuccess("");
+        try {
+            setLogoBusy(true);
+            const updated = await apiRemoveRestaurantLogo();
+            setLogoUrl(updated?.logo_url || "");
+            setLogoSuccess("Logo removed.");
+            setLogoFile(null);
+            if (logoInputRef.current) {
+                logoInputRef.current.value = "";
+            }
+        } catch (error) {
+            const message =
+                error?.response?.data?.error ||
+                error?.message ||
+                "Failed to remove logo";
+            setLogoError(message);
+        } finally {
+            setLogoBusy(false);
+        }
+    };
+
+    const displayLogoSrc = logoPreview || logoUrl || "";
 
     return (
         <div>
@@ -199,6 +324,63 @@ export default function Dashboard({ user: _user }) {
                         {statusError}
                     </div>
                 ) : null}
+            </section>
+
+            <section className="card mt-16">
+                <h3 className="mt-0">Restaurant logo</h3>
+                <p className="muted small" style={{ marginBottom: 12 }}>
+                    Upload a logo to personalize your menu and ordering experience.
+                </p>
+                <div className="logo-section">
+                    <div className="logo-preview-box">
+                        {displayLogoSrc ? (
+                            <img src={displayLogoSrc} alt="Restaurant logo preview" className="logo-preview-img" />
+                        ) : (
+                            <div className="muted small">No logo</div>
+                        )}
+                    </div>
+                    <div className="grid gap-8">
+                        <label className="form-label">
+                            Logo image
+                            <input
+                                ref={logoInputRef}
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                className="input"
+                                onChange={handleLogoFileChange}
+                                disabled={logoBusy}
+                            />
+                        </label>
+                        {logoFile ? (
+                            <div className="muted small">Selected file: {logoFile.name}</div>
+                        ) : null}
+                        <div className="logo-actions">
+                            <button type="button" className="btn btn-primary" onClick={handleUploadLogo} disabled={logoBusy}>
+                                {logoBusy ? "Saving…" : "Upload logo"}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-ghost"
+                                onClick={handleClearLogoSelection}
+                                disabled={logoBusy || !logoFile}
+                            >
+                                Clear selection
+                            </button>
+                            {logoUrl ? (
+                                <button
+                                    type="button"
+                                    className="btn btn-danger"
+                                    onClick={handleRemoveLogo}
+                                    disabled={logoBusy}
+                                >
+                                    Remove current logo
+                                </button>
+                            ) : null}
+                        </div>
+                        {logoError ? <div className="error-text">{logoError}</div> : null}
+                        {logoSuccess ? <div className="success-text">{logoSuccess}</div> : null}
+                    </div>
+                </div>
             </section>
 
             <div className="row gap-8" style={{ margin: "16px 0" }}>

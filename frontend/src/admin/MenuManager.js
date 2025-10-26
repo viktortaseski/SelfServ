@@ -745,7 +745,7 @@ const handleClearSelectedImage = () => {
                             Add Menu Item
                             {restaurantName ? ` · ${restaurantName}` : ""}
                         </h3>
-                        <form onSubmit={handleCreate} className="filters-grid">
+                        <form onSubmit={handleCreate} className="menu-manager-form">
                             <label className="form-label category-input-wrapper">
                                 Name
                                 <input

@@ -320,6 +320,52 @@
     align-items: center;
 }
 
+.logo-section {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 16px;
+    align-items: center;
+}
+
+.logo-preview-box {
+    width: 120px;
+    height: 120px;
+    border-radius: 12px;
+    border: 1px dashed #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f9fafb;
+    overflow: hidden;
+}
+
+.logo-preview-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.logo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.success-text {
+    color: #047857;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+    .logo-section {
+        grid-template-columns: 1fr;
+    }
+    .logo-preview-box {
+        justify-self: flex-start;
+    }
+}
+
 .badge {
     padding: 2px 8px;
     border-radius: 999px;
@@ -427,6 +473,21 @@
 .category-suggestion:hover,
 .category-suggestion:focus {
     background: #f1f5f9;
+}
+
+.menu-manager-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px 16px;
+    align-items: start;
+}
+
+.menu-manager-form .form-label--actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 4px;
 }
 
 .restaurant-category-list {

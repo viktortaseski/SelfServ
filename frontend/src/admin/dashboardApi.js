@@ -337,3 +337,24 @@ export async function apiUpdateRestaurantStatus(isActive) {
     });
     return data?.restaurant || null;
 }
+
+export async function apiUpdateRestaurantLogo(logo) {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    if (!logo) throw new Error("Logo image is required");
+    const payload = { logo };
+    const { data } = await api.patch(`/restaurants/admin/logo`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data?.restaurant || null;
+}
+
+export async function apiRemoveRestaurantLogo() {
+    const token = getToken();
+    if (!token) throw new Error("No token");
+    const payload = { remove: true };
+    const { data } = await api.patch(`/restaurants/admin/logo`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return data?.restaurant || null;
+}
