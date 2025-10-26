@@ -59,6 +59,22 @@
     font-size: 32px;
     font-weight: 700;
     letter-spacing: .5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 38px;
+    max-height: 38px;
+    max-width: 160px;
+    line-height: 1;
+    padding: 0 4px;
+    color: inherit;
+    overflow: hidden;
+}
+
+.brand-logo-img {
+    max-height: 38px;
+    width: auto;
+    display: block;
 }
 
 .powered-by {

@@ -91,6 +91,8 @@ function App() {
     }
   });
   const [restaurantActive, setRestaurantActive] = useState(true);
+  const [restaurantName, setRestaurantName] = useState("");
+  const [restaurantLogo, setRestaurantLogo] = useState("");
   const [navCategories, setNavCategories] = useState([]);
   const prevRestaurantId = useRef(null);
   const effectiveCategories = useMemo(
@@ -141,6 +143,8 @@ function App() {
   useEffect(() => {
     if (!restaurantId) {
       setRestaurantActive(true);
+      setRestaurantName("");
+      setRestaurantLogo("");
       return;
     }
     let cancelled = false;
@@ -148,11 +152,20 @@ function App() {
       .get("/restaurants/status", { params: { restaurantId } })
       .then((res) => {
         if (cancelled) return;
-        const isActive = res?.data?.restaurant?.is_active;
+        const restaurant = res?.data?.restaurant || {};
+        const isActive = restaurant?.is_active;
+        const logoUrl = restaurant?.logo_url;
+        const name = restaurant?.name;
         setRestaurantActive(isActive !== false);
+        setRestaurantName(name || "");
+        setRestaurantLogo(logoUrl || "");
       })
       .catch(() => {
-        if (!cancelled) setRestaurantActive(true);
+        if (!cancelled) {
+          setRestaurantActive(true);
+          setRestaurantName("");
+          setRestaurantLogo("");
+        }
       });
     return () => {
       cancelled = true;
@@ -575,7 +588,17 @@ function App() {
           <>
             <div className="nav-top">
               <div className="brand-wrap" onClick={onLogoClick}>
-                <div className="brand-logo">LOGO</div>
+                <div className="brand-logo">
+                  {restaurantLogo ? (
+                    <img
+                      src={restaurantLogo}
+                      alt={restaurantName ? `${restaurantName} logo` : "Restaurant logo"}
+                      className="brand-logo-img"
+                    />
+                  ) : (
+                    restaurantName || "LOGO"
+                  )}
+                </div>
               </div>
               <div className="powered-by">
                 <span className="powered-by-small">supported by</span>
