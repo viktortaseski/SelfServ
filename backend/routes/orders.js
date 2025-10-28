@@ -12,6 +12,8 @@ const RECEIPT_ADDRESS = "Koper";
 
 const JWT_SECRET = process.env.JWT_SECRET || "devjwtsecret";
 
+const ORDER_STATUS_ALLOWLIST = new Set(["open", "paid", "canceled", "void"]);
+
 function requireRoles(roles = []) {
     return (req, res, next) => {
         const auth = req.headers.authorization || "";
@@ -862,6 +864,283 @@ router.post("/waiter/close", requireRoles(["admin", "staff"]), async (req, res) 
         return res.status(500).json({ error: "Server error" });
     } finally {
         client.release();
+    }
+});
+
+router.get("/waiter/orders", requireRoles(["admin", "staff"]), async (req, res) => {
+    try {
+        const restaurantId = pickRestaurantId(req);
+        const rawStatus = req.query?.status;
+        let statuses = [];
+        if (Array.isArray(rawStatus)) {
+            statuses = rawStatus;
+        } else if (typeof rawStatus === "string") {
+            statuses = rawStatus.split(",");
+        }
+        statuses = statuses
+            .map((s) => String(s || "").trim().toLowerCase())
+            .filter((s) => ORDER_STATUS_ALLOWLIST.has(s));
+        if (!statuses.length) {
+            statuses = ["open"];
+        }
+
+        const tableIdRaw = req.query?.tableId ?? req.query?.table_id ?? null;
+        let tableId = null;
+        if (tableIdRaw != null) {
+            const value = Number(tableIdRaw);
+            if (!Number.isFinite(value) || value <= 0) {
+                return res.status(400).json({ error: "Invalid tableId" });
+            }
+            tableId = value;
+        }
+
+        const limitRaw = req.query?.limit;
+        let limit = Number(limitRaw);
+        if (!Number.isFinite(limit) || limit <= 0) {
+            limit = 100;
+        }
+        limit = Math.min(Math.max(Math.trunc(limit), 1), 500);
+
+        const { rows } = await pool.query(
+            `
+            WITH order_base AS (
+                SELECT
+                    o.id,
+                    o.table_id,
+                    o.status,
+                    o.tip,
+                    o.total_price,
+                    o.created_at,
+                    o.updated_at,
+                    rt.name AS table_name,
+                    COALESCE(SUM(oi.total_price), 0) AS subtotal,
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'name', p.name,
+                            'quantity', oi.quantity,
+                            'price', CASE WHEN oi.quantity > 0 THEN oi.total_price / oi.quantity ELSE 0 END,
+                            'note', oi.note
+                        )
+                        ORDER BY oi.id
+                    ) AS items
+                FROM orders o
+                LEFT JOIN restaurant_tables rt ON rt.id = o.table_id
+                JOIN order_items oi ON oi.order_id = o.id
+                JOIN restaurant_products rp ON rp.id = oi.restaurant_product_id
+                JOIN products p ON p.id = rp.product_id
+                WHERE o.restaurant_id = $1
+                  AND o.status = ANY($2)
+                  AND ($3::BIGINT IS NULL OR o.table_id = $3)
+                GROUP BY o.id, o.table_id, o.status, o.tip, o.total_price, o.created_at, o.updated_at, rt.name
+                ORDER BY o.created_at DESC
+                LIMIT $4
+            )
+            SELECT ob.*,
+                   COALESCE(pj.print_count, 0) AS print_count
+              FROM order_base ob
+              LEFT JOIN (
+                  SELECT order_id,
+                         COUNT(*) AS print_count
+                    FROM print_jobs
+                   GROUP BY order_id
+              ) pj ON pj.order_id = ob.id
+            ORDER BY ob.created_at DESC
+        `,
+            [restaurantId, statuses, tableId, limit]
+        );
+
+        const data = rows.map((row) => {
+            const id = Number(row.id);
+            const tableIdVal =
+                row.table_id != null && Number.isFinite(Number(row.table_id))
+                    ? Number(row.table_id)
+                    : null;
+            const subtotal = roundMoney(row.subtotal || 0);
+            const tipVal = roundMoney(row.tip || 0);
+            const totalPrice =
+                row.total_price != null ? roundMoney(row.total_price) : roundMoney(subtotal + tipVal);
+            const createdAt =
+                row.created_at instanceof Date
+                    ? row.created_at.toISOString()
+                    : row.created_at || null;
+            const updatedAt =
+                row.updated_at instanceof Date
+                    ? row.updated_at.toISOString()
+                    : row.updated_at || null;
+            const items = Array.isArray(row.items)
+                ? row.items.map((item) => ({
+                      name: item?.name || "",
+                      quantity: Number(item?.quantity || 0),
+                      price: roundMoney(item?.price || 0),
+                      note: item?.note || null,
+                  }))
+                : [];
+            const printCount = Number(row.print_count || 0);
+
+            return {
+                id,
+                table_id: tableIdVal,
+                table_name: row.table_name || (tableIdVal ? `Table ${tableIdVal}` : "Unassigned"),
+                status: row.status,
+                subtotal,
+                tip: tipVal,
+                total: roundMoney(totalPrice),
+                created_at: createdAt,
+                updated_at: updatedAt,
+                items,
+                print_count: printCount,
+                reprint_available: printCount > 0,
+            };
+        });
+
+        return res.json(data);
+    } catch (err) {
+        console.error("GET /orders/waiter/orders error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+
+router.post("/waiter/:orderId/reprint", requireRoles(["admin", "staff"]), async (req, res) => {
+    const restaurantId = pickRestaurantId(req);
+    const orderId = Number(req.params.orderId);
+
+    if (!Number.isFinite(orderId) || orderId <= 0) {
+        return res.status(400).json({ error: "Invalid orderId" });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const orderRes = await client.query(
+            `
+            SELECT id
+            FROM orders
+            WHERE id = $1
+              AND restaurant_id = $2
+            LIMIT 1
+        `,
+            [orderId, restaurantId]
+        );
+        if (orderRes.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ error: "Order not found for this restaurant" });
+        }
+
+        const jobRes = await client.query(
+            `
+            SELECT payload, printer_id
+            FROM print_jobs
+            WHERE order_id = $1
+            ORDER BY id DESC
+            LIMIT 1
+        `,
+            [orderId]
+        );
+
+        if (jobRes.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return res.status(422).json({ error: "No existing print job found to duplicate." });
+        }
+
+        let payload = jobRes.rows[0].payload;
+        const printerId = jobRes.rows[0].printer_id || null;
+        if (typeof payload === "string") {
+            try {
+                payload = JSON.parse(payload);
+            } catch (errParse) {
+                console.warn("[orders] failed to parse print payload for order", { orderId });
+                payload = null;
+            }
+        }
+        if (!payload || typeof payload !== "object") {
+            await client.query("ROLLBACK");
+            return res.status(422).json({ error: "Stored print payload unavailable for reprint." });
+        }
+
+        const nowIso = new Date().toISOString();
+        const reprintPayload = {
+            ...payload,
+            reprint: true,
+            reprintRequestedAt: nowIso,
+            reprint_requested_at: nowIso,
+        };
+        if (req.user?.username) {
+            reprintPayload.reprintRequestedBy = req.user.username;
+            reprintPayload.reprint_requested_by = req.user.username;
+        }
+        if (req.user?.id) {
+            reprintPayload.reprintRequestedById = req.user.id;
+            reprintPayload.reprint_requested_by_id = req.user.id;
+        }
+
+        await client.query(
+            `
+            INSERT INTO print_jobs (order_id, payload, status, printer_id)
+            VALUES ($1, $2, 'queued', $3)
+        `,
+            [orderId, reprintPayload, printerId]
+        );
+
+        await client.query("COMMIT");
+        return res.status(201).json({ orderId, status: "queued" });
+    } catch (err) {
+        await client.query("ROLLBACK").catch(() => { });
+        console.error("POST /orders/waiter/:orderId/reprint error:", err);
+        return res.status(500).json({ error: "Server error" });
+    } finally {
+        client.release();
+    }
+});
+
+router.patch("/waiter/:orderId/status", requireRoles(["admin", "staff"]), async (req, res) => {
+    const restaurantId = pickRestaurantId(req);
+    const orderId = Number(req.params.orderId);
+    const nextStatusRaw = req.body?.status;
+    const nextStatus =
+        typeof nextStatusRaw === "string" ? nextStatusRaw.trim().toLowerCase() : "";
+
+    if (!Number.isFinite(orderId) || orderId <= 0) {
+        return res.status(400).json({ error: "Invalid orderId" });
+    }
+    if (!ORDER_STATUS_ALLOWLIST.has(nextStatus)) {
+        return res.status(400).json({ error: "Unsupported status value" });
+    }
+
+    try {
+        const updateRes = await pool.query(
+            `
+            UPDATE orders
+               SET status = $1
+             WHERE id = $2
+               AND restaurant_id = $3
+            RETURNING id, status, table_id, tip, total_price, created_at, updated_at
+        `,
+            [nextStatus, orderId, restaurantId]
+        );
+
+        if (updateRes.rowCount === 0) {
+            return res.status(404).json({ error: "Order not found for this restaurant" });
+        }
+
+        const row = updateRes.rows[0];
+        return res.json({
+            id: Number(row.id),
+            status: row.status,
+            table_id:
+                row.table_id != null && Number.isFinite(Number(row.table_id))
+                    ? Number(row.table_id)
+                    : null,
+            tip: roundMoney(row.tip || 0),
+            total_price: roundMoney(row.total_price || 0),
+            created_at:
+                row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+            updated_at:
+                row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
+        });
+    } catch (err) {
+        console.error("PATCH /orders/waiter/:orderId/status error:", err);
+        return res.status(500).json({ error: "Server error" });
     }
 });
 

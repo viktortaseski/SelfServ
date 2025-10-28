@@ -8,7 +8,7 @@ function WaiterNav({
     onToggleAccount,
     accountOpen,
     onLogout,
-    onViewSales,
+    onManageOrders,
     disableForward,
 }) {
     const forwardLabel = step === "summary" ? "Submit" : "Next";
@@ -53,9 +53,9 @@ function WaiterNav({
                         <button
                             type="button"
                             className="waiter-nav__menu-item"
-                            onClick={onViewSales}
+                            onClick={() => onManageOrders?.()}
                         >
-                            View sales
+                            Manage orders
                         </button>
                         <button
                             type="button"

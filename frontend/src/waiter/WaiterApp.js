@@ -4,12 +4,16 @@ import WaiterMenu from "./WaiterMenu";
 import WaiterSummary from "./WaiterSummary";
 import WaiterNav from "./WaiterNav";
 import WaiterNoteModal from "./WaiterNoteModal";
+import WaiterOrderManager from "./WaiterOrderManager";
 import {
     fetchWaiterTables,
     fetchWaiterMenu,
     createWaiterOrder,
     mergeTableOrders,
     closeTableOrders,
+    fetchWaiterOrders,
+    reprintWaiterOrder,
+    updateWaiterOrderStatus,
 } from "./waiterApi";
 import "./waiter.css";
 
@@ -51,8 +55,13 @@ function WaiterApp({ user, onLogout }) {
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState("");
     const [tableActionBusy, setTableActionBusy] = useState(false);
+    const [manageOrdersOpen, setManageOrdersOpen] = useState(false);
+    const [waiterOrders, setWaiterOrders] = useState([]);
+    const [loadingOrders, setLoadingOrders] = useState(false);
+    const [ordersError, setOrdersError] = useState("");
+    const [ordersFilter, setOrdersFilter] = useState("open");
+    const [orderActionBusyId, setOrderActionBusyId] = useState(null);
 
-    const [showSalesPanel, setShowSalesPanel] = useState(false);
     const [noteEditor, setNoteEditor] = useState(createNoteEditorState);
 
     const restaurantId = useMemo(() => {
@@ -157,6 +166,28 @@ function WaiterApp({ user, onLogout }) {
         }
     }, [restaurantId]);
 
+    const loadOrders = useCallback(
+        async (statusValue) => {
+            const statusParam = statusValue || ordersFilter || "open";
+            setLoadingOrders(true);
+            setOrdersError("");
+            try {
+                const data = await fetchWaiterOrders({ status: statusParam });
+                setWaiterOrders(Array.isArray(data) ? data : []);
+            } catch (err) {
+                const msg =
+                    err?.response?.data?.error ||
+                    err?.message ||
+                    "Unable to load orders. Please try again.";
+                setOrdersError(msg);
+                setWaiterOrders([]);
+            } finally {
+                setLoadingOrders(false);
+            }
+        },
+        [ordersFilter]
+    );
+
     const handleMergeOrders = useCallback(
         async (table) => {
             if (!table || !table.id) return;
@@ -243,6 +274,87 @@ function WaiterApp({ user, onLogout }) {
         [loadTables]
     );
 
+    const handleManageOrders = useCallback(() => {
+        setAccountOpen(false);
+        setManageOrdersOpen(true);
+    }, []);
+
+    const handleCloseOrdersPanel = useCallback(() => {
+        setManageOrdersOpen(false);
+    }, []);
+
+    const handleOrdersFilterChange = useCallback((value) => {
+        const next = value || "open";
+        setOrdersFilter(next);
+    }, []);
+
+    const handleOrdersRefresh = useCallback(() => {
+        loadOrders(ordersFilter);
+    }, [loadOrders, ordersFilter]);
+
+    const handleReprintExistingOrder = useCallback(
+        async (order) => {
+            if (!order || !order.id) return;
+            setOrderActionBusyId(order.id);
+            setFeedback(null);
+            try {
+                await reprintWaiterOrder(order.id);
+                setFeedback({
+                    kind: "success",
+                    message: `Order #${order.id} sent to the printer again.`,
+                });
+            } catch (err) {
+                const msg =
+                    err?.response?.data?.error ||
+                    err?.message ||
+                    "Failed to reprint this order.";
+                setFeedback({
+                    kind: "error",
+                    message: msg,
+                });
+            } finally {
+                await loadOrders(ordersFilter);
+                setOrderActionBusyId(null);
+            }
+        },
+        [loadOrders, ordersFilter]
+    );
+
+    const handleMarkOrderPaid = useCallback(
+        async (order) => {
+            if (!order || !order.id) return;
+            setOrderActionBusyId(order.id);
+            setFeedback(null);
+            try {
+                await updateWaiterOrderStatus(order.id, "paid");
+                const tableLabel =
+                    order.tableName || (order.tableId ? `Table ${order.tableId}` : "this table");
+                setFeedback({
+                    kind: "success",
+                    message: `Order #${order.id} marked as paid for ${tableLabel}.`,
+                });
+            } catch (err) {
+                const msg =
+                    err?.response?.data?.error ||
+                    err?.message ||
+                    "Failed to update the order status.";
+                setFeedback({
+                    kind: "error",
+                    message: msg,
+                });
+            } finally {
+                setOrderActionBusyId(null);
+                await loadOrders(ordersFilter);
+                try {
+                    await loadTables();
+                } catch {
+                    // ignore table refresh failures
+                }
+            }
+        },
+        [loadOrders, ordersFilter, loadTables]
+    );
+
     const resetOrder = useCallback(() => {
         setOrderLines(new Map());
         setSearchText("");
@@ -258,6 +370,11 @@ function WaiterApp({ user, onLogout }) {
             loadMenu();
         }
     }, [step, menuItems.length, loadingMenu, loadMenu]);
+
+    useEffect(() => {
+        if (!manageOrdersOpen) return;
+        loadOrders(ordersFilter);
+    }, [manageOrdersOpen, ordersFilter, loadOrders]);
 
     const setStep = useCallback(
         (next) => {
@@ -423,13 +540,6 @@ function WaiterApp({ user, onLogout }) {
         setAccountOpen((prev) => !prev);
     }, []);
 
-    const handleViewSales = useCallback(() => {
-        setShowSalesPanel(true);
-        setAccountOpen(false);
-    }, []);
-
-    const closeSalesPanel = useCallback(() => setShowSalesPanel(false), []);
-
     return (
         <div className="waiter-app">
             <div className="waiter-main">
@@ -501,25 +611,23 @@ function WaiterApp({ user, onLogout }) {
                 onToggleAccount={toggleAccount}
                 accountOpen={accountOpen}
                 onLogout={onLogout}
-                onViewSales={handleViewSales}
+                onManageOrders={handleManageOrders}
                 disableForward={(step === "summary" && submitting) || tableActionBusy}
             />
 
-            {showSalesPanel ? (
-                <div className="waiter-modal">
-                    <div className="waiter-modal__content">
-                        <div className="waiter-modal__header">
-                            <h3 className="waiter-modal__title">My Sales</h3>
-                            <button className="waiter-modal__close" onClick={closeSalesPanel}>
-                                Close
-                            </button>
-                        </div>
-                        <div className="waiter-modal__body">
-                            <p>This view will show waiter sales and performance once available.</p>
-                        </div>
-                    </div>
-                </div>
-            ) : null}
+            <WaiterOrderManager
+                open={manageOrdersOpen}
+                orders={waiterOrders}
+                loading={loadingOrders}
+                error={ordersError}
+                filter={ordersFilter}
+                onChangeFilter={handleOrdersFilterChange}
+                onRefresh={handleOrdersRefresh}
+                onClose={handleCloseOrdersPanel}
+                onReprint={handleReprintExistingOrder}
+                onMarkPaid={handleMarkOrderPaid}
+                busyOrderId={orderActionBusyId}
+            />
 
             <WaiterNoteModal
                 open={noteEditor.open}
