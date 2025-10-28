@@ -158,6 +158,45 @@ async function ensureRestaurantCategoryImageColumn() {
     }
 }
 
+async function ensurePerformanceIndexes() {
+    const statements = [
+        `
+        CREATE INDEX IF NOT EXISTS idx_print_jobs_status_printer
+            ON print_jobs (status, printer_id, id)
+            WHERE status = 'queued'
+        `,
+        `
+        CREATE INDEX IF NOT EXISTS idx_print_jobs_order_id
+            ON print_jobs (order_id)
+        `,
+        `
+        CREATE INDEX IF NOT EXISTS idx_orders_restaurant_status
+            ON orders (restaurant_id, status, id)
+        `,
+        `
+        CREATE INDEX IF NOT EXISTS idx_orders_table_status_open
+            ON orders (table_id, status)
+            WHERE status = 'open'
+        `,
+        `
+        CREATE INDEX IF NOT EXISTS idx_order_items_order_id
+            ON order_items (order_id)
+        `,
+    ];
+
+    for (const sql of statements) {
+        try {
+            await pool.query(sql);
+        } catch (err) {
+            if (err.code === "42P01") {
+                console.warn("[migrations] skipping index creation; table missing for statement:", sql.trim().split("\n")[0]);
+                continue;
+            }
+            throw err;
+        }
+    }
+}
+
 async function runMigrations() {
     await ensureRestaurantPrinterTable();
     await addClaimedByWorkerColumn();
@@ -166,6 +205,7 @@ async function runMigrations() {
     await ensureRestaurantLogoColumn();
     await ensureRestaurantCategoryImageColumn();
     await ensureOrderCreatedByRoleEnumValues();
+    await ensurePerformanceIndexes();
 }
 
 module.exports = {
