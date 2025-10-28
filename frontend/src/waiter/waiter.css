@@ -321,9 +321,28 @@
     color: #42526e;
 }
 
+.waiter-summary__row-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.waiter-summary__quantity-badge {
+    min-width: 48px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #1b2a3d;
+    color: #fff;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.05em;
+    text-align: center;
+}
+
 .waiter-summary__meta {
     display: flex;
-    gap: 16px;
+    justify-content: space-between;
+    align-items: center;
     color: #607086;
     font-size: 13px;
     margin-bottom: 8px;

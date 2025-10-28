@@ -39,12 +39,12 @@ function WaiterSummary({
                             <div className="waiter-summary__details">
                                 <div className="waiter-summary__row">
                                     <span className="waiter-summary__name">{item.name}</span>
-                                    <span className="waiter-summary__price">{Math.round(price)} MKD</span>
+                                    <div className="waiter-summary__row-right">
+                                        <span className="waiter-summary__quantity-badge">×{quantity}</span>
+                                        <span className="waiter-summary__price">{Math.round(price)} MKD</span>
+                                    </div>
                                 </div>
                                 <div className="waiter-summary__meta">
-                                    <span className="waiter-summary__quantity">
-                                        Qty: {quantity}
-                                    </span>
                                     <span className="waiter-summary__line-total">
                                         Line total: {formatPrice(price * quantity)}
                                     </span>
