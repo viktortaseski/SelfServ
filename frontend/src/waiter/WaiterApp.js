@@ -3,6 +3,7 @@ import WaiterTableSelect from "./WaiterTableSelect";
 import WaiterMenu from "./WaiterMenu";
 import WaiterSummary from "./WaiterSummary";
 import WaiterNav from "./WaiterNav";
+import WaiterNoteModal from "./WaiterNoteModal";
 import {
     fetchWaiterTables,
     fetchWaiterMenu,
@@ -11,6 +12,15 @@ import {
 import "./waiter.css";
 
 const STEPS = ["tables", "items", "summary"];
+
+function createNoteEditorState() {
+    return {
+        open: false,
+        itemId: null,
+        itemName: "",
+        value: "",
+    };
+}
 
 function formatPrice(value) {
     const num = Number(value);
@@ -40,6 +50,7 @@ function WaiterApp({ user, onLogout }) {
     const [submitError, setSubmitError] = useState("");
 
     const [showSalesPanel, setShowSalesPanel] = useState(false);
+    const [noteEditor, setNoteEditor] = useState(createNoteEditorState);
 
     const restaurantId = useMemo(() => {
         if (!user) return null;
@@ -224,6 +235,30 @@ function WaiterApp({ user, onLogout }) {
         });
     }, []);
 
+    const openNoteEditor = useCallback((item, note) => {
+        if (!item || !item.id) return;
+        setAccountOpen(false);
+        setNoteEditor({
+            open: true,
+            itemId: item.id,
+            itemName: item.name || "",
+            value: note || "",
+        });
+    }, []);
+
+    const closeNoteEditor = useCallback(() => {
+        setNoteEditor(createNoteEditorState());
+    }, []);
+
+    const saveNoteEditor = useCallback(() => {
+        setNoteEditor((prev) => {
+            if (prev.open && prev.itemId) {
+                setItemNote(prev.itemId, prev.value);
+            }
+            return createNoteEditorState();
+        });
+    }, [setItemNote]);
+
     const submitOrder = useCallback(async () => {
         if (!selectedTable || orderItems.length === 0) return;
         setSubmitting(true);
@@ -345,7 +380,7 @@ function WaiterApp({ user, onLogout }) {
                         orderLines={orderLines}
                         onIncrease={incrementItem}
                         onDecrease={decrementItem}
-                        onSetNote={setItemNote}
+                        onRequestNote={openNoteEditor}
                     />
                 ) : null}
 
@@ -357,7 +392,7 @@ function WaiterApp({ user, onLogout }) {
                         formatPrice={formatPrice}
                         onIncrease={incrementItem}
                         onDecrease={decrementItem}
-                        onSetNote={setItemNote}
+                        onRequestNote={openNoteEditor}
                         submitting={submitting}
                         error={submitError}
                     />
@@ -393,6 +428,15 @@ function WaiterApp({ user, onLogout }) {
                     </div>
                 </div>
             ) : null}
+
+            <WaiterNoteModal
+                open={noteEditor.open}
+                itemName={noteEditor.itemName}
+                value={noteEditor.value}
+                onChange={(val) => setNoteEditor((prev) => ({ ...prev, value: val }))}
+                onClose={closeNoteEditor}
+                onSave={saveNoteEditor}
+            />
         </div>
     );
 }

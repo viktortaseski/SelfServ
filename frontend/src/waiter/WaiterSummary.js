@@ -11,7 +11,7 @@ function WaiterSummary({
     formatPrice = fallbackFormat,
     onIncrease,
     onDecrease,
-    onSetNote,
+    onRequestNote,
     submitting,
     error,
 }) {
@@ -49,15 +49,20 @@ function WaiterSummary({
                                         Line total: {formatPrice(price * quantity)}
                                     </span>
                                 </div>
-                                <label className="waiter-note__label waiter-note__label--inline">
-                                    Note
-                                    <input
-                                        type="text"
-                                        className="waiter-input waiter-note__input"
-                                        value={note || ""}
-                                        onChange={(e) => onSetNote(item.id, e.target.value)}
-                                    />
-                                </label>
+                                <div className="waiter-summary__note">
+                                    {note ? (
+                                        <span className="waiter-note__preview">{note}</span>
+                                    ) : (
+                                        <span className="waiter-note__placeholder">No note added</span>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className="waiter-note__btn"
+                                        onClick={() => onRequestNote?.(item, note)}
+                                    >
+                                        {note ? "Edit note" : "Add note"}
+                                    </button>
+                                </div>
                             </div>
                             <div className="waiter-summary__actions">
                                 <button

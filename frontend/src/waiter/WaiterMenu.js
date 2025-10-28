@@ -36,7 +36,7 @@ function WaiterMenu({
     orderLines,
     onIncrease,
     onDecrease,
-    onSetNote,
+    onRequestNote,
 }) {
     const normalizedSearch = useMemo(() => normalizeSearch(search || ""), [search]);
 
@@ -156,17 +156,26 @@ function WaiterMenu({
                                     <p className="waiter-item__description">{item.description}</p>
                                 ) : null}
                                 <div className="waiter-item__note">
-                                    <label className="waiter-note__label">
-                                        Note
-                                        <input
-                                            type="text"
-                                            className="waiter-input waiter-note__input"
-                                            placeholder="Add note"
-                                            value={note}
-                                            onChange={(e) => onSetNote(item.id, e.target.value)}
-                                            disabled={quantity === 0}
-                                        />
-                                    </label>
+                                    {quantity > 0 ? (
+                                        <>
+                                            {note ? (
+                                                <span className="waiter-note__preview">{note}</span>
+                                            ) : (
+                                                <span className="waiter-note__placeholder">No note added</span>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className="waiter-note__btn"
+                                                onClick={() => onRequestNote?.(item, note)}
+                                            >
+                                                {note ? "Edit note" : "Add note"}
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <span className="waiter-note__placeholder waiter-note__placeholder--muted">
+                                            Add at least one item to leave a note
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <div className="waiter-item__actions">
