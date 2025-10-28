@@ -382,6 +382,269 @@ router.post("/customer", async (req, res) => {
     }
 });
 
+router.get("/waiter/tables", requireRoles(["admin", "staff"]), async (req, res) => {
+    try {
+        const restaurantId = pickRestaurantId(req);
+        const { rows } = await pool.query(
+            `
+            SELECT
+                rt.id,
+                rt.name,
+                COUNT(o.id) AS open_orders
+            FROM restaurant_tables rt
+            LEFT JOIN orders o
+                ON o.table_id = rt.id
+               AND o.restaurant_id = rt.restaurant_id
+               AND o.status = 'open'
+            WHERE rt.restaurant_id = $1
+            GROUP BY rt.id, rt.name
+            ORDER BY rt.id ASC
+        `,
+            [restaurantId]
+        );
+        const tables = rows.map((row) => {
+            const openOrders = Number(row.open_orders || 0);
+            return {
+                id: Number(row.id),
+                name: row.name || `Table ${row.id}`,
+                open_orders: openOrders,
+                status:
+                    openOrders > 0
+                        ? `${openOrders} open ${openOrders === 1 ? "order" : "orders"}`
+                        : "Available",
+            };
+        });
+        return res.json(tables);
+    } catch (err) {
+        console.error("GET /orders/waiter/tables error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+
+router.post("/waiter", requireRoles(["admin", "staff"]), async (req, res) => {
+    const { tableId, items, tip } = req.body || {};
+    const restaurantId = pickRestaurantId(req);
+
+    const numericTableId = Number(tableId);
+    if (!Number.isFinite(numericTableId) || numericTableId <= 0) {
+        return res.status(400).json({ error: "Invalid tableId" });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Order items are required" });
+    }
+
+    const normalizedItems = items
+        .map((it) => ({
+            id: Number(it.id),
+            quantity: Math.max(1, Math.round(Number(it.quantity) || 0)),
+            note: it.note ? String(it.note).slice(0, 45) : null,
+        }))
+        .filter((it) => Number.isFinite(it.id) && it.id > 0 && it.quantity > 0);
+
+    if (!normalizedItems.length) {
+        return res.status(400).json({ error: "Order items are invalid" });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const tableRes = await client.query(
+            `
+            SELECT id, name
+            FROM restaurant_tables
+            WHERE id = $1
+              AND restaurant_id = $2
+            LIMIT 1
+        `,
+            [numericTableId, restaurantId]
+        );
+        if (tableRes.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ error: "Table not found for this restaurant" });
+        }
+        const tableRow = tableRes.rows[0];
+
+        const ids = [...new Set(normalizedItems.map((it) => it.id))];
+        const rows = await fetchMenuItems(client, ids);
+        const productMap = new Map(rows.map((row) => [row.id, row]));
+
+        const missingIds = ids.filter((id) => !productMap.has(id));
+        if (missingIds.length) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                error: "Some items are no longer available. Please refresh the menu.",
+                missingItems: missingIds,
+            });
+        }
+
+        const foreignItems = ids.filter(
+            (id) => productMap.get(id)?.restaurant_id !== restaurantId
+        );
+        if (foreignItems.length) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                error: "Some items belong to a different restaurant.",
+                invalidItems: foreignItems,
+            });
+        }
+
+        const inactiveItems = ids.filter((id) => !productMap.get(id)?.is_active);
+        if (inactiveItems.length) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                error: "Some items are no longer available.",
+                inactiveItems,
+            });
+        }
+
+        const orderItems = normalizedItems.map((item) => {
+            const product = productMap.get(item.id);
+            const categoryName =
+                product.category_name ||
+                product.category_slug ||
+                "Uncategorized";
+            return {
+                restaurant_product_id: product.id,
+                name: product.name,
+                price: roundMoney(product.price),
+                quantity: item.quantity,
+                note: item.note,
+                img_url: product.img_url,
+                category_id: product.category_id,
+                category_slug: product.category_slug,
+                category_name: categoryName,
+            };
+        });
+
+        const tipInt = toTipInt(tip);
+        const createdByRole = req.user?.role === "admin" ? "admin" : "staff";
+
+        const orderRes = await client.query(
+            `
+            INSERT INTO orders (
+                restaurant_id,
+                table_id,
+                total_price,
+                tip,
+                status,
+                created_by_role
+            )
+            VALUES ($1, $2, 0, $3, 'open', $4)
+            RETURNING id, created_at
+        `,
+            [restaurantId, tableRow.id, tipInt, createdByRole]
+        );
+
+        const orderId = orderRes.rows[0].id;
+        const createdAt = orderRes.rows[0].created_at;
+        const createdAtISO =
+            createdAt instanceof Date ? createdAt.toISOString() : new Date().toISOString();
+
+        const subtotal = await insertOrderItems(client, orderId, orderItems);
+        await client.query("UPDATE orders SET total_price = $1 WHERE id = $2", [subtotal, orderId]);
+
+        const restaurantInfoRes = await client.query(
+            `
+            SELECT
+                id,
+                name,
+                address,
+                phone_number,
+                tax_id
+            FROM restaurants
+            WHERE id = $1
+            LIMIT 1
+        `,
+            [restaurantId]
+        );
+        const restaurantInfo = restaurantInfoRes.rows[0] || null;
+
+        await client.query("COMMIT");
+
+        const tableName = tableRow.name || `Table ${tableRow.id}`;
+        const purchasedItems = orderItems.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            note: item.note,
+            image_url: item.img_url,
+            category_id: item.category_id,
+            category_slug: item.category_slug,
+            category_name: item.category_name,
+        }));
+
+        const itemsByCategory = [];
+        const categoryOrder = new Map();
+        for (const item of purchasedItems) {
+            const categoryKey = item.category_slug || item.category_name || "uncategorized";
+            if (!categoryOrder.has(categoryKey)) {
+                categoryOrder.set(categoryKey, {
+                    category_id: item.category_id,
+                    category_slug: item.category_slug,
+                    category_name: item.category_name || "Uncategorized",
+                    items: [],
+                });
+                itemsByCategory.push(categoryOrder.get(categoryKey));
+            }
+            const entry = categoryOrder.get(categoryKey);
+            entry.items.push({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                note: item.note,
+                image_url: item.image_url,
+            });
+        }
+
+        const targetPrinterId = await findDefaultPrinterId(client, restaurantId);
+        const printPayload = {
+            orderId,
+            tableName,
+            createdAtISO,
+            items: purchasedItems,
+            itemsByCategory,
+            subtotal,
+            tip: tipInt,
+            taxRate: 0,
+            payment: "PAYMENT DUE",
+            headerTitle: RECEIPT_NAME,
+            phone: restaurantInfo?.phone_number || RECEIPT_PHONE,
+            address: restaurantInfo?.address || RECEIPT_ADDRESS,
+            taxId: restaurantInfo?.tax_id || null,
+            restaurant: restaurantInfo
+                ? {
+                    id: restaurantInfo.id,
+                    name: restaurantInfo.name,
+                    address: restaurantInfo.address,
+                    phone_number: restaurantInfo.phone_number,
+                    tax_id: restaurantInfo.tax_id,
+                }
+                : {
+                    id: restaurantId,
+                    name: RECEIPT_NAME,
+                },
+            printerId: targetPrinterId,
+        };
+
+        await pool.query(
+            `INSERT INTO print_jobs (order_id, payload, status, printer_id) VALUES ($1, $2, 'queued', $3)`,
+            [orderId, printPayload, targetPrinterId]
+        );
+
+        return res.status(201).json({ orderId });
+    } catch (err) {
+        await client.query("ROLLBACK").catch(() => { });
+        console.error("POST /orders/waiter error:", err);
+        if (err && err.message && /not found|unavailable|restaurant/i.test(err.message)) {
+            return res.status(400).json({ error: err.message });
+        }
+        return res.status(500).json({ error: "Server error" });
+    } finally {
+        client.release();
+    }
+});
+
 router.get("/admin", requireRoles(["admin"]), async (req, res) => {
     try {
         const restaurantId = pickRestaurantId(req);

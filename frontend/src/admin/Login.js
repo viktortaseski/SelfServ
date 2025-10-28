@@ -26,7 +26,7 @@ function Login({ onSuccess }) {
     return (
         <div className="center-box">
             <div className="card">
-                <h2 className="mt-0">Admin Login</h2>
+                <h2 className="mt-0">Account Login</h2>
                 <form onSubmit={handleSubmit} className="grid-gap-10">
                     <label className="form-label">
                         Username

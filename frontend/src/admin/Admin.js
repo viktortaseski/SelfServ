@@ -3,6 +3,7 @@ import Login from "./Login";
 import Dashboard from "./Dashboard";
 import MenuManager from "./MenuManager";
 import Analytics from "./Analytics";
+import WaiterApp from "../waiter/WaiterApp";
 import { apiMe, apiLogout } from "./dashboardApi";
 import "./dashboard.css";
 
@@ -48,8 +49,23 @@ function Admin() {
     };
 
     if (loadingUser) return <div className="p-16">Loading…</div>;
-    if (!user || user.role !== "admin") {
+    if (!user) {
         return <Login onSuccess={refreshMe} />;
+    }
+
+    if (user.role === "staff") {
+        return <WaiterApp user={user} onLogout={handleLogout} />;
+    }
+
+    if (user.role !== "admin") {
+        return (
+            <div className="p-16">
+                <p className="mb-12">Your account does not have access to this area.</p>
+                <button onClick={handleLogout} className="btn btn-primary">
+                    Logout
+                </button>
+            </div>
+        );
     }
 
     return (
