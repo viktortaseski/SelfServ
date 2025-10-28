@@ -656,6 +656,215 @@ router.post("/waiter", requireRoles(["admin", "staff"]), async (req, res) => {
     }
 });
 
+router.post("/waiter/merge", requireRoles(["admin", "staff"]), async (req, res) => {
+    const { tableId } = req.body || {};
+    const restaurantId = pickRestaurantId(req);
+    const numericTableId = Number(tableId);
+
+    if (!Number.isFinite(numericTableId) || numericTableId <= 0) {
+        return res.status(400).json({ error: "Invalid tableId" });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const tableRes = await client.query(
+            `
+            SELECT id
+            FROM restaurant_tables
+            WHERE id = $1
+              AND restaurant_id = $2
+            LIMIT 1
+        `,
+            [numericTableId, restaurantId]
+        );
+        if (tableRes.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ error: "Table not found for this restaurant" });
+        }
+
+        const ordersRes = await client.query(
+            `
+            SELECT id, total_price, tip
+            FROM orders
+            WHERE restaurant_id = $1
+              AND table_id = $2
+              AND status = 'open'
+            ORDER BY created_at ASC, id ASC
+            FOR UPDATE
+        `,
+            [restaurantId, numericTableId]
+        );
+
+        const openOrders = ordersRes.rows.map((row) => ({
+            id: Number(row.id),
+            total_price: roundMoney(row.total_price || 0),
+            tip: toTipInt(row.tip || 0),
+        }));
+
+        if (openOrders.length <= 1) {
+            await client.query("COMMIT");
+            const single = openOrders[0] || null;
+            return res.json({
+                tableId: numericTableId,
+                mergedIntoOrderId: single ? single.id : null,
+                mergedOrderIds: [],
+                mergedOrderCount: 0,
+                initialOpenOrderCount: openOrders.length,
+                resultingSubtotal: single ? single.total_price : 0,
+                resultingTip: single ? single.tip : 0,
+                message: "No additional open orders to merge.",
+            });
+        }
+
+        const [target, ...rest] = openOrders;
+        const targetOrderId = target.id;
+        const otherIds = rest.map((order) => order.id);
+
+        if (otherIds.length) {
+            await client.query(
+                `
+                UPDATE order_items
+                   SET order_id = $1
+                 WHERE order_id = ANY($2)
+            `,
+                [targetOrderId, otherIds]
+            );
+        }
+
+        const tipSum = openOrders.reduce((sum, order) => sum + Number(order.tip || 0), 0);
+
+        const subtotalRes = await client.query(
+            `
+            SELECT COALESCE(SUM(total_price), 0) AS subtotal
+            FROM order_items
+            WHERE order_id = $1
+        `,
+            [targetOrderId]
+        );
+        const subtotal = roundMoney(subtotalRes.rows[0]?.subtotal || 0);
+
+        await client.query(
+            `
+            UPDATE orders
+               SET total_price = $1,
+                   tip = $2
+             WHERE id = $3
+        `,
+            [subtotal, toTipInt(tipSum), targetOrderId]
+        );
+
+        if (otherIds.length) {
+            await client.query(
+                `
+                UPDATE orders
+                   SET status = 'void',
+                       total_price = 0,
+                       tip = 0
+                 WHERE id = ANY($1)
+            `,
+                [otherIds]
+            );
+        }
+
+        await client.query("COMMIT");
+
+        return res.json({
+            tableId: numericTableId,
+            mergedIntoOrderId: targetOrderId,
+            mergedOrderIds: otherIds,
+            mergedOrderCount: otherIds.length,
+            initialOpenOrderCount: openOrders.length,
+            resultingSubtotal: subtotal,
+            resultingTip: toTipInt(tipSum),
+        });
+    } catch (err) {
+        await client.query("ROLLBACK").catch(() => { });
+        console.error("POST /orders/waiter/merge error:", err);
+        return res.status(500).json({ error: "Server error" });
+    } finally {
+        client.release();
+    }
+});
+
+router.post("/waiter/close", requireRoles(["admin", "staff"]), async (req, res) => {
+    const { tableId } = req.body || {};
+    const restaurantId = pickRestaurantId(req);
+    const numericTableId = Number(tableId);
+
+    if (!Number.isFinite(numericTableId) || numericTableId <= 0) {
+        return res.status(400).json({ error: "Invalid tableId" });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const tableRes = await client.query(
+            `
+            SELECT id
+            FROM restaurant_tables
+            WHERE id = $1
+              AND restaurant_id = $2
+            LIMIT 1
+        `,
+            [numericTableId, restaurantId]
+        );
+        if (tableRes.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ error: "Table not found for this restaurant" });
+        }
+
+        const ordersRes = await client.query(
+            `
+            SELECT id
+            FROM orders
+            WHERE restaurant_id = $1
+              AND table_id = $2
+              AND status = 'open'
+            FOR UPDATE
+        `,
+            [restaurantId, numericTableId]
+        );
+
+        const openOrderIds = ordersRes.rows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id));
+
+        if (openOrderIds.length === 0) {
+            await client.query("COMMIT");
+            return res.json({
+                tableId: numericTableId,
+                closedOrderIds: [],
+                closedCount: 0,
+                message: "No open orders to close.",
+            });
+        }
+
+        await client.query(
+            `
+            UPDATE orders
+               SET status = 'paid'
+             WHERE id = ANY($1)
+        `,
+            [openOrderIds]
+        );
+
+        await client.query("COMMIT");
+
+        return res.json({
+            tableId: numericTableId,
+            closedOrderIds: openOrderIds,
+            closedCount: openOrderIds.length,
+        });
+    } catch (err) {
+        await client.query("ROLLBACK").catch(() => { });
+        console.error("POST /orders/waiter/close error:", err);
+        return res.status(500).json({ error: "Server error" });
+    } finally {
+        client.release();
+    }
+});
+
 router.get("/admin", requireRoles(["admin"]), async (req, res) => {
     try {
         const restaurantId = pickRestaurantId(req);

@@ -133,9 +133,27 @@
     border-color: #c9d6ea;
 }
 
+.waiter-table--available {
+    background: #edf9ec;
+    border-color: #8bc34a;
+}
+
+.waiter-table--busy {
+    background: #fff4c3;
+    border-color: #f7b500;
+}
+
+.waiter-table--available:hover {
+    border-color: #7cb342;
+}
+
+.waiter-table--busy:hover {
+    border-color: #f59f00;
+}
+
 .waiter-table--selected {
     border-color: #4172d6;
-    background: #e8f0ff;
+    box-shadow: 0 0 0 2px rgba(65, 114, 214, 0.2);
 }
 
 .waiter-table__name {
@@ -147,11 +165,53 @@
     color: #607086;
 }
 
+.waiter-table--available .waiter-table__status {
+    color: #2e7d32;
+}
+
+.waiter-table--busy .waiter-table__status {
+    color: #a05a00;
+}
+
 .waiter-table__selected-label {
     font-size: 12px;
     color: #4172d6;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+}
+
+.waiter-table-inline-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.waiter-table-inline-actions__status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    align-self: flex-start;
+}
+
+.waiter-table-inline-actions__status--free {
+    background: #edf9ec;
+    color: #2e7d32;
+}
+
+.waiter-table-inline-actions__status--busy {
+    background: #fff4c3;
+    color: #a05a00;
+}
+
+.waiter-table-inline-actions__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .waiter-menu__filters {

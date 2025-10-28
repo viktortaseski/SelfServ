@@ -37,6 +37,9 @@ function WaiterMenu({
     onIncrease,
     onDecrease,
     onRequestNote,
+    onMergeOrders,
+    onCloseOrders,
+    actionsBusy,
 }) {
     const normalizedSearch = useMemo(() => normalizeSearch(search || ""), [search]);
 
@@ -87,6 +90,14 @@ function WaiterMenu({
         onCategoryChange(slug);
     };
 
+    const openOrders = Number(table?.openOrders ?? table?.open_orders ?? 0);
+    const statusText =
+        table?.status ||
+        (openOrders > 0
+            ? `${openOrders} open ${openOrders === 1 ? "order" : "orders"}`
+            : "Available");
+    const busy = Boolean(actionsBusy);
+
     return (
         <section className="waiter-section">
             <header className="waiter-section__header waiter-section__header--column">
@@ -98,6 +109,41 @@ function WaiterMenu({
                         Choose products from the list below. Use the search or categories to filter.
                     </p>
                 </div>
+                {table ? (
+                    <div className="waiter-table-inline-actions">
+                        <span
+                            className={`waiter-table-inline-actions__status ${
+                                openOrders > 0
+                                    ? "waiter-table-inline-actions__status--busy"
+                                    : "waiter-table-inline-actions__status--free"
+                            }`}
+                        >
+                            {statusText}
+                        </span>
+                        <div className="waiter-table-inline-actions__buttons">
+                            {openOrders > 1 ? (
+                                <button
+                                    type="button"
+                                    className="waiter-btn waiter-btn--ghost"
+                                    onClick={() => onMergeOrders?.(table)}
+                                    disabled={busy}
+                                >
+                                    {busy ? "Working…" : "Merge orders"}
+                                </button>
+                            ) : null}
+                            {openOrders > 0 ? (
+                                <button
+                                    type="button"
+                                    className="waiter-btn waiter-btn--primary"
+                                    onClick={() => onCloseOrders?.(table)}
+                                    disabled={busy}
+                                >
+                                    {busy ? "Working…" : "Close orders"}
+                                </button>
+                            ) : null}
+                        </div>
+                    </div>
+                ) : null}
             </header>
 
             <div className="waiter-menu__filters">

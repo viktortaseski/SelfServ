@@ -98,3 +98,17 @@ export async function createWaiterOrder({ tableId, items }) {
     const { data } = await api.post("/orders/waiter", payload, { headers });
     return data;
 }
+
+export async function mergeTableOrders(tableId) {
+    const headers = buildAuthHeaders();
+    const payload = { tableId: Number(tableId) || tableId };
+    const { data } = await api.post("/orders/waiter/merge", payload, { headers });
+    return data;
+}
+
+export async function closeTableOrders(tableId) {
+    const headers = buildAuthHeaders();
+    const payload = { tableId: Number(tableId) || tableId };
+    const { data } = await api.post("/orders/waiter/close", payload, { headers });
+    return data;
+}

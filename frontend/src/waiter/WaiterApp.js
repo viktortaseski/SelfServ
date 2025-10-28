@@ -8,6 +8,8 @@ import {
     fetchWaiterTables,
     fetchWaiterMenu,
     createWaiterOrder,
+    mergeTableOrders,
+    closeTableOrders,
 } from "./waiterApi";
 import "./waiter.css";
 
@@ -48,6 +50,7 @@ function WaiterApp({ user, onLogout }) {
     const [feedback, setFeedback] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState("");
+    const [tableActionBusy, setTableActionBusy] = useState(false);
 
     const [showSalesPanel, setShowSalesPanel] = useState(false);
     const [noteEditor, setNoteEditor] = useState(createNoteEditorState);
@@ -94,14 +97,14 @@ function WaiterApp({ user, onLogout }) {
         return Array.from(map.values());
     }, [menuItems]);
 
-    const canGoBack = stepIdx > 0;
+    const canGoBack = stepIdx > 0 && !tableActionBusy && !submitting;
     const canGoForward =
         step === "tables"
-            ? !!selectedTable
+            ? !!selectedTable && !tableActionBusy
             : step === "items"
-            ? orderItems.length > 0
+            ? orderItems.length > 0 && !tableActionBusy
             : step === "summary"
-            ? orderItems.length > 0 && !submitting
+            ? orderItems.length > 0 && !submitting && !tableActionBusy
             : false;
 
     const loadTables = useCallback(async () => {
@@ -153,6 +156,92 @@ function WaiterApp({ user, onLogout }) {
             setLoadingMenu(false);
         }
     }, [restaurantId]);
+
+    const handleMergeOrders = useCallback(
+        async (table) => {
+            if (!table || !table.id) return;
+            setTableActionBusy(true);
+            setFeedback(null);
+            try {
+                const result = await mergeTableOrders(table.id);
+                const mergedCount =
+                    Number(result?.mergedOrderCount) ||
+                    (Array.isArray(result?.mergedOrderIds) ? result.mergedOrderIds.length : 0);
+                let message = "No additional open orders to merge for this table.";
+                if (mergedCount > 0) {
+                    const totalOrders =
+                        Number(result?.initialOpenOrderCount) || mergedCount + 1;
+                    const targetId = result?.mergedIntoOrderId || table.id;
+                    const tableLabel = table.name || `Table ${table.id}`;
+                    message = `Merged ${totalOrders} open ${
+                        totalOrders === 1 ? "order" : "orders"
+                    } for ${tableLabel} into #${targetId}.`;
+                }
+                setFeedback({
+                    kind: "success",
+                    message,
+                });
+            } catch (err) {
+                const msg =
+                    err?.response?.data?.error ||
+                    err?.message ||
+                    "Failed to merge orders for this table.";
+                setFeedback({
+                    kind: "error",
+                    message: msg,
+                });
+            } finally {
+                try {
+                    await loadTables();
+                } catch {
+                    // ignore refresh failures
+                }
+                setTableActionBusy(false);
+            }
+        },
+        [loadTables]
+    );
+
+    const handleCloseOrders = useCallback(
+        async (table) => {
+            if (!table || !table.id) return;
+            setTableActionBusy(true);
+            setFeedback(null);
+            try {
+                const result = await closeTableOrders(table.id);
+                const closedCount =
+                    Number(result?.closedCount) ||
+                    (Array.isArray(result?.closedOrderIds) ? result.closedOrderIds.length : 0);
+                const message =
+                    closedCount > 0
+                        ? `Closed ${closedCount} open ${
+                              closedCount === 1 ? "order" : "orders"
+                          } for ${table.name || `Table ${table.id}`}.`
+                        : "No open orders to close for this table.";
+                setFeedback({
+                    kind: "success",
+                    message,
+                });
+            } catch (err) {
+                const msg =
+                    err?.response?.data?.error ||
+                    err?.message ||
+                    "Failed to close orders for this table.";
+                setFeedback({
+                    kind: "error",
+                    message: msg,
+                });
+            } finally {
+                try {
+                    await loadTables();
+                } catch {
+                    // ignore refresh failures
+                }
+                setTableActionBusy(false);
+            }
+        },
+        [loadTables]
+    );
 
     const resetOrder = useCallback(() => {
         setOrderLines(new Map());
@@ -381,6 +470,9 @@ function WaiterApp({ user, onLogout }) {
                         onIncrease={incrementItem}
                         onDecrease={decrementItem}
                         onRequestNote={openNoteEditor}
+                        onMergeOrders={handleMergeOrders}
+                        onCloseOrders={handleCloseOrders}
+                        actionsBusy={tableActionBusy}
                     />
                 ) : null}
 
@@ -410,7 +502,7 @@ function WaiterApp({ user, onLogout }) {
                 accountOpen={accountOpen}
                 onLogout={onLogout}
                 onViewSales={handleViewSales}
-                disableForward={step === "summary" && submitting}
+                disableForward={(step === "summary" && submitting) || tableActionBusy}
             />
 
             {showSalesPanel ? (

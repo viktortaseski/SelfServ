@@ -45,11 +45,15 @@ function WaiterTableSelect({
                         (openCount > 0
                             ? `${openCount} open ${openCount === 1 ? "order" : "orders"}`
                             : "Available");
+                    const stateClass =
+                        openCount > 0 ? "waiter-table--busy" : "waiter-table--available";
+                    const classes = ["waiter-table", stateClass];
+                    if (isSelected) classes.push("waiter-table--selected");
                     return (
                         <button
                             key={table.id}
                             type="button"
-                            className={`waiter-table ${isSelected ? "waiter-table--selected" : ""}`}
+                            className={classes.join(" ")}
                             onClick={() => onSelectTable(table.id)}
                         >
                             <span className="waiter-table__name">
