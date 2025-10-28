@@ -158,6 +158,21 @@ async function ensureRestaurantCategoryImageColumn() {
     }
 }
 
+async function ensureOrderPrintPayloadColumn() {
+    try {
+        await pool.query(`
+            ALTER TABLE orders
+            ADD COLUMN IF NOT EXISTS print_payload JSONB
+        `);
+    } catch (err) {
+        if (err.code === "42P01") {
+            console.warn("[migrations] orders table missing; skipping print_payload column");
+            return;
+        }
+        throw err;
+    }
+}
+
 async function ensurePerformanceIndexes() {
     const statements = [
         `
@@ -182,13 +197,17 @@ async function ensurePerformanceIndexes() {
         CREATE INDEX IF NOT EXISTS idx_order_items_order_id
             ON order_items (order_id)
         `,
+        `
+        CREATE INDEX IF NOT EXISTS idx_print_jobs_created_at
+            ON print_jobs (created_at)
+        `,
     ];
 
     for (const sql of statements) {
         try {
             await pool.query(sql);
         } catch (err) {
-            if (err.code === "42P01") {
+            if (err.code === "42P01" || err.code === "42703") {
                 console.warn("[migrations] skipping index creation; table missing for statement:", sql.trim().split("\n")[0]);
                 continue;
             }
@@ -205,6 +224,7 @@ async function runMigrations() {
     await ensureRestaurantLogoColumn();
     await ensureRestaurantCategoryImageColumn();
     await ensureOrderCreatedByRoleEnumValues();
+    await ensureOrderPrintPayloadColumn();
     await ensurePerformanceIndexes();
 }
 

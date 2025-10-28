@@ -52,6 +52,73 @@ function roundMoney(value) {
     return Math.round(num * 100) / 100;
 }
 
+function createPrintPayload({
+    orderId,
+    tableName,
+    createdAtISO,
+    items,
+    itemsByCategory,
+    subtotal,
+    tip,
+    paymentLabel = "PAYMENT DUE",
+    headerTitle = RECEIPT_NAME,
+    restaurantInfo,
+    restaurantId,
+    createdByRole,
+    employee = {},
+    printerId,
+}) {
+    const restaurantPayload = restaurantInfo
+        ? {
+            id: restaurantInfo.id,
+            name: restaurantInfo.name,
+            address: restaurantInfo.address,
+            phone_number: restaurantInfo.phone_number,
+            tax_id: restaurantInfo.tax_id,
+        }
+        : {
+            id: restaurantId,
+            name: headerTitle,
+        };
+
+    const payload = {
+        orderId,
+        tableName,
+        createdAtISO,
+        items,
+        itemsByCategory,
+        subtotal,
+        tip,
+        taxRate: 0,
+        payment: paymentLabel,
+        headerTitle,
+        phone: restaurantInfo?.phone_number || RECEIPT_PHONE,
+        address: restaurantInfo?.address || RECEIPT_ADDRESS,
+        taxId: restaurantInfo?.tax_id || null,
+        createdByRole,
+        created_by_role: createdByRole,
+        restaurant: restaurantPayload,
+        printerId,
+    };
+
+    if (employee && (employee.role || employee.username || employee.id)) {
+        const role = employee.role || createdByRole;
+        const username = employee.username || null;
+        const id = employee.id || null;
+
+        payload.createdByRole = role;
+        payload.created_by_role = role;
+        payload.employeeRole = role;
+        payload.employee_role = role;
+        payload.employeeUsername = username;
+        payload.employee_username = username;
+        payload.employeeId = id;
+        payload.employee_id = id;
+    }
+
+    return payload;
+}
+
 async function findDefaultPrinterId(dbOrPool, restaurantId) {
     if (!Number.isFinite(Number(restaurantId))) return null;
     const runner = dbOrPool && typeof dbOrPool.query === "function" ? dbOrPool : pool;
@@ -133,25 +200,38 @@ async function fetchMenuItems(client, ids) {
 }
 
 async function insertOrderItems(client, orderId, items) {
-    const insertSql = `
-        INSERT INTO order_items (order_id, restaurant_product_id, quantity, total_price, note)
-        VALUES ($1, $2, $3, $4, $5)
-    `;
+    if (!Array.isArray(items) || items.length === 0) return 0;
+
+    const orderIds = [];
+    const productIds = [];
+    const quantities = [];
+    const totals = [];
+    const notes = [];
     let subtotal = 0;
+
     for (const item of items) {
         const quantity = Math.max(1, Math.round(Number(item.quantity) || 0));
         const unitPrice = roundMoney(item.price);
         const totalPrice = roundMoney(unitPrice * quantity);
         const note = item.note ? String(item.note).slice(0, 45) : null;
+
+        orderIds.push(orderId);
+        productIds.push(item.restaurant_product_id);
+        quantities.push(quantity);
+        totals.push(totalPrice);
+        notes.push(note);
+
         subtotal += totalPrice;
-        await client.query(insertSql, [
-            orderId,
-            item.restaurant_product_id,
-            quantity,
-            totalPrice,
-            note,
-        ]);
     }
+
+    await client.query(
+        `
+        INSERT INTO order_items (order_id, restaurant_product_id, quantity, total_price, note)
+        SELECT * FROM UNNEST($1::BIGINT[], $2::BIGINT[], $3::INT[], $4::NUMERIC[], $5::TEXT[])
+    `,
+        [orderIds, productIds, quantities, totals, notes]
+    );
+
     return roundMoney(subtotal);
 }
 
@@ -278,10 +358,6 @@ router.post("/customer", async (req, res) => {
             createdAt instanceof Date ? createdAt.toISOString() : new Date().toISOString();
 
         const subtotal = await insertOrderItems(client, orderId, orderItems);
-        await client.query(
-            "UPDATE orders SET total_price = $1 WHERE id = $2",
-            [subtotal, orderId]
-        );
 
         const restaurantInfoRes = await client.query(
             `
@@ -298,8 +374,6 @@ router.post("/customer", async (req, res) => {
             [tokenData.restaurantId]
         );
         const restaurantInfo = restaurantInfoRes.rows[0] || null;
-
-        await client.query("COMMIT");
 
         const tableName = tokenData.tableName || `Table ${tokenData.tableId}`;
         const purchasedItems = orderItems.map((item) => ({
@@ -337,7 +411,7 @@ router.post("/customer", async (req, res) => {
         }
 
         const targetPrinterId = await findDefaultPrinterId(client, tokenData.restaurantId);
-        const printPayload = {
+        const printPayload = createPrintPayload({
             orderId,
             tableName,
             createdAtISO,
@@ -345,33 +419,25 @@ router.post("/customer", async (req, res) => {
             itemsByCategory,
             subtotal,
             tip: tipInt,
-            taxRate: 0,
-            payment: "PAYMENT DUE",
+            paymentLabel: "PAYMENT DUE",
             headerTitle: RECEIPT_NAME,
-            phone: restaurantInfo?.phone_number || RECEIPT_PHONE,
-            address: restaurantInfo?.address || RECEIPT_ADDRESS,
-            taxId: restaurantInfo?.tax_id || null,
+            restaurantInfo,
+            restaurantId: tokenData.restaurantId,
             createdByRole: "customer",
-            created_by_role: "customer",
-            restaurant: restaurantInfo
-                ? {
-                    id: restaurantInfo.id,
-                    name: restaurantInfo.name,
-                    address: restaurantInfo.address,
-                    phone_number: restaurantInfo.phone_number,
-                    tax_id: restaurantInfo.tax_id,
-                }
-                : {
-                    id: tokenData.restaurantId,
-                    name: RECEIPT_NAME,
-                },
             printerId: targetPrinterId,
-        };
+        });
 
-        await pool.query(
+        await client.query(
+            "UPDATE orders SET total_price = $1, print_payload = $2 WHERE id = $3",
+            [subtotal, printPayload, orderId]
+        );
+
+        await client.query(
             `INSERT INTO print_jobs (order_id, payload, status, printer_id) VALUES ($1, $2, 'queued', $3)`,
             [orderId, printPayload, targetPrinterId]
         );
+
+        await client.query("COMMIT");
 
         return res.status(201).json({ orderId });
     } catch (err) {
@@ -547,7 +613,6 @@ router.post("/waiter", requireRoles(["admin", "staff"]), async (req, res) => {
             createdAt instanceof Date ? createdAt.toISOString() : new Date().toISOString();
 
         const subtotal = await insertOrderItems(client, orderId, orderItems);
-        await client.query("UPDATE orders SET total_price = $1 WHERE id = $2", [subtotal, orderId]);
 
         const restaurantInfoRes = await client.query(
             `
@@ -564,8 +629,6 @@ router.post("/waiter", requireRoles(["admin", "staff"]), async (req, res) => {
             [restaurantId]
         );
         const restaurantInfo = restaurantInfoRes.rows[0] || null;
-
-        await client.query("COMMIT");
 
         const tableName = tableRow.name || `Table ${tableRow.id}`;
         const purchasedItems = orderItems.map((item) => ({
@@ -603,7 +666,7 @@ router.post("/waiter", requireRoles(["admin", "staff"]), async (req, res) => {
         }
 
         const targetPrinterId = await findDefaultPrinterId(client, restaurantId);
-        const printPayload = {
+        const printPayload = createPrintPayload({
             orderId,
             tableName,
             createdAtISO,
@@ -611,39 +674,30 @@ router.post("/waiter", requireRoles(["admin", "staff"]), async (req, res) => {
             itemsByCategory,
             subtotal,
             tip: tipInt,
-            taxRate: 0,
-            payment: "PAYMENT DUE",
+            paymentLabel: "PAYMENT DUE",
             headerTitle: RECEIPT_NAME,
-            phone: restaurantInfo?.phone_number || RECEIPT_PHONE,
-            address: restaurantInfo?.address || RECEIPT_ADDRESS,
-            taxId: restaurantInfo?.tax_id || null,
+            restaurantInfo,
+            restaurantId,
             createdByRole: employeeRole,
-            created_by_role: employeeRole,
-            employeeRole,
-            employee_role: employeeRole,
-            employeeUsername: req.user?.username || null,
-            employee_username: req.user?.username || null,
-            employeeId: req.user?.id || null,
-            employee_id: req.user?.id || null,
-            restaurant: restaurantInfo
-                ? {
-                    id: restaurantInfo.id,
-                    name: restaurantInfo.name,
-                    address: restaurantInfo.address,
-                    phone_number: restaurantInfo.phone_number,
-                    tax_id: restaurantInfo.tax_id,
-                }
-                : {
-                    id: restaurantId,
-                    name: RECEIPT_NAME,
-                },
+            employee: {
+                role: employeeRole,
+                username: req.user?.username || null,
+                id: req.user?.id || null,
+            },
             printerId: targetPrinterId,
-        };
+        });
 
-        await pool.query(
+        await client.query(
+            "UPDATE orders SET total_price = $1, print_payload = $2 WHERE id = $3",
+            [subtotal, printPayload, orderId]
+        );
+
+        await client.query(
             `INSERT INTO print_jobs (order_id, payload, status, printer_id) VALUES ($1, $2, 'queued', $3)`,
             [orderId, printPayload, targetPrinterId]
         );
+
+        await client.query("COMMIT");
 
         return res.status(201).json({ orderId });
     } catch (err) {
@@ -755,6 +809,15 @@ router.post("/waiter/merge", requireRoles(["admin", "staff"]), async (req, res) 
              WHERE id = $3
         `,
             [subtotal, toTipInt(tipSum), targetOrderId]
+        );
+
+        await client.query(
+            `
+            UPDATE orders
+               SET print_payload = NULL
+             WHERE id = $1
+        `,
+            [targetOrderId]
         );
 
         if (otherIds.length) {
@@ -1010,7 +1073,7 @@ router.post("/waiter/:orderId/reprint", requireRoles(["admin", "staff"]), async 
 
         const orderRes = await client.query(
             `
-            SELECT id
+            SELECT id, print_payload
             FROM orders
             WHERE id = $1
               AND restaurant_id = $2
@@ -1023,24 +1086,30 @@ router.post("/waiter/:orderId/reprint", requireRoles(["admin", "staff"]), async 
             return res.status(404).json({ error: "Order not found for this restaurant" });
         }
 
-        const jobRes = await client.query(
-            `
-            SELECT payload, printer_id
-            FROM print_jobs
-            WHERE order_id = $1
-            ORDER BY id DESC
-            LIMIT 1
-        `,
-            [orderId]
-        );
+        let payload = orderRes.rows[0].print_payload || null;
+        let printerId = payload?.printerId || null;
 
-        if (jobRes.rowCount === 0) {
-            await client.query("ROLLBACK");
-            return res.status(422).json({ error: "No existing print job found to duplicate." });
+        if (!payload) {
+            const jobRes = await client.query(
+                `
+                SELECT payload, printer_id
+                FROM print_jobs
+                WHERE order_id = $1
+                ORDER BY id DESC
+                LIMIT 1
+            `,
+                [orderId]
+            );
+
+            if (jobRes.rowCount === 0) {
+                await client.query("ROLLBACK");
+                return res.status(422).json({ error: "No existing print job found to duplicate." });
+            }
+
+            payload = jobRes.rows[0].payload;
+            printerId = jobRes.rows[0].printer_id || null;
         }
 
-        let payload = jobRes.rows[0].payload;
-        const printerId = jobRes.rows[0].printer_id || null;
         if (typeof payload === "string") {
             try {
                 payload = JSON.parse(payload);
@@ -1052,6 +1121,10 @@ router.post("/waiter/:orderId/reprint", requireRoles(["admin", "staff"]), async 
         if (!payload || typeof payload !== "object") {
             await client.query("ROLLBACK");
             return res.status(422).json({ error: "Stored print payload unavailable for reprint." });
+        }
+
+        if (!printerId) {
+            printerId = await findDefaultPrinterId(client, restaurantId);
         }
 
         const nowIso = new Date().toISOString();
