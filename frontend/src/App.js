@@ -90,6 +90,7 @@ function App() {
       return null;
     }
   });
+  const initialRestaurantIdRef = useRef(restaurantId);
   const [restaurantActive, setRestaurantActive] = useState(true);
   const [restaurantName, setRestaurantName] = useState("");
   const [restaurantLogo, setRestaurantLogo] = useState("");
@@ -358,11 +359,13 @@ function App() {
     const rawRestaurantParam =
       urlParams.get("restaurant_id") ?? urlParams.get("restaurantId");
     const urlRestaurantId = parseRestaurantIdFromRaw(rawRestaurantParam);
-    if (urlRestaurantId && urlRestaurantId !== restaurantId) {
+    const currentRestaurantId = initialRestaurantIdRef.current;
+
+    if (urlRestaurantId && urlRestaurantId !== currentRestaurantId) {
       setRestaurantId(urlRestaurantId);
     }
 
-    const resolvedStateRestaurantId = parseRestaurantIdFromRaw(restaurantId);
+    const resolvedStateRestaurantId = parseRestaurantIdFromRaw(currentRestaurantId);
 
     async function exchange(qrTok, requestedRestaurantId) {
       const payload = { tableToken: qrTok };
