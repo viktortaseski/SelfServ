@@ -32,6 +32,13 @@ function WaiterNav({
             </button>
             <button
                 type="button"
+                className="waiter-nav__button waiter-nav__button--orders"
+                onClick={() => onManageOrders?.()}
+            >
+                Orders
+            </button>
+            <button
+                type="button"
                 className="waiter-nav__button waiter-nav__button--primary"
                 onClick={onForward}
                 disabled={!canGoForward || disableForward}
@@ -50,13 +57,6 @@ function WaiterNav({
                 </button>
                 {accountOpen ? (
                     <div className="waiter-nav__menu">
-                        <button
-                            type="button"
-                            className="waiter-nav__menu-item"
-                            onClick={() => onManageOrders?.()}
-                        >
-                            Manage orders
-                        </button>
                         <button
                             type="button"
                             className="waiter-nav__menu-item waiter-nav__menu-item--danger"

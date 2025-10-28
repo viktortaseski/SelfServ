@@ -489,6 +489,18 @@
     max-width: 110px;
 }
 
+.waiter-nav__button--orders {
+    max-width: 120px;
+    background: #ffcf66;
+    border-color: #ffcf66;
+    color: #1b2a3d;
+}
+
+.waiter-nav__button--orders:hover {
+    background: #ffbe3c;
+    border-color: #ffbe3c;
+}
+
 .waiter-nav__button--primary {
     background: #4172d6;
     color: #fff;
