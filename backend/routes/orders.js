@@ -103,13 +103,17 @@ async function fetchMenuItems(client, ids) {
         SELECT
             rp.id,
             rp.restaurant_id,
+            rp.category_id,
             rp.price,
             rp.is_active,
             rp.img_url,
             p.name,
-            p.description
+            p.description,
+            c.slug AS category_slug,
+            c.name AS category_name
         FROM restaurant_products rp
         JOIN products p ON p.id = rp.product_id
+        LEFT JOIN categories c ON c.id = rp.category_id
         WHERE rp.id = ANY($1)
     `,
         [ids]
@@ -120,6 +124,9 @@ async function fetchMenuItems(client, ids) {
         restaurant_id: Number(row.restaurant_id),
         price: Number(row.price),
         is_active: row.is_active === true || row.is_active === "t",
+        category_id: row.category_id != null ? Number(row.category_id) : null,
+        category_slug: row.category_slug || null,
+        category_name: row.category_name || null,
     }));
 }
 
@@ -228,6 +235,10 @@ router.post("/customer", async (req, res) => {
 
         const orderItems = normalizedItems.map((item) => {
             const product = productMap.get(item.id);
+            const categoryName =
+                product.category_name ||
+                product.category_slug ||
+                "Uncategorized";
             return {
                 restaurant_product_id: product.id,
                 name: product.name,
@@ -235,6 +246,9 @@ router.post("/customer", async (req, res) => {
                 quantity: item.quantity,
                 note: item.note,
                 img_url: product.img_url,
+                category_id: product.category_id,
+                category_slug: product.category_slug,
+                category_name: categoryName,
             };
         });
 
@@ -292,7 +306,33 @@ router.post("/customer", async (req, res) => {
             price: item.price,
             note: item.note,
             image_url: item.img_url,
+            category_id: item.category_id,
+            category_slug: item.category_slug,
+            category_name: item.category_name,
         }));
+
+        const itemsByCategory = [];
+        const categoryOrder = new Map();
+        for (const item of purchasedItems) {
+            const categoryKey = item.category_slug || item.category_name || "uncategorized";
+            if (!categoryOrder.has(categoryKey)) {
+                categoryOrder.set(categoryKey, {
+                    category_id: item.category_id,
+                    category_slug: item.category_slug,
+                    category_name: item.category_name || "Uncategorized",
+                    items: [],
+                });
+                itemsByCategory.push(categoryOrder.get(categoryKey));
+            }
+            const entry = categoryOrder.get(categoryKey);
+            entry.items.push({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                note: item.note,
+                image_url: item.image_url,
+            });
+        }
 
         const targetPrinterId = await findDefaultPrinterId(client, tokenData.restaurantId);
         const printPayload = {
@@ -300,6 +340,7 @@ router.post("/customer", async (req, res) => {
             tableName,
             createdAtISO,
             items: purchasedItems,
+            itemsByCategory,
             subtotal,
             tip: tipInt,
             taxRate: 0,
