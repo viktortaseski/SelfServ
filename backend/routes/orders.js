@@ -911,7 +911,6 @@ router.get("/waiter/orders", requireRoles(["admin", "staff"]), async (req, res) 
                     o.tip,
                     o.total_price,
                     o.created_at,
-                    o.updated_at,
                     rt.name AS table_name,
                     COALESCE(SUM(oi.total_price), 0) AS subtotal,
                     JSON_AGG(
@@ -931,7 +930,7 @@ router.get("/waiter/orders", requireRoles(["admin", "staff"]), async (req, res) 
                 WHERE o.restaurant_id = $1
                   AND o.status = ANY($2)
                   AND ($3::BIGINT IS NULL OR o.table_id = $3)
-                GROUP BY o.id, o.table_id, o.status, o.tip, o.total_price, o.created_at, o.updated_at, rt.name
+                GROUP BY o.id, o.table_id, o.status, o.tip, o.total_price, o.created_at, rt.name
                 ORDER BY o.created_at DESC
                 LIMIT $4
             )
@@ -963,10 +962,7 @@ router.get("/waiter/orders", requireRoles(["admin", "staff"]), async (req, res) 
                 row.created_at instanceof Date
                     ? row.created_at.toISOString()
                     : row.created_at || null;
-            const updatedAt =
-                row.updated_at instanceof Date
-                    ? row.updated_at.toISOString()
-                    : row.updated_at || null;
+            const updatedAt = createdAt;
             const items = Array.isArray(row.items)
                 ? row.items.map((item) => ({
                       name: item?.name || "",
@@ -1114,7 +1110,7 @@ router.patch("/waiter/:orderId/status", requireRoles(["admin", "staff"]), async 
                SET status = $1
              WHERE id = $2
                AND restaurant_id = $3
-            RETURNING id, status, table_id, tip, total_price, created_at, updated_at
+            RETURNING id, status, table_id, tip, total_price, created_at
         `,
             [nextStatus, orderId, restaurantId]
         );
@@ -1136,7 +1132,7 @@ router.patch("/waiter/:orderId/status", requireRoles(["admin", "staff"]), async 
             created_at:
                 row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
             updated_at:
-                row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
+                row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
         });
     } catch (err) {
         console.error("PATCH /orders/waiter/:orderId/status error:", err);
