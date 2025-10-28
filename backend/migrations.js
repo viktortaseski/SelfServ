@@ -1,6 +1,54 @@
 // migrations.js
 const pool = require("./db");
 
+async function ensureEnumHasValue(typeName, value) {
+    if (!typeName || !value) return;
+    const sanitizedType = typeName.replace(/[^a-zA-Z0-9_]/g, "");
+    const sanitizedValue = value.replace(/'/g, "''");
+    if (!sanitizedType || !sanitizedValue) return;
+
+    try {
+        await pool.query(
+            `ALTER TYPE ${sanitizedType} ADD VALUE IF NOT EXISTS '${sanitizedValue}'`
+        );
+        return;
+    } catch (err) {
+        if (err.code === "42704") {
+            console.warn(
+                `[migrations] enum type ${sanitizedType} missing; skipping value ${value}`
+            );
+            return;
+        }
+        if (err.code !== "42601") {
+            if (err.code === "42710") return; // duplicate value
+            throw err;
+        }
+        // Fallback for older Postgres versions without IF NOT EXISTS support
+        const { rows } = await pool.query(
+            `SELECT 1
+             FROM pg_enum
+             WHERE enumlabel = $1
+               AND enumtypid = (
+                   SELECT oid FROM pg_type WHERE typname = $2
+               )
+             LIMIT 1`,
+            [value, sanitizedType]
+        );
+        if (rows.length) return;
+        try {
+            await pool.query(`ALTER TYPE ${sanitizedType} ADD VALUE '${sanitizedValue}'`);
+        } catch (err2) {
+            if (err2.code === "42710") return;
+            throw err2;
+        }
+    }
+}
+
+async function ensureOrderCreatedByRoleEnumValues() {
+    await ensureEnumHasValue("order_created_by_role", "staff");
+    await ensureEnumHasValue("order_created_by_role", "admin");
+}
+
 async function ensureRestaurantPrinterTable() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS restaurant_printer (
@@ -117,6 +165,7 @@ async function runMigrations() {
     await ensureRestaurantIsActiveColumn();
     await ensureRestaurantLogoColumn();
     await ensureRestaurantCategoryImageColumn();
+    await ensureOrderCreatedByRoleEnumValues();
 }
 
 module.exports = {

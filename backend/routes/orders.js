@@ -349,14 +349,8 @@ router.post("/customer", async (req, res) => {
             phone: restaurantInfo?.phone_number || RECEIPT_PHONE,
             address: restaurantInfo?.address || RECEIPT_ADDRESS,
             taxId: restaurantInfo?.tax_id || null,
-            createdByRole: employeeRole,
-            created_by_role: employeeRole,
-            employeeRole,
-            employee_role: employeeRole,
-            employeeUsername: req.user?.username || null,
-            employee_username: req.user?.username || null,
-            employeeId: req.user?.id || null,
-            employee_id: req.user?.id || null,
+            createdByRole: "customer",
+            created_by_role: "customer",
             restaurant: restaurantInfo
                 ? {
                     id: restaurantInfo.id,
@@ -527,7 +521,7 @@ router.post("/waiter", requireRoles(["admin", "staff"]), async (req, res) => {
 
         const tipInt = toTipInt(tip);
         const employeeRole = req.user?.role === "admin" ? "admin" : "staff";
-        const createdByRoleDb = "admin";
+        const createdByRoleDb = employeeRole;
 
         const orderRes = await client.query(
             `
