@@ -181,17 +181,17 @@ router.post("/customer", async (req, res) => {
                 .status(400)
                 .json({ error: "Expired or already used token. Please rescan the QR." });
         }
-        console.log("[orders] token data:", tokenData);
+        //console.log("[orders] token data:", tokenData);
 
         const ids = [...new Set(normalizedItems.map((it) => it.id).filter((id) => Number.isFinite(id) && id > 0))];
         if (!ids.length) {
             await client.query("ROLLBACK");
             return res.status(400).json({ error: "Cart items are invalid" });
         }
-        console.log("[orders] unique item ids:", ids);
+        //console.log("[orders] unique item ids:", ids);
 
         const rows = await fetchMenuItems(client, ids);
-        console.log("[orders] fetched restaurant_products:", rows);
+        //console.log("[orders] fetched restaurant_products:", rows);
         const productMap = new Map(rows.map((row) => [row.id, row]));
 
         const missingIds = ids.filter((id) => !productMap.has(id));
@@ -351,16 +351,16 @@ router.post("/customer", async (req, res) => {
             taxId: restaurantInfo?.tax_id || null,
             restaurant: restaurantInfo
                 ? {
-                      id: restaurantInfo.id,
-                      name: restaurantInfo.name,
-                      address: restaurantInfo.address,
-                      phone_number: restaurantInfo.phone_number,
-                      tax_id: restaurantInfo.tax_id,
-                  }
+                    id: restaurantInfo.id,
+                    name: restaurantInfo.name,
+                    address: restaurantInfo.address,
+                    phone_number: restaurantInfo.phone_number,
+                    tax_id: restaurantInfo.tax_id,
+                }
                 : {
-                      id: tokenData.restaurantId,
-                      name: RECEIPT_NAME,
-                  },
+                    id: tokenData.restaurantId,
+                    name: RECEIPT_NAME,
+                },
             printerId: targetPrinterId,
         };
 
