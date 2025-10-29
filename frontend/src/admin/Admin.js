@@ -4,7 +4,7 @@ import Dashboard from "./Dashboard";
 import MenuManager from "./MenuManager";
 import Analytics from "./Analytics";
 import WaiterApp from "../waiter/WaiterApp";
-import { apiMe, apiLogout } from "./dashboardApi";
+import { apiMe, apiLogout, hasValidToken } from "./dashboardApi";
 import "./dashboard.css";
 
 function Admin() {
@@ -18,6 +18,10 @@ function Admin() {
     };
 
     useEffect(() => {
+        if (!hasValidToken()) {
+            setLoadingUser(false);
+            return;
+        }
         let mounted = true;
         (async () => {
             try {
@@ -33,6 +37,17 @@ function Admin() {
             mounted = false;
         };
     }, []);
+
+    useEffect(() => {
+        if (!user) return;
+        const interval = setInterval(() => {
+            if (!hasValidToken()) {
+                setUser(null);
+                setLoadingUser(false);
+            }
+        }, 60 * 1000);
+        return () => clearInterval(interval);
+    }, [user]);
 
     const refreshMe = async () => {
         try {

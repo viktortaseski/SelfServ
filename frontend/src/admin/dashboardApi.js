@@ -1,14 +1,78 @@
 import api from "../api";
 
-// Use localStorage for a simple stateless token
 const TOKEN_KEY = "admin_token";
+const TOKEN_EXP_KEY = "admin_token_expires_at";
+const TOKEN_MAX_AGE_MS = 9 * 60 * 60 * 1000; // 9 hours
+
+function getSessionStorage() {
+    if (typeof window === "undefined") return null;
+    try {
+        return window.sessionStorage;
+    } catch {
+        return null;
+    }
+}
+
+function clearLegacyLocalStorage() {
+    if (typeof window === "undefined") return;
+    try {
+        window.localStorage.removeItem(TOKEN_KEY);
+        window.localStorage.removeItem(TOKEN_EXP_KEY);
+    } catch {
+        // ignore storage failures
+    }
+}
 
 export function setToken(t) {
-    if (t) localStorage.setItem(TOKEN_KEY, t);
-    else localStorage.removeItem(TOKEN_KEY);
+    const storage = getSessionStorage();
+    if (!storage) return;
+    try {
+        if (t) {
+            storage.setItem(TOKEN_KEY, t);
+            storage.setItem(
+                TOKEN_EXP_KEY,
+                String(Date.now() + TOKEN_MAX_AGE_MS)
+            );
+        } else {
+            storage.removeItem(TOKEN_KEY);
+            storage.removeItem(TOKEN_EXP_KEY);
+        }
+    } catch {
+        // ignore storage failures
+    }
+    clearLegacyLocalStorage();
 }
+
 export function getToken() {
-    return localStorage.getItem(TOKEN_KEY) || "";
+    const storage = getSessionStorage();
+    if (!storage) {
+        clearLegacyLocalStorage();
+        return "";
+    }
+    try {
+        const token = storage.getItem(TOKEN_KEY);
+        if (!token) return "";
+        const expiresRaw = storage.getItem(TOKEN_EXP_KEY);
+        const expires = Number(expiresRaw || 0);
+        if (!expires || Date.now() > expires) {
+            storage.removeItem(TOKEN_KEY);
+            storage.removeItem(TOKEN_EXP_KEY);
+            return "";
+        }
+        return token;
+    } catch {
+        if (storage) {
+            storage.removeItem(TOKEN_KEY);
+            storage.removeItem(TOKEN_EXP_KEY);
+        }
+        return "";
+    } finally {
+        clearLegacyLocalStorage();
+    }
+}
+
+export function hasValidToken() {
+    return !!getToken();
 }
 
 export function DEFAULT_FROM_STR() {
