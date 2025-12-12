@@ -1,5 +1,6 @@
 // migrations.js
 const pool = require("./db");
+const { DEFAULT_RESTAURANT_ID } = require("./config");
 
 async function ensureEnumHasValue(typeName, value) {
     if (!typeName || !value) return;
@@ -41,6 +42,234 @@ async function ensureEnumHasValue(typeName, value) {
             if (err2.code === "42710") return;
             throw err2;
         }
+    }
+}
+
+async function ensureOrderCreatedByRoleType() {
+    try {
+        await pool.query(
+            `CREATE TYPE order_created_by_role AS ENUM ('customer', 'staff', 'admin')`
+        );
+    } catch (err) {
+        if (err.code !== "42710") { // duplicate_object
+            throw err;
+        }
+    }
+    await ensureOrderCreatedByRoleEnumValues();
+}
+
+async function ensureBaseTables() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS restaurants (
+            id BIGSERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            location TEXT,
+            radius INT,
+            address TEXT,
+            phone_number TEXT,
+            tax_id TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            logo_url TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS employees (
+            id BIGSERIAL PRIMARY KEY,
+            restaurant_id BIGINT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            last_login TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_restaurant_username
+            ON employees (restaurant_id, username)
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS restaurant_tables (
+            id BIGSERIAL PRIMARY KEY,
+            restaurant_id BIGINT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_restaurant_tables_restaurant
+            ON restaurant_tables (restaurant_id)
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS table_access_tokens (
+            id BIGSERIAL PRIMARY KEY,
+            token TEXT NOT NULL UNIQUE,
+            table_id BIGINT NOT NULL REFERENCES restaurant_tables(id) ON DELETE CASCADE,
+            expires_at TIMESTAMPTZ,
+            used_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_table_access_tokens_table_id
+            ON table_access_tokens (table_id)
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_table_access_tokens_expires_used
+            ON table_access_tokens (expires_at, used_at)
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS categories (
+            id BIGSERIAL PRIMARY KEY,
+            slug TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            description TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_by_employee_id BIGINT REFERENCES employees(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS restaurant_categories (
+            id BIGSERIAL PRIMARY KEY,
+            restaurant_id BIGINT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+            category_id BIGINT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+            img_url TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE (restaurant_id, category_id)
+        )
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_restaurant_categories_restaurant
+            ON restaurant_categories (restaurant_id)
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS products (
+            id BIGSERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_by_employee_id BIGINT REFERENCES employees(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_products_active
+            ON products (is_active)
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS restaurant_products (
+            id BIGSERIAL PRIMARY KEY,
+            restaurant_id BIGINT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+            product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+            category_id BIGINT NOT NULL REFERENCES categories(id),
+            price NUMERIC(10, 2) NOT NULL,
+            img_url TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            sku TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE (restaurant_id, product_id)
+        )
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_restaurant_products_restaurant
+            ON restaurant_products (restaurant_id, is_active)
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_restaurant_products_category
+            ON restaurant_products (category_id)
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS orders (
+            id BIGSERIAL PRIMARY KEY,
+            restaurant_id BIGINT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+            table_id BIGINT REFERENCES restaurant_tables(id) ON DELETE SET NULL,
+            total_price NUMERIC(10, 2) NOT NULL DEFAULT 0,
+            tip NUMERIC(10, 2) NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'open',
+            created_by_role order_created_by_role NOT NULL DEFAULT 'customer',
+            print_payload JSONB,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS order_items (
+            id BIGSERIAL PRIMARY KEY,
+            order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+            restaurant_product_id BIGINT NOT NULL REFERENCES restaurant_products(id),
+            quantity INT NOT NULL,
+            total_price NUMERIC(10, 2) NOT NULL,
+            note TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await ensureRestaurantPrinterTable();
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS print_jobs (
+            id BIGSERIAL PRIMARY KEY,
+            order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+            payload JSONB,
+            status TEXT NOT NULL DEFAULT 'queued',
+            printer_id BIGINT REFERENCES restaurant_printer(id) ON DELETE SET NULL,
+            claimed_at TIMESTAMPTZ,
+            claimed_by BIGINT,
+            claimed_by_worker TEXT,
+            finished_at TIMESTAMPTZ,
+            last_error TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+}
+
+async function ensureDefaultRestaurant() {
+    const defaultId = Number(DEFAULT_RESTAURANT_ID || 1) || 1;
+    await pool.query(
+        `
+        INSERT INTO restaurants (id, name, is_active)
+        VALUES ($1, 'Default Restaurant', TRUE)
+        ON CONFLICT (id) DO NOTHING
+    `,
+        [defaultId]
+    );
+
+    try {
+        await pool.query(
+            `
+            SELECT setval(
+                pg_get_serial_sequence('restaurants', 'id'),
+                GREATEST(
+                    (SELECT COALESCE(MAX(id), 0) FROM restaurants),
+                    $1
+                )
+            )
+        `,
+            [defaultId]
+        );
+    } catch (err) {
+        console.warn("[migrations] unable to bump restaurants id sequence", err.message);
     }
 }
 
@@ -217,13 +446,14 @@ async function ensurePerformanceIndexes() {
 }
 
 async function runMigrations() {
-    await ensureRestaurantPrinterTable();
+    await ensureOrderCreatedByRoleType();
+    await ensureBaseTables();
+    await ensureDefaultRestaurant();
     await addClaimedByWorkerColumn();
     await addPrinterIdColumn();
     await ensureRestaurantIsActiveColumn();
     await ensureRestaurantLogoColumn();
     await ensureRestaurantCategoryImageColumn();
-    await ensureOrderCreatedByRoleEnumValues();
     await ensureOrderPrintPayloadColumn();
     await ensurePerformanceIndexes();
 }

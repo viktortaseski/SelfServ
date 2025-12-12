@@ -14,7 +14,7 @@ function Admin() {
 
     const setView = (v) => {
         _setView(v);
-        try { localStorage.setItem('admin_view', v); } catch {}
+        try { localStorage.setItem('admin_view', v); } catch { }
     };
 
     useEffect(() => {
