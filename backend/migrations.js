@@ -95,12 +95,14 @@ async function ensureBaseTables() {
 
     await pool.query(`
         CREATE TABLE IF NOT EXISTS restaurant_tables (
-            id BIGSERIAL PRIMARY KEY,
-            restaurant_id BIGINT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
-            name TEXT NOT NULL,
-            token TEXT NOT NULL UNIQUE,
-            is_active BOOLEAN NOT NULL DEFAULT TRUE,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+              id BIGSERIAL PRIMARY KEY,
+        restaurant_id BIGINT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        url TEXT,
+        qr_code_path TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         )
     `);
 
