@@ -102,7 +102,7 @@ async function ensureBaseTables() {
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
         url TEXT,
         qr_code_path TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
     `);
 
