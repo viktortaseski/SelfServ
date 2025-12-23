@@ -142,7 +142,7 @@ function MenuManager({ user }) {
         if (
             selectedProductSuggestion &&
             value.trim().toLowerCase() !==
-                (selectedProductSuggestion.name || "").toLowerCase()
+            (selectedProductSuggestion.name || "").toLowerCase()
         ) {
             clearProductSelection();
         }
@@ -493,18 +493,18 @@ function MenuManager({ user }) {
         }
     };
 
-const handleClearSelectedImage = () => {
-    setEFile(null);
-    if (editFileInputRef.current) {
-        editFileInputRef.current.value = "";
-    }
-    setRemoveImage(false);
-    if (editing) {
-        updatePreview(editing.image_url || null);
-    } else {
-        updatePreview(null);
-    }
-};
+    const handleClearSelectedImage = () => {
+        setEFile(null);
+        if (editFileInputRef.current) {
+            editFileInputRef.current.value = "";
+        }
+        setRemoveImage(false);
+        if (editing) {
+            updatePreview(editing.image_url || null);
+        } else {
+            updatePreview(null);
+        }
+    };
 
     const handleCategoryInputChange = (value) => {
         setCategoryInput(value);
@@ -514,7 +514,7 @@ const handleClearSelectedImage = () => {
             !value ||
             !selectedCategorySuggestion ||
             value.trim().toLowerCase() !==
-                (selectedCategorySuggestion.name || selectedCategorySuggestion.slug || "").toLowerCase()
+            (selectedCategorySuggestion.name || selectedCategorySuggestion.slug || "").toLowerCase()
         ) {
             setSelectedCategorySuggestion(null);
         }
@@ -555,7 +555,7 @@ const handleClearSelectedImage = () => {
                 selectedCategorySuggestion &&
                 selectedCategorySuggestion.id &&
                 trimmed.toLowerCase() ===
-                    (selectedCategorySuggestion.name || selectedCategorySuggestion.slug).toLowerCase()
+                (selectedCategorySuggestion.name || selectedCategorySuggestion.slug).toLowerCase()
             ) {
                 payload.categoryId = selectedCategorySuggestion.id;
             } else if (selectedCategorySuggestion && selectedCategorySuggestion.id) {
@@ -996,7 +996,7 @@ const handleClearSelectedImage = () => {
                             onClick={() => setActiveSection("all")}
                             disabled={busy}
                         >
-                            Menu Items
+                            Edit products
                         </button>
                         <button
                             type="button"
