@@ -388,21 +388,21 @@ export default function Dashboard({ user: _user }) {
                 <button
                     key="filters"
                     type="button"
-                    className={`btn ${activePanel === btn.id ? "btn-primary" : "btn-ghost"}`}
+                    className={`btn ${activePanel === "filters" ? "btn-primary" : "btn-ghost"}`}
                     onClick={() => setActivePanel(btn.id)}
                 >Filters</button>
 
                 <button
                     key="stats"
                     type="button"
-                    className={`btn ${activePanel === btn.id ? "btn-primary" : "btn-ghost"}`}
+                    className={`btn ${activePanel === "stats" ? "btn-primary" : "btn-ghost"}`}
                     onClick={() => setActivePanel(btn.id)}
                 >Quick stats</button>
 
                 <button
                     key="employees"
                     type="button"
-                    className={`btn ${activePanel === btn.id ? "btn-primary" : "btn-ghost"}`}
+                    className={`btn ${activePanel === "employees" ? "btn-primary" : "btn-ghost"}`}
                     onClick={() => setActivePanel(btn.id)}
                 >Employee Management</button>
 
