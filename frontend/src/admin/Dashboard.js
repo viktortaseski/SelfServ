@@ -384,20 +384,28 @@ export default function Dashboard({ user: _user }) {
             </section>
 
             <div className="tabs row gap-8" style={{ margin: "16px 0" }}>
-                {[
-                    { id: "filters", label: "Filters" },
-                    { id: "stats", label: "Quick stats" },
-                    { id: "employees", label: "Employee Management" },
-                ].map((btn) => (
-                    <button
-                        key={btn.id}
-                        type="button"
-                        className={`btn ${activePanel === btn.id ? "btn-primary" : "btn-ghost"}`}
-                        onClick={() => setActivePanel(btn.id)}
-                    >
-                        {btn.label}
-                    </button>
-                ))}
+
+                <button
+                    key="filters"
+                    type="button"
+                    className={`btn ${activePanel === btn.id ? "btn-primary" : "btn-ghost"}`}
+                    onClick={() => setActivePanel(btn.id)}
+                >Filters</button>
+
+                <button
+                    key="stats"
+                    type="button"
+                    className={`btn ${activePanel === btn.id ? "btn-primary" : "btn-ghost"}`}
+                    onClick={() => setActivePanel(btn.id)}
+                >Quick stats</button>
+
+                <button
+                    key="employees"
+                    type="button"
+                    className={`btn ${activePanel === btn.id ? "btn-primary" : "btn-ghost"}`}
+                    onClick={() => setActivePanel(btn.id)}
+                >Employee Management</button>
+
             </div>
 
             {activePanel === "filters" && (
