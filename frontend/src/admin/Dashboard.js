@@ -80,7 +80,7 @@ export default function Dashboard({ user: _user }) {
     const [fromTime, setFromTime] = useState("00:00");
     const [toTime, setToTime] = useState("23:59");
     const [status, setStatus] = useState("");
-    const [tableId, setTableId] = useState("");
+    const [tableNameFilter, setTableNameFilter] = useState("");
     const [q, setQ] = useState("");
     const [limit, setLimit] = useState(100);
 
@@ -112,7 +112,7 @@ export default function Dashboard({ user: _user }) {
                 from: fromISO,
                 to: toISO,
                 status,
-                tableId,
+                tableName: tableNameFilter,
                 q,
                 limit,
             });
@@ -326,63 +326,6 @@ export default function Dashboard({ user: _user }) {
                 ) : null}
             </section>
 
-            <section className="card mt-16">
-                <h3 className="mt-0">Restaurant logo</h3>
-                <p className="muted small" style={{ marginBottom: 12 }}>
-                    Upload a logo to personalize your menu and ordering experience.
-                </p>
-                <div className="logo-section">
-                    <div className="logo-preview-box">
-                        {displayLogoSrc ? (
-                            <img src={displayLogoSrc} alt="Restaurant logo preview" className="logo-preview-img" />
-                        ) : (
-                            <div className="muted small">No logo</div>
-                        )}
-                    </div>
-                    <div className="grid gap-8">
-                        <label className="form-label">
-                            Logo image
-                            <input
-                                ref={logoInputRef}
-                                type="file"
-                                accept="image/png,image/jpeg,image/webp"
-                                className="input"
-                                onChange={handleLogoFileChange}
-                                disabled={logoBusy}
-                            />
-                        </label>
-                        {logoFile ? (
-                            <div className="muted small">Selected file: {logoFile.name}</div>
-                        ) : null}
-                        <div className="logo-actions">
-                            <button type="button" className="btn btn-primary" onClick={handleUploadLogo} disabled={logoBusy}>
-                                {logoBusy ? "Saving…" : "Upload logo"}
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-ghost"
-                                onClick={handleClearLogoSelection}
-                                disabled={logoBusy || !logoFile}
-                            >
-                                Clear selection
-                            </button>
-                            {logoUrl ? (
-                                <button
-                                    type="button"
-                                    className="btn btn-danger"
-                                    onClick={handleRemoveLogo}
-                                    disabled={logoBusy}
-                                >
-                                    Remove current logo
-                                </button>
-                            ) : null}
-                        </div>
-                        {logoError ? <div className="error-text">{logoError}</div> : null}
-                        {logoSuccess ? <div className="success-text">{logoSuccess}</div> : null}
-                    </div>
-                </div>
-            </section>
-
             <div className="tabs row gap-8" style={{ margin: "16px 0" }}>
 
                 <button
@@ -398,6 +341,13 @@ export default function Dashboard({ user: _user }) {
                     className={`btn ${activePanel === "stats" ? "btn-primary" : "btn-ghost"}`}
                     onClick={() => setActivePanel("stats")}
                 >Quick stats</button>
+
+                <button
+                    key="logo"
+                    type="button"
+                    className={`btn ${activePanel === "logo" ? "btn-primary" : "btn-ghost"}`}
+                    onClick={() => setActivePanel("logo")}
+                >Change logo</button>
 
                 <button
                     key="employees"
@@ -464,13 +414,12 @@ export default function Dashboard({ user: _user }) {
                         </label>
 
                         <label className="form-label">
-                            Table ID
+                            Table name
                             <input
-                                type="number"
-                                min="1"
-                                placeholder="e.g. 1"
-                                value={tableId}
-                                onChange={(e) => setTableId(e.target.value)}
+                                type="text"
+                                placeholder="e.g. SelfServ07"
+                                value={tableNameFilter}
+                                onChange={(e) => setTableNameFilter(e.target.value)}
                                 className="input"
                             />
                         </label>
@@ -529,6 +478,65 @@ export default function Dashboard({ user: _user }) {
                             </div>
                         </div>
                     ) : null}
+                </section>
+            )}
+
+            {activePanel === "logo" && (
+                <section className="card">
+                    <h3 className="mt-0">Change logo</h3>
+                    <p className="muted small" style={{ marginBottom: 12 }}>
+                        Upload a logo to personalize your menu and ordering experience.
+                    </p>
+                    <div className="logo-section">
+                        <div className="logo-preview-box">
+                            {displayLogoSrc ? (
+                                <img src={displayLogoSrc} alt="Restaurant logo preview" className="logo-preview-img" />
+                            ) : (
+                                <div className="muted small">No logo</div>
+                            )}
+                        </div>
+                        <div className="grid gap-8">
+                            <label className="form-label">
+                                Logo image
+                                <input
+                                    ref={logoInputRef}
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    className="input"
+                                    onChange={handleLogoFileChange}
+                                    disabled={logoBusy}
+                                />
+                            </label>
+                            {logoFile ? (
+                                <div className="muted small">Selected file: {logoFile.name}</div>
+                            ) : null}
+                            <div className="logo-actions">
+                                <button type="button" className="btn btn-primary" onClick={handleUploadLogo} disabled={logoBusy}>
+                                    {logoBusy ? "Saving…" : "Upload logo"}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost"
+                                    onClick={handleClearLogoSelection}
+                                    disabled={logoBusy || !logoFile}
+                                >
+                                    Clear selection
+                                </button>
+                                {logoUrl ? (
+                                    <button
+                                        type="button"
+                                        className="btn btn-danger"
+                                        onClick={handleRemoveLogo}
+                                        disabled={logoBusy}
+                                    >
+                                        Remove current logo
+                                    </button>
+                                ) : null}
+                            </div>
+                            {logoError ? <div className="error-text">{logoError}</div> : null}
+                            {logoSuccess ? <div className="success-text">{logoSuccess}</div> : null}
+                        </div>
+                    </div>
                 </section>
             )}
 

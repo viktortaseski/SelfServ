@@ -1217,6 +1217,7 @@ router.get("/admin", requireRoles(["admin"]), async (req, res) => {
     try {
         const restaurantId = pickRestaurantId(req);
         const { from, to, status, tableId, q, limit } = req.query;
+        const tableNameRaw = req.query?.tableName ?? req.query?.table_name ?? null;
 
         const lim = Math.min(Math.max(parseInt(limit || "100", 10), 1), 1000);
 
@@ -1236,7 +1237,11 @@ router.get("/admin", requireRoles(["admin"]), async (req, res) => {
             where.push(`o.status = $${++idx}`);
             params.push(String(status));
         }
-        if (tableId) {
+        const tableName = typeof tableNameRaw === "string" ? tableNameRaw.trim() : "";
+        if (tableName) {
+            where.push(`LOWER(rt.name) = LOWER($${++idx})`);
+            params.push(tableName);
+        } else if (tableId) {
             where.push(`o.table_id = $${++idx}`);
             params.push(Number(tableId));
         }
