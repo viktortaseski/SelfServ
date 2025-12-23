@@ -53,7 +53,7 @@ function MenuManager({ user }) {
     const [filterCategory, setFilterCategory] = useState("");
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
-    const [activeSection, setActiveSection] = useState("menu"); // "menu" | "all"
+    const [activeSection, setActiveSection] = useState("menu"); // "create" | "menu" | "all" | "categories"
     const [restaurantCategories, setRestaurantCategories] = useState([]);
     const [categoryInput, setCategoryInput] = useState("");
     const [selectedCategorySuggestion, setSelectedCategorySuggestion] = useState(null);
@@ -740,127 +740,6 @@ function MenuManager({ user }) {
                 </div>
             ) : (
                 <>
-                    <div className="card">
-                        <h3 className="mt-0">
-                            Add Menu Item
-                            {restaurantName ? ` · ${restaurantName}` : ""}
-                        </h3>
-                        <form onSubmit={handleCreate} className="menu-manager-form">
-                            <label className="form-label category-input-wrapper">
-                                Name
-                                <input
-                                    className="input"
-                                    value={name}
-                                    onChange={(e) => handleNameInputChange(e.target.value)}
-                                    placeholder="Start typing to search existing products"
-                                    required
-                                />
-                                {productSearchLoading ? (
-                                    <span className="muted small">Searching…</span>
-                                ) : null}
-                                {!!productSuggestions.length && (
-                                    <div className="category-suggestions">
-                                        {productSuggestions.map((suggestion) => {
-                                            const disabled = suggestion.isLinked;
-                                            const priceLine = suggestion.restaurantPrice != null
-                                                ? `Price here: ${fmtMKD(suggestion.restaurantPrice)}`
-                                                : suggestion.samplePrice != null
-                                                    ? `Sample price: ${fmtMKD(suggestion.samplePrice)}`
-                                                    : "";
-                                            return (
-                                                <button
-                                                    type="button"
-                                                    key={`prod-suggest-${suggestion.id}`}
-                                                    className="category-suggestion"
-                                                    onClick={() => handleProductSuggestionSelect(suggestion)}
-                                                    disabled={disabled || productSearchLoading || busy}
-                                                >
-                                                    <div className="fw-700">{suggestion.name}</div>
-                                                    {priceLine ? (
-                                                        <div className="muted small">{priceLine}</div>
-                                                    ) : null}
-                                                    {disabled ? (
-                                                        <div className="muted small">Already on menu</div>
-                                                    ) : null}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </label>
-                            {selectedProductSuggestion ? (
-                                <div className="muted small" style={{ marginTop: -6 }}>
-                                    Using shared product. You can adjust price and image for this restaurant.
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost btn-small"
-                                        style={{ marginLeft: 8 }}
-                                        onClick={clearProductSelection}
-                                        disabled={busy}
-                                    >
-                                        Clear
-                                    </button>
-                                </div>
-                            ) : null}
-                            <label className="form-label">
-                                Price (MKD)
-                                <input
-                                    className="input"
-                                    type="number"
-                                    step="0.01"
-                                    value={price}
-                                    onChange={(e) => setPrice(e.target.value)}
-                                    required
-                                />
-                            </label>
-                            <label className="form-label">
-                                Description
-                                <textarea
-                                    className="input"
-                                    rows={3}
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Optional description"
-                                    disabled={!!selectedProductSuggestion}
-                                />
-                            </label>
-                            <label className="form-label">
-                                Category
-                                <select
-                                    className="input"
-                                    value={category}
-                                    onChange={(e) => setCategory(e.target.value)}
-                                >
-                                    {categoryOptions.map((opt) => (
-                                        <option key={opt.slug} value={opt.slug}>
-                                            {opt.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="form-label">
-                                Image
-                                <input
-                                    className="input"
-                                    type="file"
-                                    accept="image/png,image/jpeg,image/webp"
-                                    onChange={onFile}
-                                />
-                            </label>
-                            <div className="form-label form-label--actions">
-                                <button className="btn btn-primary" disabled={busy}>
-                                    {busy ? "Uploading…" : "Create item"}
-                                </button>
-                            </div>
-                        </form>
-                        {createError ? <div className="error-text">{createError}</div> : null}
-                        {createOk ? (
-                            <div className="mt-12" style={{ color: "#065f46", fontWeight: 700 }}>
-                                {createOk}
-                            </div>
-                        ) : null}
-                    </div>
-
                     {editing && (
                         <div className="card card--light">
                             <div className="row space-between align-center" style={{ marginBottom: 12 }}>
@@ -984,6 +863,14 @@ function MenuManager({ user }) {
                     <div className="tabs row gap-8" style={{ marginBottom: 16 }}>
                         <button
                             type="button"
+                            className={`btn ${activeSection === "create" ? "btn-primary" : "btn-ghost"}`}
+                            onClick={() => setActiveSection("create")}
+                            disabled={busy}
+                        >
+                            Create Product
+                        </button>
+                        <button
+                            type="button"
                             className={`btn ${activeSection === "menu" ? "btn-primary" : "btn-ghost"}`}
                             onClick={() => setActiveSection("menu")}
                             disabled={busy}
@@ -1007,6 +894,129 @@ function MenuManager({ user }) {
                             Category Management
                         </button>
                     </div>
+
+                    {activeSection === "create" && (
+                        <div className="card">
+                            <h3 className="mt-0">
+                                Create Product
+                                {restaurantName ? ` · ${restaurantName}` : ""}
+                            </h3>
+                            <form onSubmit={handleCreate} className="menu-manager-form">
+                                <label className="form-label category-input-wrapper">
+                                    Name
+                                    <input
+                                        className="input"
+                                        value={name}
+                                        onChange={(e) => handleNameInputChange(e.target.value)}
+                                        placeholder="Start typing to search existing products"
+                                        required
+                                    />
+                                    {productSearchLoading ? (
+                                        <span className="muted small">Searching…</span>
+                                    ) : null}
+                                    {!!productSuggestions.length && (
+                                        <div className="category-suggestions">
+                                            {productSuggestions.map((suggestion) => {
+                                                const disabled = suggestion.isLinked;
+                                                const priceLine = suggestion.restaurantPrice != null
+                                                    ? `Price here: ${fmtMKD(suggestion.restaurantPrice)}`
+                                                    : suggestion.samplePrice != null
+                                                        ? `Sample price: ${fmtMKD(suggestion.samplePrice)}`
+                                                        : "";
+                                                return (
+                                                    <button
+                                                        type="button"
+                                                        key={`prod-suggest-${suggestion.id}`}
+                                                        className="category-suggestion"
+                                                        onClick={() => handleProductSuggestionSelect(suggestion)}
+                                                        disabled={disabled || productSearchLoading || busy}
+                                                    >
+                                                        <div className="fw-700">{suggestion.name}</div>
+                                                        {priceLine ? (
+                                                            <div className="muted small">{priceLine}</div>
+                                                        ) : null}
+                                                        {disabled ? (
+                                                            <div className="muted small">Already on menu</div>
+                                                        ) : null}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </label>
+                                {selectedProductSuggestion ? (
+                                    <div className="muted small" style={{ marginTop: -6 }}>
+                                        Using shared product. You can adjust price and image for this restaurant.
+                                        <button
+                                            type="button"
+                                            className="btn btn-ghost btn-small"
+                                            style={{ marginLeft: 8 }}
+                                            onClick={clearProductSelection}
+                                            disabled={busy}
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                ) : null}
+                                <label className="form-label">
+                                    Price (MKD)
+                                    <input
+                                        className="input"
+                                        type="number"
+                                        step="0.01"
+                                        value={price}
+                                        onChange={(e) => setPrice(e.target.value)}
+                                        required
+                                    />
+                                </label>
+                                <label className="form-label">
+                                    Description
+                                    <textarea
+                                        className="input"
+                                        rows={3}
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        placeholder="Optional description"
+                                        disabled={!!selectedProductSuggestion}
+                                    />
+                                </label>
+                                <label className="form-label">
+                                    Category
+                                    <select
+                                        className="input"
+                                        value={category}
+                                        onChange={(e) => setCategory(e.target.value)}
+                                    >
+                                        {categoryOptions.map((opt) => (
+                                            <option key={opt.slug} value={opt.slug}>
+                                                {opt.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="form-label">
+                                    Image
+                                    <input
+                                        className="input"
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
+                                        onChange={onFile}
+                                    />
+                                </label>
+                                <div className="form-label form-label--actions">
+                                    <button className="btn btn-primary" disabled={busy}>
+                                        {busy ? "Uploading…" : "Create product"}
+                                    </button>
+                                </div>
+                            </form>
+                            {createError ? <div className="error-text">{createError}</div> : null}
+                            {createOk ? (
+                                <div className="mt-12" style={{ color: "#065f46", fontWeight: 700 }}>
+                                    {createOk}
+                                </div>
+                            ) : null}
+                        </div>
+                    )}
 
                     {activeSection === "categories" && (
                         <div className="card">
