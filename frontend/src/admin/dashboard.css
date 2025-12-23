@@ -165,6 +165,10 @@
     border: none;
 }
 
+.tabs {
+    width: -webkit-fill-available;
+}
+
 .logo-actions .btn,
 .tabs .btn {
     width: -webkit-fill-available !important;
@@ -323,6 +327,15 @@
     grid-template-columns: 120px 120px 1fr;
     gap: 8px;
     align-items: center;
+}
+
+.month-row .row {
+    flex-wrap: wrap;
+}
+
+.month-row .row .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .logo-section {

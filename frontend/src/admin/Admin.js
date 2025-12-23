@@ -84,7 +84,7 @@ function Admin() {
     }
 
     return (
-        <div className="admin-container">
+        <div className="admin admin-container">
             <header className="admin-header mb-16">
                 <h2 className="mt-0">
                     {user?.restaurant_name ? `${user.restaurant_name} · Admin` : "Admin"}

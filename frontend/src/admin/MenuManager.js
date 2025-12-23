@@ -1221,11 +1221,15 @@ function MenuManager({ user }) {
                             {filteredItems.length === 0 ? (
                                 <div className="muted">No items.</div>
                             ) : (
-                                <div className="grid" style={{ gap: 8 }}>
+                                <div className="grid" style={{ gap: 15 }}>
                                     {filteredItems.map((it) => {
                                         const onMenu = Boolean(it.isActive);
                                         return (
-                                            <div key={it.id} className="month-row" style={{ gridTemplateColumns: "60px 1fr 120px 140px 240px" }}>
+                                            <div
+                                                key={it.id}
+                                                className="month-row"
+                                                style={{ gridTemplateColumns: "60px 1fr 120px 140px minmax(240px, max-content)" }}
+                                            >
                                                 <div>
                                                     {it.image_url ? (
                                                         <img src={it.image_url} alt={it.name} style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 8 }} />
