@@ -1234,11 +1234,10 @@ router.put("/:id", requireAdmin, async (req, res) => {
         await client.query(
             `
             UPDATE products
-            SET name = $1,
-                description = CASE WHEN $2 IS NULL THEN description ELSE $2 END
-            WHERE id = $3
+            SET name = $1
+            WHERE id = $2
         `,
-            [updatedName, description !== undefined ? description : existing.product_description, existing.product_id]
+            [updatedName, existing.product_id]
         );
 
         await client.query(
