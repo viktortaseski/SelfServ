@@ -383,7 +383,7 @@ export default function Dashboard({ user: _user }) {
                 </div>
             </section>
 
-            <div className="row gap-8" style={{ margin: "16px 0" }}>
+            <div className="tabs row gap-8" style={{ margin: "16px 0" }}>
                 {[
                     { id: "filters", label: "Filters" },
                     { id: "stats", label: "Quick stats" },

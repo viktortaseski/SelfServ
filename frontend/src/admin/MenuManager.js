@@ -981,7 +981,7 @@ function MenuManager({ user }) {
                         </div>
                     )}
 
-                    <div className="row gap-8" style={{ marginBottom: 16 }}>
+                    <div className="tabs row gap-8" style={{ marginBottom: 16 }}>
                         <button
                             type="button"
                             className={`btn ${activeSection === "menu" ? "btn-primary" : "btn-ghost"}`}

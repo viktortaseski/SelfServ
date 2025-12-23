@@ -165,6 +165,11 @@
     border: none;
 }
 
+.logo-actions .btn,
+.tabs .btn {
+    width: -webkit-fill-available !important;
+}
+
 .admin .btn-danger {
     background: #fee2e2;
     color: #b91c1c;
