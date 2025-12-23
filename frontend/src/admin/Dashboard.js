@@ -80,7 +80,7 @@ export default function Dashboard({ user: _user }) {
     const [fromTime, setFromTime] = useState("00:00");
     const [toTime, setToTime] = useState("23:59");
     const [status, setStatus] = useState("");
-    const [tableNameFilter, setTableNameFilter] = useState("");
+    const [tableNumber, setTableNumber] = useState("");
     const [q, setQ] = useState("");
     const [limit, setLimit] = useState(100);
 
@@ -112,7 +112,7 @@ export default function Dashboard({ user: _user }) {
                 from: fromISO,
                 to: toISO,
                 status,
-                tableName: tableNameFilter,
+                tableNumber,
                 q,
                 limit,
             });
@@ -414,12 +414,12 @@ export default function Dashboard({ user: _user }) {
                         </label>
 
                         <label className="form-label">
-                            Table name
+                            Table number
                             <input
                                 type="text"
-                                placeholder="e.g. SelfServ07"
-                                value={tableNameFilter}
-                                onChange={(e) => setTableNameFilter(e.target.value)}
+                                placeholder="e.g. 07"
+                                value={tableNumber}
+                                onChange={(e) => setTableNumber(e.target.value)}
                                 className="input"
                             />
                         </label>

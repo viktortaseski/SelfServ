@@ -119,18 +119,15 @@ export async function apiLogout() {
 }
 
 // --- Orders fetch (admin) ---
-export async function apiFetchOrdersAdmin({ from, to, status, tableId, tableName, q, limit }) {
+export async function apiFetchOrdersAdmin({ from, to, status, tableId, tableNumber, q, limit }) {
     const token = getToken();
     if (!token) throw new Error("No token");
     const params = new URLSearchParams();
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     if (status) params.set("status", status);
-    if (tableName) {
-        params.set("tableName", tableName);
-    } else if (tableId) {
-        params.set("tableId", tableId);
-    }
+    if (tableNumber) params.set("tableNumber", tableNumber);
+    else if (tableId) params.set("tableId", tableId);
     if (q) params.set("q", q);
     if (limit) params.set("limit", String(limit));
 

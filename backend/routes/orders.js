@@ -1217,7 +1217,7 @@ router.get("/admin", requireRoles(["admin"]), async (req, res) => {
     try {
         const restaurantId = pickRestaurantId(req);
         const { from, to, status, tableId, q, limit } = req.query;
-        const tableNameRaw = req.query?.tableName ?? req.query?.table_name ?? null;
+        const tableNumberRaw = req.query?.tableNumber ?? req.query?.table_number ?? null;
 
         const lim = Math.min(Math.max(parseInt(limit || "100", 10), 1), 1000);
 
@@ -1237,10 +1237,15 @@ router.get("/admin", requireRoles(["admin"]), async (req, res) => {
             where.push(`o.status = $${++idx}`);
             params.push(String(status));
         }
-        const tableName = typeof tableNameRaw === "string" ? tableNameRaw.trim() : "";
-        if (tableName) {
-            where.push(`LOWER(rt.name) = LOWER($${++idx})`);
-            params.push(tableName);
+        const tableDigits = typeof tableNumberRaw === "string"
+            ? tableNumberRaw.replace(/\D/g, "")
+            : "";
+        const tableNumber = tableDigits
+            ? tableDigits.slice(-2).padStart(2, "0")
+            : "";
+        if (tableNumber) {
+            where.push(`substring(rt.name from '(\\d{2})$') = $${++idx}`);
+            params.push(tableNumber);
         } else if (tableId) {
             where.push(`o.table_id = $${++idx}`);
             params.push(Number(tableId));
