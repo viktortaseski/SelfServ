@@ -389,21 +389,21 @@ export default function Dashboard({ user: _user }) {
                     key="filters"
                     type="button"
                     className={`btn ${activePanel === "filters" ? "btn-primary" : "btn-ghost"}`}
-                    onClick={() => setActivePanel(btn.id)}
+                    onClick={() => setActivePanel("filters")}
                 >Filters</button>
 
                 <button
                     key="stats"
                     type="button"
                     className={`btn ${activePanel === "stats" ? "btn-primary" : "btn-ghost"}`}
-                    onClick={() => setActivePanel(btn.id)}
+                    onClick={() => setActivePanel("stats")}
                 >Quick stats</button>
 
                 <button
                     key="employees"
                     type="button"
                     className={`btn ${activePanel === "employees" ? "btn-primary" : "btn-ghost"}`}
-                    onClick={() => setActivePanel(btn.id)}
+                    onClick={() => setActivePanel("employees")}
                 >Employee Management</button>
 
             </div>
