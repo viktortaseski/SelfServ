@@ -144,7 +144,14 @@ function Menu({
             .get("/menu/top-picks", { params })
             .then((res) => {
                 if (cancelled) return;
-                setTopPicks(Array.isArray(res.data) ? res.data : []);
+                const data = Array.isArray(res.data) ? res.data : [];
+                const normalized = data.map((it) => ({
+                    ...it,
+                    id: Number(it.id),
+                    price: Number(it.price) || 0,
+                    category: it.category || "other",
+                }));
+                setTopPicks(normalized);
             })
             .catch(() => {
                 if (cancelled) return;
