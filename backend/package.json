@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "migrate": "node -r dotenv/config migrate.js",
+    "seed": "node -r dotenv/config seed.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
