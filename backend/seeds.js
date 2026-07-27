@@ -13,18 +13,21 @@ const EMPLOYEES = [
 ];
 
 const CATEGORIES = [
-    { slug: "drinks", name: "Drinks", description: "Hot & cold beverages", img: "drinks.png" },
+    { slug: "coffee", name: "Coffee", description: "Coffee & hot drinks", img: "coffee.png" },
+    { slug: "drinks", name: "Drinks", description: "Cold & soft drinks", img: "drinks.png" },
     { slug: "food", name: "Food", description: "Mains & savoury dishes", img: "food.png" },
     { slug: "desserts", name: "Desserts", description: "Sweet treats", img: "desserts.png" },
 ];
 
 const PRODUCTS = [
+    // Coffee & hot drinks
+    { name: "Coffee", category: "coffee", price: 2.5, img: "coffee.png", description: "Freshly brewed coffee" },
+    { name: "Espresso", category: "coffee", price: 2.0, img: "espresso.png", description: "Single shot espresso" },
+    { name: "Matcha Latte", category: "coffee", price: 4.0, img: "matcha-latte.png", description: "Green tea latte" },
+    { name: "Chai Latte", category: "coffee", price: 3.8, img: "chai-latte.png", description: "Spiced tea latte" },
+    { name: "Hot Chocolate", category: "coffee", price: 3.5, img: "hot-chocolate.png", description: "Rich hot chocolate" },
+
     // Drinks
-    { name: "Coffee", category: "drinks", price: 2.5, img: "coffee.png", description: "Freshly brewed coffee" },
-    { name: "Espresso", category: "drinks", price: 2.0, img: "espresso.png", description: "Single shot espresso" },
-    { name: "Matcha Latte", category: "drinks", price: 4.0, img: "matcha-latte.png", description: "Green tea latte" },
-    { name: "Chai Latte", category: "drinks", price: 3.8, img: "chai-latte.png", description: "Spiced tea latte" },
-    { name: "Hot Chocolate", category: "drinks", price: 3.5, img: "hot-chocolate.png", description: "Rich hot chocolate" },
     { name: "Cola", category: "drinks", price: 2.2, img: "cola.png", description: "Chilled cola" },
     { name: "Water", category: "drinks", price: 1.5, img: "water.png", description: "Still water" },
     { name: "Lemonade", category: "drinks", price: 3.0, img: "lemonade.png", description: "Fresh lemonade" },
