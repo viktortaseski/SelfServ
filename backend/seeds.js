@@ -56,6 +56,21 @@ const PRODUCTS = [
 
 const imgUrl = (file) => `/uploads/images/${file}`;
 
+// Test-only tables. Their `token` is the permanent per-table QR token used by
+// POST /api/tokens/exchange — it never expires and can be exchanged for a
+// fresh access token any number of times, so these let testing place orders
+// at any time without a real QR scan. No app logic is bypassed; this is only
+// seed data, so keep it out of real deployments simply by not running the
+// seeder there.
+const TABLES = [
+    { name: "Table 1", token: "seed-table-1" },
+    { name: "Table 2", token: "seed-table-2" },
+    { name: "Table 3", token: "seed-table-3" },
+    { name: "Table 4", token: "seed-table-4" },
+    { name: "Table 5", token: "seed-table-5" },
+    { name: "Table 6", token: "seed-table-6" },
+];
+
 // --- Seed steps -------------------------------------------------------------
 
 async function seedRestaurant() {
@@ -80,6 +95,21 @@ async function seedEmployees() {
         );
     }
     console.log(`[seed] employees: ${EMPLOYEES.map((e) => e.username).join(", ")}`);
+}
+
+async function seedTables() {
+    for (const t of TABLES) {
+        await pool.query(
+            `INSERT INTO restaurant_tables (restaurant_id, name, token, is_active)
+             VALUES ($1, $2, $3, TRUE)
+             ON CONFLICT (token) DO UPDATE
+                SET name = EXCLUDED.name,
+                    restaurant_id = EXCLUDED.restaurant_id,
+                    is_active = TRUE`,
+            [RESTAURANT_ID, t.name, t.token]
+        );
+    }
+    console.log(`[seed] tables: ${TABLES.map((t) => t.name).join(", ")}`);
 }
 
 async function seedCategories() {
@@ -156,6 +186,7 @@ async function seedProducts(categoryIdBySlug) {
 async function runSeeds() {
     await seedRestaurant();
     await seedEmployees();
+    await seedTables();
     const categoryIdBySlug = await seedCategories();
     await seedProducts(categoryIdBySlug);
 }

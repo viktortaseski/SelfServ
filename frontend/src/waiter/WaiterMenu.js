@@ -1,5 +1,27 @@
 import { useMemo } from "react";
 
+// Distinct, saturated colors so staff can tell categories apart at a glance,
+// assigned deterministically per category slug (stable across reloads).
+const CATEGORY_PALETTE = [
+    "#8a5a2b", // brown - coffee
+    "#c9770f", // amber - snacks
+    "#1f6fb3", // blue - soft drinks
+    "#15406e", // navy - alcohol
+    "#a4262c", // red - specials
+    "#7a3d9c", // purple - other
+    "#b3315c", // magenta - desserts
+    "#2f7a3d", // green - food
+];
+
+function colorForCategory(slug) {
+    const str = slug || "other";
+    let hash = 0;
+    for (let i = 0; i < str.length; i += 1) {
+        hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    }
+    return CATEGORY_PALETTE[hash % CATEGORY_PALETTE.length];
+}
+
 function normalizeSearch(value) {
     return value.trim().toLowerCase();
 }
@@ -167,6 +189,7 @@ function WaiterMenu({
                             key={cat.slug}
                             type="button"
                             className={`waiter-chip ${activeCategory === cat.slug ? "waiter-chip--active" : ""}`}
+                            style={{ "--chip-color": colorForCategory(cat.slug) }}
                             onClick={() => handleCategoryClick(cat.slug)}
                         >
                             {cat.name}
@@ -177,7 +200,7 @@ function WaiterMenu({
 
             {error ? <div className="waiter-error">{error}</div> : null}
 
-            <div className="waiter-menu__list">
+            <div className="waiter-tile-grid">
                 {loading && items.length === 0 ? (
                     <div className="waiter-placeholder">Loading menu…</div>
                 ) : null}
@@ -191,58 +214,56 @@ function WaiterMenu({
                     const quantity = line?.quantity || 0;
                     const note = line?.note || "";
                     const price = Number(item.price) || 0;
+                    const slug = itemCategorySlug(item);
+                    const categoryName = itemCategoryName(item);
                     return (
-                        <div key={item.id} className="waiter-item">
-                            <div className="waiter-item__info">
-                                <div className="waiter-item__heading">
-                                    <span className="waiter-item__name">{item.name}</span>
-                                    <span className="waiter-item__price">{Math.round(price)} MKD</span>
-                                </div>
-                                {item.description ? (
-                                    <p className="waiter-item__description">{item.description}</p>
+                        <button
+                            key={item.id}
+                            type="button"
+                            className={`waiter-tile ${quantity > 0 ? "waiter-tile--selected" : ""}`}
+                            style={{ "--tile-color": colorForCategory(slug) }}
+                            onClick={() => onIncrease(item)}
+                        >
+                            <span className="waiter-tile__category">{categoryName}</span>
+                            <span className="waiter-tile__name">{item.name}</span>
+                            <span className="waiter-tile__footer">
+                                <span className="waiter-tile__price">{Math.round(price)}</span>
+                                {quantity > 0 ? (
+                                    <span className="waiter-tile__controls">
+                                        <button
+                                            type="button"
+                                            className="waiter-tile__minus"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDecrease(item);
+                                            }}
+                                        >
+                                            −
+                                        </button>
+                                        <span className="waiter-tile__qty">{quantity}</span>
+                                    </span>
                                 ) : null}
-                                <div className="waiter-item__note">
-                                    {quantity > 0 ? (
-                                        <>
-                                            {note ? (
-                                                <span className="waiter-note__preview">{note}</span>
-                                            ) : (
-                                                <span className="waiter-note__placeholder">No note added</span>
-                                            )}
-                                            <button
-                                                type="button"
-                                                className="waiter-note__btn"
-                                                onClick={() => onRequestNote?.(item, note)}
-                                            >
-                                                {note ? "Edit note" : "Add note"}
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <span className="waiter-note__placeholder waiter-note__placeholder--muted">
-                                            Add at least one item to leave a note
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="waiter-item__actions">
-                                <button
-                                    type="button"
-                                    className="waiter-counter__btn"
-                                    onClick={() => onDecrease(item)}
-                                    disabled={quantity === 0}
+                            </span>
+                            {quantity > 0 ? (
+                                <span
+                                    role="button"
+                                    tabIndex={0}
+                                    className={`waiter-tile__note ${note ? "waiter-tile__note--set" : ""}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRequestNote?.(item, note);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.stopPropagation();
+                                            onRequestNote?.(item, note);
+                                        }
+                                    }}
                                 >
-                                    -
-                                </button>
-                                <span className="waiter-counter__value">{quantity}</span>
-                                <button
-                                    type="button"
-                                    className="waiter-counter__btn waiter-counter__btn--primary"
-                                    onClick={() => onIncrease(item)}
-                                >
-                                    +
-                                </button>
-                            </div>
-                        </div>
+                                    {note ? "✎" : "+"}
+                                </span>
+                            ) : null}
+                        </button>
                     );
                 })}
             </div>
