@@ -9,33 +9,30 @@ function WaiterNoteModal({ open, itemName, value, onChange, onClose, onSave }) {
     return (
         <div className="waiter-modal waiter-note-modal__overlay">
             <form className="waiter-modal__content waiter-note-modal" onSubmit={handleSubmit}>
-                <div className="waiter-modal__header">
-                    <h3 className="waiter-modal__title">Note for {itemName || "item"}</h3>
-                    <button type="button" className="waiter-modal__close" onClick={onClose}>
-                        Close
-                    </button>
+                <div className="waiter-note-modal__header">
+                    <span className="waiter-note-modal__tag">NOTE</span>
+                    <h3 className="waiter-note-modal__item-name">{itemName || "Item"}</h3>
                 </div>
-                <div className="waiter-modal__body waiter-note-modal__body">
-                    <label className="waiter-note-modal__label">
-                        Details
-                        <textarea
-                            className="waiter-note-modal__textarea"
-                            value={value}
-                            onChange={(e) => onChange?.(e.target.value)}
-                            placeholder="Add any special request..."
-                            maxLength={120}
-                            rows={4}
-                            autoFocus
-                        />
-                    </label>
-                    <p className="waiter-note-modal__hint">Max 120 characters. Leave empty to remove the note.</p>
-                </div>
+                <textarea
+                    className="waiter-note-modal__textarea"
+                    value={value}
+                    onChange={(e) => onChange?.(e.target.value)}
+                    placeholder="Add any special request..."
+                    maxLength={120}
+                    rows={4}
+                    autoFocus
+                />
+                <p className="waiter-note-modal__hint">Max 120 characters. Leave empty to remove the note.</p>
                 <div className="waiter-note-modal__actions">
-                    <button type="button" className="waiter-btn waiter-btn--ghost" onClick={onClose}>
+                    <button
+                        type="button"
+                        className="waiter-note-modal__btn waiter-note-modal__btn--cancel"
+                        onClick={onClose}
+                    >
                         Cancel
                     </button>
-                    <button type="submit" className="waiter-btn waiter-btn--primary">
-                        Save note
+                    <button type="submit" className="waiter-note-modal__btn waiter-note-modal__btn--save">
+                        Save
                     </button>
                 </div>
             </form>

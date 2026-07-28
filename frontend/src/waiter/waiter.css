@@ -5,12 +5,13 @@
     flex-direction: column;
     background: #e9ecf2;
     color: #222;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .waiter-main {
     flex: 1 1 auto;
     padding: 6px;
-    padding-bottom: 110px;
+    padding-bottom: 210px;
     max-width: 960px;
     margin: 0 auto;
     width: 100%;
@@ -24,32 +25,6 @@
     border: 1px solid #d7deea;
     margin-bottom: 6px;
 }
-
-.waiter-section__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 8px;
-}
-
-.waiter-section__header--column {
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.waiter-title {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 700;
-}
-
-.waiter-subtitle {
-    margin: 4px 0 0;
-    color: #555;
-    font-size: 14px;
-}
-
 
 .waiter-btn {
     padding: 8px 14px;
@@ -111,21 +86,22 @@
 
 .waiter-table-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-    gap: 4px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 6px;
 }
 
 .waiter-table {
     background: #f7f9fc;
-    border: 1px solid #d7deea;
+    border: 3px solid transparent;
     border-radius: 4px;
-    padding: 10px;
+    padding: 14px;
+    min-height: 104px;
     text-align: left;
     cursor: pointer;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    font-weight: 600;
+    justify-content: center;
+    gap: 8px;
     transition: border 0.15s ease, background 0.15s ease;
 }
 
@@ -134,84 +110,40 @@
 }
 
 .waiter-table--available {
-    background: #edf9ec;
-    border-color: #8bc34a;
+    background: #2f7a3d;
 }
 
 .waiter-table--busy {
-    background: #fff4c3;
-    border-color: #f7b500;
-}
-
-.waiter-table--available:hover {
-    border-color: #7cb342;
-}
-
-.waiter-table--busy:hover {
-    border-color: #f59f00;
+    background: #c9770f;
 }
 
 .waiter-table--selected {
-    border-color: #4172d6;
-    box-shadow: 0 0 0 2px rgba(65, 114, 214, 0.2);
+    border-color: #1b2a3d;
+    box-shadow: 0 0 0 3px rgba(27, 42, 61, 0.25);
 }
 
 .waiter-table__name {
-    font-size: 16px;
+    font-size: 24px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #fff;
 }
 
 .waiter-table__status {
     font-size: 13px;
-    color: #607086;
-}
-
-.waiter-table--available .waiter-table__status {
-    color: #2e7d32;
-}
-
-.waiter-table--busy .waiter-table__status {
-    color: #a05a00;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.85);
 }
 
 .waiter-table__selected-label {
     font-size: 12px;
-    color: #4172d6;
+    font-weight: 800;
+    color: #fff;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-}
-
-.waiter-table-inline-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
-}
-
-.waiter-table-inline-actions__status {
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 13px;
-    font-weight: 600;
-    align-self: flex-start;
-}
-
-.waiter-table-inline-actions__status--free {
-    background: #edf9ec;
-    color: #2e7d32;
-}
-
-.waiter-table-inline-actions__status--busy {
-    background: #fff4c3;
-    color: #a05a00;
-}
-
-.waiter-table-inline-actions__buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
 }
 
 .waiter-menu__filters {
@@ -258,8 +190,8 @@
 
 .waiter-tile-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 3px;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 5px;
 }
 
 .waiter-tile {
@@ -267,10 +199,10 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 76px;
-    padding: 6px 8px;
-    border: 2px solid transparent;
-    border-radius: 3px;
+    min-height: 96px;
+    padding: 8px 10px;
+    border: 3px solid transparent;
+    border-radius: 4px;
     background: var(--tile-color, #4172d6);
     color: #fff;
     text-align: left;
@@ -280,86 +212,53 @@
 
 .waiter-tile--selected {
     border-color: #fff;
-    box-shadow: 0 0 0 2px var(--tile-color, #4172d6);
+    box-shadow: 0 0 0 3px var(--tile-color, #4172d6);
 }
 
 .waiter-tile__category {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    opacity: 0.8;
+    opacity: 0.85;
 }
 
 .waiter-tile__name {
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     line-height: 1.2;
-    margin: 4px 0;
+    margin: 6px 0;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
-.waiter-tile__footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 12px;
+.waiter-tile__price {
+    font-size: 14px;
     font-weight: 700;
 }
 
-.waiter-tile__controls {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.waiter-tile__minus {
-    width: 20px;
-    height: 20px;
-    border: none;
-    border-radius: 3px;
-    background: rgba(0, 0, 0, 0.25);
-    color: #fff;
-    font-size: 14px;
-    line-height: 1;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.waiter-tile__qty {
-    min-width: 18px;
-    text-align: center;
-    background: rgba(255, 255, 255, 0.9);
-    color: #1b2a3d;
-    border-radius: 3px;
-    font-size: 12px;
-    padding: 1px 4px;
-}
-
-.waiter-tile__note {
+.waiter-tile__qty-badge {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 20px;
-    height: 20px;
-    border-radius: 3px;
-    background: rgba(0, 0, 0, 0.25);
-    color: #fff;
-    font-size: 12px;
+    top: 6px;
+    right: 6px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 5px;
+    border-radius: 4px;
+    background: #fff;
+    color: #1b2a3d;
+    font-size: 13px;
+    font-weight: 800;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-}
-
-.waiter-tile__note--set {
-    background: #ffcf66;
-    color: #1b2a3d;
 }
 
 .waiter-input {
@@ -375,167 +274,205 @@
     color: #9ba6b5;
 }
 
-.waiter-summary__actions {
+.waiter-receipt {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.waiter-receipt__item {
+    padding: 8px 6px;
+    margin: 0 -6px;
+    border-bottom: 1px dashed #ccd4e0;
+    border-radius: 4px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.waiter-receipt__item--selected {
+    background: #fff4c3;
+}
+
+.waiter-receipt__row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 15px;
+}
+
+.waiter-receipt__qty {
+    min-width: 26px;
+    font-weight: 700;
+    color: #42526e;
+}
+
+.waiter-receipt__name {
+    flex: 1 1 auto;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #1b2a3d;
+}
+
+.waiter-receipt__unit {
+    font-size: 13px;
+    color: #7a869a;
+    white-space: nowrap;
+}
+
+.waiter-receipt__price {
+    font-weight: 700;
+    color: #1b2a3d;
+    white-space: nowrap;
+    min-width: 64px;
+    text-align: right;
+}
+
+.waiter-receipt__note {
+    padding-left: 34px;
+    font-size: 13px;
+    font-style: italic;
+    color: #607086;
+}
+
+.waiter-receipt__divider {
+    border-top: 1px dashed #9aa7bd;
+    margin: 10px 0;
+}
+
+.waiter-receipt__row--total .waiter-receipt__name,
+.waiter-receipt__row--total .waiter-receipt__price {
+    font-size: 19px;
+    font-weight: 800;
+}
+
+.waiter-footer-fixed {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+}
+
+.waiter-quickbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #1b2a3d;
+    color: #fff;
+}
+
+.waiter-quickbar__info {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.waiter-quickbar__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.waiter-quickbar__qty {
+    flex-shrink: 0;
+    color: #ffcf66;
+}
+
+.waiter-quickbar__placeholder {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.waiter-quickbar__actions {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
 }
 
-.waiter-counter__btn {
-    width: 40px;
-    height: 40px;
+.waiter-quickbar__btn {
+    height: 48px;
+    min-width: 48px;
+    padding: 0 14px;
+    border: none;
     border-radius: 4px;
-    border: 1px solid #ccd4e0;
-    background: #fff;
-    font-size: 18px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.waiter-counter__btn--primary {
-    background: #4172d6;
-    color: #fff;
-    border-color: #4172d6;
+.waiter-quickbar__btn--note {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
-.waiter-counter__btn:disabled {
-    opacity: 0.6;
+.waiter-quickbar__btn--plus {
+    background: #2f7a3d;
+}
+
+.waiter-quickbar__btn--minus {
+    background: #a4262c;
+}
+
+.waiter-quickbar__btn:disabled {
+    opacity: 0.35;
     cursor: not-allowed;
 }
 
-.waiter-summary__list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-
-.waiter-summary__item {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px;
-    border: 1px solid #d7deea;
-    border-radius: 4px;
-    background: #ffffff;
-}
-
-
-.waiter-summary__details {
-    flex: 1 1 auto;
-}
-
-.waiter-summary__row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 6px;
-    font-weight: 600;
-}
-
-.waiter-summary__name {
-    color: #1b2a3d;
-}
-
-.waiter-summary__price {
-    color: #42526e;
-}
-
-.waiter-summary__row-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.waiter-summary__quantity-badge {
-    min-width: 48px;
-    padding: 6px 12px;
-    border-radius: 4px;
-    background: #1b2a3d;
-    color: #fff;
-    font-weight: 700;
-    font-size: 18px;
-    letter-spacing: 0.05em;
-    text-align: center;
-}
-
-.waiter-summary__meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: #607086;
-    font-size: 13px;
-    margin-bottom: 8px;
-}
-
-.waiter-summary__note {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 4px;
-}
-
-.waiter-summary__footer {
-    margin-top: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.waiter-summary__total {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
-    border-radius: 4px;
-    background: #f7f9fc;
-    font-size: 16px;
-}
-
-.waiter-summary__hint {
-    margin: 0;
-    font-size: 13px;
-    color: #607086;
-}
-
-
 .waiter-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
     background: #fffffffb;
     border-top: 1px solid #dde3ee;
     display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: 8px 10px;
-    gap: 8px;
-    z-index: 20;
+    justify-content: stretch;
+    align-items: stretch;
+    padding: 0;
+    gap: 0;
     backdrop-filter: blur(6px);
 }
 
 
 .waiter-nav__button {
-    flex: 1 1 auto;
-    max-width: 120px;
-    padding: 10px 12px;
-    border-radius: 4px;
+    flex: 1 1 0;
+    max-width: none;
+    margin: 0;
+    padding: 18px 6px;
+    border-radius: 0;
     border: 1px solid #ccd4e0;
+    border-left: none;
     background: #f7f9fc;
-    font-weight: 600;
+    font-weight: 800;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
     cursor: pointer;
     color: #1b2a3d;
 }
 
+.waiter-nav__button:first-child {
+    border-left: 1px solid #ccd4e0;
+}
+
 .waiter-nav__button--home {
-    max-width: 110px;
+    max-width: none;
 }
 
 .waiter-nav__button--orders {
-    max-width: 120px;
+    max-width: none;
     background: #ffcf66;
     border-color: #ffcf66;
     color: #1b2a3d;
@@ -557,34 +494,79 @@
     cursor: not-allowed;
 }
 
-.waiter-nav__account {
+.waiter-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #1b2a3d;
+}
+
+.waiter-topbar__info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.waiter-topbar__title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #fff;
+}
+
+.waiter-topbar__subtitle {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.waiter-topbar__actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.waiter-topbar__account {
     position: relative;
     display: flex;
+    flex-shrink: 0;
+}
+
+.waiter-topbar__hamburger {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
     justify-content: center;
 }
 
-.waiter-nav__button--account {
-    max-width: 60px;
-}
-
-.waiter-nav__button--active {
-    border-color: #4172d6;
-}
-
-.waiter-nav__menu {
+.waiter-topbar__menu {
     position: absolute;
-    bottom: 56px;
+    top: calc(100% + 6px);
     right: 0;
     background: #fff;
     border: 1px solid #ccd4e0;
     border-radius: 4px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
     min-width: 160px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    z-index: 30;
 }
-
 
 .waiter-nav__menu-item {
     padding: 10px 14px;
@@ -620,76 +602,18 @@
     background: #fff;
     border-radius: 6px;
     padding: 16px;
+    overflow: hidden;
     box-shadow: 0 18px 42px rgba(6, 18, 36, 0.24);
 }
 
-.waiter-modal__content--wide {
-    max-width: 860px;
-    width: 100%;
-    max-height: 90vh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+.waiter-orders-screen__filters {
+    margin-bottom: 8px;
 }
 
-.waiter-modal__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.waiter-modal__title {
-    margin: 0;
-}
-
-.waiter-modal__subtitle {
-    margin: 6px 0 0;
-    font-size: 13px;
-    color: #607086;
-}
-
-.waiter-modal__close {
-    border: none;
-    background: #eef1f5;
-    border-radius: 8px;
-    padding: 6px 10px;
-    cursor: pointer;
-}
-
-.waiter-modal__body {
-    color: #42526e;
-    font-size: 14px;
-}
-
-.waiter-order-manager__toolbar {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-}
-
-.waiter-order-manager__filter {
+.waiter-order-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-size: 13px;
-    color: #42526e;
-}
-
-.waiter-order-manager__select {
-    min-width: 160px;
-}
-
-.waiter-order-manager__list {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    padding-right: 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
 }
 
 .waiter-order-card {
@@ -705,8 +629,10 @@
 .waiter-order-card__header {
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
     gap: 16px;
-    flex-wrap: wrap;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .waiter-order-card__headline {
@@ -716,15 +642,18 @@
 }
 
 .waiter-order-card__title {
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 17px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
     color: #1b2a3d;
 }
 
 .waiter-order-card__meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    align-items: center;
+    gap: 8px;
     font-size: 13px;
     color: #607086;
 }
@@ -732,8 +661,10 @@
 .waiter-order-card__status {
     padding: 2px 10px;
     border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 .waiter-order-card__status--open {
@@ -752,19 +683,19 @@
     color: #9f1c1c;
 }
 
-.waiter-order-card__totals {
+.waiter-order-card__total {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
-    font-size: 13px;
-    color: #42526e;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 800;
+    color: #1b2a3d;
+    white-space: nowrap;
 }
 
-.waiter-order-card__total {
-    font-size: 18px;
-    font-weight: 700;
-    color: #1b2a3d;
+.waiter-order-card__caret {
+    color: #9aa7bd;
+    font-size: 14px;
 }
 
 .waiter-order-card__actions {
@@ -774,48 +705,8 @@
 }
 
 .waiter-order-card__items {
-    border-top: 1px solid #edf1f5;
-    padding-top: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.waiter-order-card__item {
-    display: grid;
-    grid-template-columns: minmax(140px, 1fr) 60px 100px minmax(80px, 1fr);
-    gap: 10px;
-    align-items: center;
-    font-size: 13px;
-    color: #1b2a3d;
-}
-
-.waiter-order-card__item-name {
-    font-weight: 600;
-}
-
-.waiter-order-card__item-qty {
-    text-align: center;
-    color: #42526e;
-}
-
-.waiter-order-card__item-price {
-    text-align: right;
-    color: #42526e;
-}
-
-.waiter-order-card__item-note {
-    text-align: right;
-    color: #607086;
-}
-
-.waiter-order-card__item-note-text {
-    font-style: italic;
-    color: #42526e;
-}
-
-.waiter-order-card__item-note-placeholder {
-    color: #b4bdc8;
+    border-top: 1px dashed #ccd4e0;
+    padding-top: 10px;
 }
 
 .waiter-order-card__paid-badge {
@@ -836,45 +727,9 @@
     }
 
     .waiter-nav {
-        padding: 6px;
-        gap: 6px;
+        padding: 0;
+        gap: 0;
     }
-
-    .waiter-nav__button {
-        max-width: none;
-    }
-}
-.waiter-note__preview {
-    font-size: 13px;
-    color: #1b2a3d;
-    line-height: 1.4;
-}
-
-.waiter-note__placeholder {
-    font-size: 13px;
-    color: #7a869a;
-}
-
-.waiter-note__btn {
-    align-self: flex-start;
-    border: 1px solid #ccd4e0;
-    background: #fff;
-    color: #1b2a3d;
-    border-radius: 4px;
-    padding: 6px 16px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.waiter-note__btn:hover {
-    border-color: #4172d6;
-    color: #4172d6;
-}
-
-.waiter-summary__note .waiter-note__btn {
-    padding: 6px 18px;
 }
 
 .waiter-note-modal__overlay {
@@ -884,61 +739,92 @@
 .waiter-note-modal {
     display: flex;
     flex-direction: column;
-    gap: 12px;
 }
 
-.waiter-note-modal__body {
+.waiter-note-modal__header {
+    background: #1b2a3d;
+    color: #fff;
+    margin: -16px -16px 16px;
+    padding: 14px 16px;
     display: flex;
-    flex-direction: column;
-    gap: 12px;
+    align-items: baseline;
+    gap: 10px;
 }
 
-.waiter-note-modal__label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 14px;
-    color: #42526e;
+.waiter-note-modal__tag {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    background: #ffcf66;
+    color: #1b2a3d;
+    padding: 3px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.waiter-note-modal__item-name {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .waiter-note-modal__textarea {
-    border: 1px solid #ccd4e0;
+    border: 2px solid #ccd4e0;
     border-radius: 4px;
     padding: 12px;
     font-size: 15px;
+    font-family: inherit;
     resize: vertical;
     min-height: 110px;
 }
 
+.waiter-note-modal__textarea:focus {
+    outline: none;
+    border-color: #4172d6;
+}
+
 .waiter-note-modal__hint {
-    margin: 0;
+    margin: 8px 0 0;
     font-size: 12px;
     color: #7a869a;
 }
 
 .waiter-note-modal__actions {
     display: flex;
-    justify-content: flex-end;
-    gap: 12px;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.waiter-note-modal__btn {
+    flex: 1 1 0;
+    height: 48px;
+    border: none;
+    border-radius: 4px;
+    font-size: 15px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+}
+
+.waiter-note-modal__btn--cancel {
+    background: #eef1f5;
+    color: #333;
+}
+
+.waiter-note-modal__btn--save {
+    background: #2f7a3d;
+    color: #fff;
 }
 
 @media (min-width: 640px) {
     .waiter-main {
-        padding: 10px 12px 130px;
-    }
-
-    .waiter-summary__item {
-        flex-direction: row;
-        align-items: center;
-    }
-
-    .waiter-summary__actions {
-        justify-content: center;
-        min-width: 140px;
-    }
-
-    .waiter-summary__details {
-        padding-right: 12px;
+        padding: 10px 12px 230px;
     }
 
     .waiter-table-list {
@@ -946,13 +832,13 @@
     }
 
     .waiter-tile-grid {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     }
 }
 
 @media (min-width: 960px) {
     .waiter-main {
-        padding-bottom: 140px;
+        padding-bottom: 240px;
     }
 
     .waiter-menu__filters {
@@ -966,18 +852,18 @@
     }
 
     .waiter-tile-grid {
-        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
 }
 
 @media (max-width: 480px) {
     .waiter-nav {
-        padding: 6px;
-        gap: 6px;
+        padding: 0;
+        gap: 0;
     }
 
     .waiter-nav__button {
-        padding: 8px;
+        padding: 8px 4px;
     }
 
     .waiter-table-list {
@@ -986,14 +872,10 @@
     }
 
     .waiter-tile-grid {
-        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
     }
 
     .waiter-title {
         font-size: 20px;
-    }
-
-    .waiter-summary__price {
-        font-size: 14px;
     }
 }

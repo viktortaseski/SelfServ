@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { formatMoney } from "./money";
 
 // Distinct, saturated colors so staff can tell categories apart at a glance,
 // assigned deterministically per category slug (stable across reloads).
@@ -46,7 +47,6 @@ function itemCategoryName(item) {
 }
 
 function WaiterMenu({
-    table,
     items = [],
     loading,
     error,
@@ -56,12 +56,8 @@ function WaiterMenu({
     activeCategory,
     onCategoryChange,
     orderLines,
-    onIncrease,
-    onDecrease,
-    onRequestNote,
-    onMergeOrders,
-    onCloseOrders,
-    actionsBusy,
+    selectedItemId,
+    onSelectItem,
 }) {
     const normalizedSearch = useMemo(() => normalizeSearch(search || ""), [search]);
 
@@ -112,62 +108,8 @@ function WaiterMenu({
         onCategoryChange(slug);
     };
 
-    const openOrders = Number(table?.openOrders ?? table?.open_orders ?? 0);
-    const statusText =
-        table?.status ||
-        (openOrders > 0
-            ? `${openOrders} open ${openOrders === 1 ? "order" : "orders"}`
-            : "Available");
-    const busy = Boolean(actionsBusy);
-
     return (
         <section className="waiter-section">
-            <header className="waiter-section__header waiter-section__header--column">
-                <div>
-                    <h2 className="waiter-title">
-                        {table ? `Ordering for ${table.name || `Table ${table.id}`}` : "Build order"}
-                    </h2>
-                    <p className="waiter-subtitle">
-                        Choose products from the list below. Use the search or categories to filter.
-                    </p>
-                </div>
-                {table ? (
-                    <div className="waiter-table-inline-actions">
-                        <span
-                            className={`waiter-table-inline-actions__status ${
-                                openOrders > 0
-                                    ? "waiter-table-inline-actions__status--busy"
-                                    : "waiter-table-inline-actions__status--free"
-                            }`}
-                        >
-                            {statusText}
-                        </span>
-                        <div className="waiter-table-inline-actions__buttons">
-                            {openOrders > 1 ? (
-                                <button
-                                    type="button"
-                                    className="waiter-btn waiter-btn--ghost"
-                                    onClick={() => onMergeOrders?.(table)}
-                                    disabled={busy}
-                                >
-                                    {busy ? "Working…" : "Merge orders"}
-                                </button>
-                            ) : null}
-                            {openOrders > 0 ? (
-                                <button
-                                    type="button"
-                                    className="waiter-btn waiter-btn--primary"
-                                    onClick={() => onCloseOrders?.(table)}
-                                    disabled={busy}
-                                >
-                                    {busy ? "Working…" : "Close orders"}
-                                </button>
-                            ) : null}
-                        </div>
-                    </div>
-                ) : null}
-            </header>
-
             <div className="waiter-menu__filters">
                 <input
                     type="search"
@@ -212,58 +154,31 @@ function WaiterMenu({
                 {filteredItems.map((item) => {
                     const line = orderLookup.get(item.id) || null;
                     const quantity = line?.quantity || 0;
-                    const note = line?.note || "";
-                    const price = Number(item.price) || 0;
                     const slug = itemCategorySlug(item);
                     const categoryName = itemCategoryName(item);
+                    const isSelected = item.id === selectedItemId;
                     return (
-                        <button
+                        <div
                             key={item.id}
-                            type="button"
-                            className={`waiter-tile ${quantity > 0 ? "waiter-tile--selected" : ""}`}
+                            role="button"
+                            tabIndex={0}
+                            className={`waiter-tile ${isSelected ? "waiter-tile--selected" : ""}`}
                             style={{ "--tile-color": colorForCategory(slug) }}
-                            onClick={() => onIncrease(item)}
+                            onClick={() => onSelectItem?.(item)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    onSelectItem?.(item);
+                                }
+                            }}
                         >
                             <span className="waiter-tile__category">{categoryName}</span>
                             <span className="waiter-tile__name">{item.name}</span>
-                            <span className="waiter-tile__footer">
-                                <span className="waiter-tile__price">{Math.round(price)}</span>
-                                {quantity > 0 ? (
-                                    <span className="waiter-tile__controls">
-                                        <button
-                                            type="button"
-                                            className="waiter-tile__minus"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onDecrease(item);
-                                            }}
-                                        >
-                                            −
-                                        </button>
-                                        <span className="waiter-tile__qty">{quantity}</span>
-                                    </span>
-                                ) : null}
-                            </span>
+                            <span className="waiter-tile__price">{formatMoney(item.price)}</span>
                             {quantity > 0 ? (
-                                <span
-                                    role="button"
-                                    tabIndex={0}
-                                    className={`waiter-tile__note ${note ? "waiter-tile__note--set" : ""}`}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onRequestNote?.(item, note);
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                            e.stopPropagation();
-                                            onRequestNote?.(item, note);
-                                        }
-                                    }}
-                                >
-                                    {note ? "✎" : "+"}
-                                </span>
+                                <span className="waiter-tile__qty-badge">{quantity}</span>
                             ) : null}
-                        </button>
+                        </div>
                     );
                 })}
             </div>

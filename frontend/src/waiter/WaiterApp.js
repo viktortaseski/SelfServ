@@ -3,8 +3,10 @@ import WaiterTableSelect from "./WaiterTableSelect";
 import WaiterMenu from "./WaiterMenu";
 import WaiterSummary from "./WaiterSummary";
 import WaiterNav from "./WaiterNav";
+import WaiterQuickControls from "./WaiterQuickControls";
 import WaiterNoteModal from "./WaiterNoteModal";
-import WaiterOrderManager from "./WaiterOrderManager";
+import WaiterOrdersScreen from "./WaiterOrdersScreen";
+import { formatTableLabel } from "./tableLabel";
 import {
     fetchWaiterTables,
     fetchWaiterMenu,
@@ -28,12 +30,6 @@ function createNoteEditorState() {
     };
 }
 
-function formatPrice(value) {
-    const num = Number(value);
-    if (!Number.isFinite(num)) return "0 MKD";
-    return `${Math.round(num)} MKD`;
-}
-
 function WaiterApp({ user, onLogout }) {
     const [stepIdx, setStepIdx] = useState(0);
     const [tables, setTables] = useState([]);
@@ -49,6 +45,7 @@ function WaiterApp({ user, onLogout }) {
     const [activeCategory, setActiveCategory] = useState("all");
 
     const [orderLines, setOrderLines] = useState(() => new Map());
+    const [selectedItemId, setSelectedItemId] = useState(null);
 
     const [accountOpen, setAccountOpen] = useState(false);
     const [feedback, setFeedback] = useState(null);
@@ -76,7 +73,22 @@ function WaiterApp({ user, onLogout }) {
         return tables.find((t) => t.id === selectedTableId) || null;
     }, [selectedTableId, tables]);
 
+    const selectedTableOpenOrders = Number(
+        selectedTable?.openOrders ?? selectedTable?.open_orders ?? 0
+    );
+
+    const restaurantName = user?.restaurant_name || "Restaurant";
+
     const orderItems = useMemo(() => Array.from(orderLines.values()), [orderLines]);
+
+    const selectedItem = useMemo(() => {
+        if (!selectedItemId) return null;
+        return menuItems.find((item) => item.id === selectedItemId) || null;
+    }, [selectedItemId, menuItems]);
+
+    const selectedLine = selectedItemId ? orderLines.get(selectedItemId) : null;
+    const selectedQuantity = selectedLine?.quantity || 0;
+    const selectedNote = selectedLine?.note || "";
 
     const orderTotal = useMemo(
         () =>
@@ -106,7 +118,7 @@ function WaiterApp({ user, onLogout }) {
         return Array.from(map.values());
     }, [menuItems]);
 
-    const canGoBack = stepIdx > 0 && !tableActionBusy && !submitting;
+    const canGoBack = manageOrdersOpen ? true : stepIdx > 0 && !tableActionBusy && !submitting;
     const canGoForward =
         step === "tables"
             ? !!selectedTable && !tableActionBusy
@@ -359,6 +371,11 @@ function WaiterApp({ user, onLogout }) {
         setOrderLines(new Map());
         setSearchText("");
         setActiveCategory("all");
+        setSelectedItemId(null);
+    }, []);
+
+    const selectItem = useCallback((item) => {
+        setSelectedItemId(item?.id ?? null);
     }, []);
 
     useEffect(() => {
@@ -505,13 +522,17 @@ function WaiterApp({ user, onLogout }) {
 
     const goBack = useCallback(() => {
         setAccountOpen(false);
+        if (manageOrdersOpen) {
+            setManageOrdersOpen(false);
+            return;
+        }
         if (stepIdx === 0) return;
         if (stepIdx === 1) {
             setStep("tables");
         } else if (stepIdx === 2) {
             setStep("items");
         }
-    }, [stepIdx, setStep]);
+    }, [manageOrdersOpen, stepIdx, setStep]);
 
     const goForward = useCallback(() => {
         setAccountOpen(false);
@@ -531,6 +552,7 @@ function WaiterApp({ user, onLogout }) {
 
     const goHome = useCallback(() => {
         setAccountOpen(false);
+        setManageOrdersOpen(false);
         setStep("tables");
         setSelectedTableId(null);
         resetOrder();
@@ -542,6 +564,98 @@ function WaiterApp({ user, onLogout }) {
 
     return (
         <div className="waiter-app">
+            <header className="waiter-topbar">
+                <div className="waiter-topbar__info">
+                    {manageOrdersOpen ? (
+                        <h1 className="waiter-topbar__title">Orders</h1>
+                    ) : step === "tables" ? (
+                        <>
+                            <h1 className="waiter-topbar__title">
+                                {user?.username || "Staff"}
+                            </h1>
+                            <p className="waiter-topbar__subtitle">({restaurantName})</p>
+                        </>
+                    ) : (
+                        <h1 className="waiter-topbar__title">
+                            {selectedTable ? formatTableLabel(selectedTable) : "ORDER"}
+                        </h1>
+                    )}
+                </div>
+
+                <div className="waiter-topbar__actions">
+                    {manageOrdersOpen ? (
+                        <>
+                            <button
+                                type="button"
+                                className="waiter-btn waiter-btn--primary"
+                                onClick={handleOrdersRefresh}
+                            >
+                                Refresh
+                            </button>
+                            <button
+                                type="button"
+                                className="waiter-btn waiter-btn--ghost"
+                                onClick={handleCloseOrdersPanel}
+                            >
+                                Close
+                            </button>
+                        </>
+                    ) : step === "tables" ? (
+                        <button
+                            type="button"
+                            className="waiter-btn waiter-btn--ghost"
+                            onClick={loadTables}
+                            disabled={loadingTables}
+                        >
+                            {loadingTables ? "Refreshing…" : "Refresh"}
+                        </button>
+                    ) : step === "items" && selectedTable && selectedTableOpenOrders > 0 ? (
+                        <>
+                            {selectedTableOpenOrders > 1 ? (
+                                <button
+                                    type="button"
+                                    className="waiter-btn waiter-btn--ghost"
+                                    onClick={() => handleMergeOrders(selectedTable)}
+                                    disabled={tableActionBusy}
+                                >
+                                    {tableActionBusy ? "…" : "Merge"}
+                                </button>
+                            ) : null}
+                            <button
+                                type="button"
+                                className="waiter-btn waiter-btn--primary"
+                                onClick={() => handleCloseOrders(selectedTable)}
+                                disabled={tableActionBusy}
+                            >
+                                {tableActionBusy ? "…" : "Close"}
+                            </button>
+                        </>
+                    ) : null}
+                </div>
+
+                <div className="waiter-topbar__account">
+                    <button
+                        type="button"
+                        className="waiter-topbar__hamburger"
+                        onClick={toggleAccount}
+                        aria-label="Menu"
+                    >
+                        ☰
+                    </button>
+                    {accountOpen ? (
+                        <div className="waiter-topbar__menu">
+                            <button
+                                type="button"
+                                className="waiter-nav__menu-item waiter-nav__menu-item--danger"
+                                onClick={onLogout}
+                            >
+                                Logout
+                            </button>
+                        </div>
+                    ) : null}
+                </div>
+            </header>
+
             <div className="waiter-main">
                 {feedback?.message ? (
                     <div
@@ -553,81 +667,81 @@ function WaiterApp({ user, onLogout }) {
                     </div>
                 ) : null}
 
-                {step === "tables" ? (
-                    <WaiterTableSelect
-                        user={user}
-                        tables={tables}
-                        selectedTableId={selectedTableId}
-                        onSelectTable={handleSelectTable}
-                        onRefresh={loadTables}
-                        loading={loadingTables}
-                        error={tablesError}
+                {manageOrdersOpen ? (
+                    <WaiterOrdersScreen
+                        orders={waiterOrders}
+                        loading={loadingOrders}
+                        error={ordersError}
+                        filter={ordersFilter}
+                        onChangeFilter={handleOrdersFilterChange}
+                        onReprint={handleReprintExistingOrder}
+                        onMarkPaid={handleMarkOrderPaid}
+                        busyOrderId={orderActionBusyId}
                     />
-                ) : null}
+                ) : (
+                    <>
+                        {step === "tables" ? (
+                            <WaiterTableSelect
+                                tables={tables}
+                                selectedTableId={selectedTableId}
+                                onSelectTable={handleSelectTable}
+                                loading={loadingTables}
+                                error={tablesError}
+                            />
+                        ) : null}
 
-                {step === "items" ? (
-                    <WaiterMenu
-                        table={selectedTable}
-                        items={menuItems}
-                        loading={loadingMenu}
-                        error={menuError}
-                        search={searchText}
-                        onSearchChange={setSearchText}
-                        categories={categories}
-                        activeCategory={activeCategory}
-                        onCategoryChange={setActiveCategory}
-                        orderLines={orderLines}
-                        onIncrease={incrementItem}
-                        onDecrease={decrementItem}
-                        onRequestNote={openNoteEditor}
-                        onMergeOrders={handleMergeOrders}
-                        onCloseOrders={handleCloseOrders}
-                        actionsBusy={tableActionBusy}
-                    />
-                ) : null}
+                        {step === "items" ? (
+                            <WaiterMenu
+                                items={menuItems}
+                                loading={loadingMenu}
+                                error={menuError}
+                                search={searchText}
+                                onSearchChange={setSearchText}
+                                categories={categories}
+                                activeCategory={activeCategory}
+                                onCategoryChange={setActiveCategory}
+                                orderLines={orderLines}
+                                selectedItemId={selectedItemId}
+                                onSelectItem={selectItem}
+                            />
+                        ) : null}
 
-                {step === "summary" ? (
-                    <WaiterSummary
-                        table={selectedTable}
-                        items={orderItems}
-                        total={orderTotal}
-                        formatPrice={formatPrice}
-                        onIncrease={incrementItem}
-                        onDecrease={decrementItem}
-                        onRequestNote={openNoteEditor}
-                        submitting={submitting}
-                        error={submitError}
-                    />
-                ) : null}
+                        {step === "summary" ? (
+                            <WaiterSummary
+                                items={orderItems}
+                                total={orderTotal}
+                                selectedItemId={selectedItemId}
+                                onSelectItem={selectItem}
+                                submitting={submitting}
+                                error={submitError}
+                            />
+                        ) : null}
+                    </>
+                )}
             </div>
 
-            <WaiterNav
-                step={step}
-                canGoBack={canGoBack}
-                canGoForward={canGoForward}
-                onBack={goBack}
-                onForward={goForward}
-                onHome={goHome}
-                onToggleAccount={toggleAccount}
-                accountOpen={accountOpen}
-                onLogout={onLogout}
-                onManageOrders={handleManageOrders}
-                disableForward={(step === "summary" && submitting) || tableActionBusy}
-            />
+            <div className="waiter-footer-fixed">
+                {!manageOrdersOpen && (step === "items" || step === "summary") ? (
+                    <WaiterQuickControls
+                        item={selectedItem}
+                        quantity={selectedQuantity}
+                        onIncrease={() => selectedItem && incrementItem(selectedItem)}
+                        onDecrease={() => selectedItem && decrementItem(selectedItem)}
+                        onRequestNote={() => selectedItem && openNoteEditor(selectedItem, selectedNote)}
+                    />
+                ) : null}
 
-            <WaiterOrderManager
-                open={manageOrdersOpen}
-                orders={waiterOrders}
-                loading={loadingOrders}
-                error={ordersError}
-                filter={ordersFilter}
-                onChangeFilter={handleOrdersFilterChange}
-                onRefresh={handleOrdersRefresh}
-                onClose={handleCloseOrdersPanel}
-                onReprint={handleReprintExistingOrder}
-                onMarkPaid={handleMarkOrderPaid}
-                busyOrderId={orderActionBusyId}
-            />
+                <WaiterNav
+                    step={step}
+                    canGoBack={canGoBack}
+                    canGoForward={canGoForward}
+                    onBack={goBack}
+                    onForward={goForward}
+                    onHome={goHome}
+                    onManageOrders={handleManageOrders}
+                    disableForward={manageOrdersOpen || (step === "summary" && submitting) || tableActionBusy}
+                />
+            </div>
 
             <WaiterNoteModal
                 open={noteEditor.open}
