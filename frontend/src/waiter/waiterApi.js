@@ -139,6 +139,7 @@ function normalizeWaiterOrder(raw) {
         subtotal: Number(raw.subtotal || 0),
         tip: Number(raw.tip || 0),
         total: Number(raw.total || 0),
+        priority: Boolean(raw.priority),
         createdAt: raw.created_at || raw.createdAt || null,
         updatedAt: raw.updated_at || raw.updatedAt || null,
         items: Array.isArray(raw.items) ? raw.items.map(normalizeOrderItem) : [],
@@ -178,6 +179,13 @@ export async function splitWaiterOrder(orderId, items) {
             : [],
     };
     const { data } = await api.post(`/orders/waiter/${orderId}/split`, payload, { headers });
+    return data;
+}
+
+export async function setOrderPriority(orderId, priority) {
+    const headers = buildAuthHeaders();
+    const payload = { priority: Boolean(priority) };
+    const { data } = await api.patch(`/orders/waiter/${orderId}/priority`, payload, { headers });
     return data;
 }
 

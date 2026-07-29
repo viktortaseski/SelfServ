@@ -19,6 +19,7 @@ import {
     reprintWaiterOrder,
     updateWaiterOrderStatus,
     splitWaiterOrder,
+    setOrderPriority,
 } from "./waiterApi";
 import "./waiter.css";
 
@@ -56,6 +57,7 @@ function WaiterApp({ user, onLogout }) {
     const [submitError, setSubmitError] = useState("");
     const [tableActionBusy, setTableActionBusy] = useState(false);
     const [manageOrdersOpen, setManageOrdersOpen] = useState(false);
+    const [detailsTableId, setDetailsTableId] = useState(null);
     const [waiterOrders, setWaiterOrders] = useState([]);
     const [loadingOrders, setLoadingOrders] = useState(false);
     const [ordersError, setOrdersError] = useState("");
@@ -82,6 +84,13 @@ function WaiterApp({ user, onLogout }) {
     const selectedTableOpenOrders = Number(
         selectedTable?.openOrders ?? selectedTable?.open_orders ?? 0
     );
+
+    const ordersOverlayOpen = manageOrdersOpen || detailsTableId != null;
+
+    const detailsTable = useMemo(() => {
+        if (detailsTableId == null) return null;
+        return tables.find((t) => t.id === detailsTableId) || null;
+    }, [detailsTableId, tables]);
 
     const restaurantName = user?.restaurant_name || "Restaurant";
 
@@ -124,7 +133,7 @@ function WaiterApp({ user, onLogout }) {
         return Array.from(map.values());
     }, [menuItems]);
 
-    const canGoBack = manageOrdersOpen ? true : stepIdx > 0 && !tableActionBusy && !submitting;
+    const canGoBack = ordersOverlayOpen ? true : stepIdx > 0 && !tableActionBusy && !submitting;
     const canGoForward =
         step === "tables"
             ? !!selectedTable && !tableActionBusy
@@ -190,7 +199,10 @@ function WaiterApp({ user, onLogout }) {
             setLoadingOrders(true);
             setOrdersError("");
             try {
-                const data = await fetchWaiterOrders({ status: statusParam });
+                const data = await fetchWaiterOrders({
+                    status: statusParam,
+                    tableId: detailsTableId || undefined,
+                });
                 setWaiterOrders(Array.isArray(data) ? data : []);
             } catch (err) {
                 const msg =
@@ -203,7 +215,7 @@ function WaiterApp({ user, onLogout }) {
                 setLoadingOrders(false);
             }
         },
-        [ordersFilter]
+        [ordersFilter, detailsTableId]
     );
 
     const handleMergeOrders = useCallback(
@@ -294,7 +306,21 @@ function WaiterApp({ user, onLogout }) {
 
     const handleManageOrders = useCallback(() => {
         setAccountOpen(false);
+        setDetailsTableId(null);
+        setSelectedManageOrder(null);
         setManageOrdersOpen(true);
+    }, []);
+
+    const handleOpenTableDetails = useCallback((table) => {
+        if (!table?.id) return;
+        setAccountOpen(false);
+        setSelectedManageOrder(null);
+        setDetailsTableId(table.id);
+    }, []);
+
+    const handleCloseTableDetails = useCallback(() => {
+        setDetailsTableId(null);
+        setSelectedManageOrder(null);
     }, []);
 
     const handleOrdersFilterChange = useCallback((value) => {
@@ -425,6 +451,32 @@ function WaiterApp({ user, onLogout }) {
         setSelectedManageOrder(null);
     }, [handleMarkOrderPaid, selectedManageOrder]);
 
+    const handleTogglePriority = useCallback(async () => {
+        if (!selectedManageOrder?.id) return;
+        const orderId = selectedManageOrder.id;
+        const nextPriority = !selectedManageOrder.priority;
+        setOrderActionBusyId(orderId);
+        setFeedback(null);
+        try {
+            await setOrderPriority(orderId, nextPriority);
+            setSelectedManageOrder((prev) =>
+                prev && prev.id === orderId ? { ...prev, priority: nextPriority } : prev
+            );
+            await loadOrders(ordersFilter);
+        } catch (err) {
+            const msg =
+                err?.response?.data?.error ||
+                err?.message ||
+                "Failed to update priority.";
+            setFeedback({
+                kind: "error",
+                message: msg,
+            });
+        } finally {
+            setOrderActionBusyId(null);
+        }
+    }, [selectedManageOrder, loadOrders, ordersFilter]);
+
     const resetOrder = useCallback(() => {
         setOrderLines(new Map());
         setSearchText("");
@@ -447,9 +499,9 @@ function WaiterApp({ user, onLogout }) {
     }, [step, menuItems.length, loadingMenu, loadMenu]);
 
     useEffect(() => {
-        if (!manageOrdersOpen) return;
+        if (!ordersOverlayOpen) return;
         loadOrders(ordersFilter);
-    }, [manageOrdersOpen, ordersFilter, loadOrders]);
+    }, [ordersOverlayOpen, ordersFilter, loadOrders]);
 
     const setStep = useCallback(
         (next) => {
@@ -584,13 +636,17 @@ function WaiterApp({ user, onLogout }) {
             setManageOrdersOpen(false);
             return;
         }
+        if (detailsTableId != null) {
+            handleCloseTableDetails();
+            return;
+        }
         if (stepIdx === 0) return;
         if (stepIdx === 1) {
             setStep("tables");
         } else if (stepIdx === 2) {
             setStep("items");
         }
-    }, [manageOrdersOpen, stepIdx, setStep]);
+    }, [manageOrdersOpen, detailsTableId, handleCloseTableDetails, stepIdx, setStep]);
 
     const goForward = useCallback(() => {
         setAccountOpen(false);
@@ -611,6 +667,7 @@ function WaiterApp({ user, onLogout }) {
     const goHome = useCallback(() => {
         setAccountOpen(false);
         setManageOrdersOpen(false);
+        setDetailsTableId(null);
         setStep("tables");
         setSelectedTableId(null);
         resetOrder();
@@ -624,8 +681,12 @@ function WaiterApp({ user, onLogout }) {
         <div className="waiter-app">
             <header className="waiter-topbar">
                 <div className="waiter-topbar__info">
-                    {manageOrdersOpen ? (
-                        <h1 className="waiter-topbar__title">Orders</h1>
+                    {ordersOverlayOpen ? (
+                        <h1 className="waiter-topbar__title">
+                            {detailsTableId != null
+                                ? `${detailsTable ? formatTableLabel(detailsTable) : "Table"} · Details`
+                                : "Orders"}
+                        </h1>
                     ) : step === "tables" ? (
                         <>
                             <h1 className="waiter-topbar__title">
@@ -641,7 +702,7 @@ function WaiterApp({ user, onLogout }) {
                 </div>
 
                 <div className="waiter-topbar__actions">
-                    {manageOrdersOpen ? null : step === "tables" ? (
+                    {ordersOverlayOpen ? null : step === "tables" ? (
                         <button
                             type="button"
                             className="waiter-btn waiter-btn--ghost"
@@ -650,7 +711,7 @@ function WaiterApp({ user, onLogout }) {
                         >
                             {loadingTables ? "Refreshing…" : "Refresh"}
                         </button>
-                    ) : step === "items" && selectedTable && selectedTableOpenOrders > 0 ? (
+                    ) : step === "items" && selectedTable ? (
                         <>
                             {selectedTableOpenOrders > 1 ? (
                                 <button
@@ -665,10 +726,9 @@ function WaiterApp({ user, onLogout }) {
                             <button
                                 type="button"
                                 className="waiter-btn waiter-btn--primary"
-                                onClick={() => handleCloseOrders(selectedTable)}
-                                disabled={tableActionBusy}
+                                onClick={() => handleOpenTableDetails(selectedTable)}
                             >
-                                {tableActionBusy ? "…" : "Close"}
+                                Details
                             </button>
                         </>
                     ) : null}
@@ -708,7 +768,7 @@ function WaiterApp({ user, onLogout }) {
                     </div>
                 ) : null}
 
-                {manageOrdersOpen ? (
+                {ordersOverlayOpen ? (
                     <WaiterOrdersScreen
                         orders={waiterOrders}
                         loading={loadingOrders}
@@ -764,7 +824,7 @@ function WaiterApp({ user, onLogout }) {
             </div>
 
             <div className="waiter-footer-fixed">
-                {!manageOrdersOpen && (step === "items" || step === "summary") ? (
+                {!ordersOverlayOpen && (step === "items" || step === "summary") ? (
                     <WaiterQuickControls
                         item={selectedItem}
                         quantity={selectedQuantity}
@@ -774,15 +834,16 @@ function WaiterApp({ user, onLogout }) {
                     />
                 ) : null}
 
-                {manageOrdersOpen ? (
+                {ordersOverlayOpen ? (
                     <WaiterOrdersControls
                         selectedOrder={selectedManageOrder}
                         onRefresh={handleOrdersRefresh}
                         onMerge={handleMergeSelectedOrder}
                         onSplit={handleOpenSplitOrder}
                         onClose={handleCloseSelectedOrder}
+                        onTogglePriority={handleTogglePriority}
                         mergeBusy={tableActionBusy}
-                        closeBusy={orderActionBusyId === selectedManageOrder?.id}
+                        orderBusy={orderActionBusyId === selectedManageOrder?.id}
                         refreshing={loadingOrders}
                     />
                 ) : null}
@@ -795,7 +856,7 @@ function WaiterApp({ user, onLogout }) {
                     onForward={goForward}
                     onHome={goHome}
                     onManageOrders={handleManageOrders}
-                    disableForward={manageOrdersOpen || (step === "summary" && submitting) || tableActionBusy}
+                    disableForward={ordersOverlayOpen || (step === "summary" && submitting) || tableActionBusy}
                 />
             </div>
 

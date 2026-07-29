@@ -1148,6 +1148,7 @@ router.get("/waiter/orders", requireRoles(["admin", "staff"]), async (req, res) 
                     o.status,
                     o.tip,
                     o.total_price,
+                    o.priority,
                     o.created_at,
                     rt.name AS table_name,
                     COALESCE(SUM(oi.total_price), 0) AS subtotal,
@@ -1169,8 +1170,8 @@ router.get("/waiter/orders", requireRoles(["admin", "staff"]), async (req, res) 
                 WHERE o.restaurant_id = $1
                   AND o.status = ANY($2)
                   AND ($3::BIGINT IS NULL OR o.table_id = $3)
-                GROUP BY o.id, o.table_id, o.status, o.tip, o.total_price, o.created_at, rt.name
-                ORDER BY o.created_at DESC
+                GROUP BY o.id, o.table_id, o.status, o.tip, o.total_price, o.priority, o.created_at, rt.name
+                ORDER BY o.priority DESC, o.created_at DESC
                 LIMIT $4
             )
             SELECT ob.*,
@@ -1182,7 +1183,7 @@ router.get("/waiter/orders", requireRoles(["admin", "staff"]), async (req, res) 
                     FROM print_jobs
                    GROUP BY order_id
               ) pj ON pj.order_id = ob.id
-            ORDER BY ob.created_at DESC
+            ORDER BY ob.priority DESC, ob.created_at DESC
         `,
             [restaurantId, statuses, tableId, limit]
         );
@@ -1221,6 +1222,7 @@ router.get("/waiter/orders", requireRoles(["admin", "staff"]), async (req, res) 
                 subtotal,
                 tip: tipVal,
                 total: roundMoney(totalPrice),
+                priority: Boolean(row.priority),
                 created_at: createdAt,
                 updated_at: updatedAt,
                 items,
@@ -1386,6 +1388,39 @@ router.patch("/waiter/:orderId/status", requireRoles(["admin", "staff"]), async 
         });
     } catch (err) {
         console.error("PATCH /orders/waiter/:orderId/status error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+
+router.patch("/waiter/:orderId/priority", requireRoles(["admin", "staff"]), async (req, res) => {
+    const restaurantId = pickRestaurantId(req);
+    const orderId = Number(req.params.orderId);
+    const priority = Boolean(req.body?.priority);
+
+    if (!Number.isFinite(orderId) || orderId <= 0) {
+        return res.status(400).json({ error: "Invalid orderId" });
+    }
+
+    try {
+        const updateRes = await pool.query(
+            `
+            UPDATE orders
+               SET priority = $1
+             WHERE id = $2
+               AND restaurant_id = $3
+            RETURNING id, priority
+        `,
+            [priority, orderId, restaurantId]
+        );
+
+        if (updateRes.rowCount === 0) {
+            return res.status(404).json({ error: "Order not found for this restaurant" });
+        }
+
+        const row = updateRes.rows[0];
+        return res.json({ id: Number(row.id), priority: Boolean(row.priority) });
+    } catch (err) {
+        console.error("PATCH /orders/waiter/:orderId/priority error:", err);
         return res.status(500).json({ error: "Server error" });
     }
 });

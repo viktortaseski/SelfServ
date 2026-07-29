@@ -211,6 +211,7 @@ async function ensureBaseTables() {
             status TEXT NOT NULL DEFAULT 'open',
             created_by_role order_created_by_role NOT NULL DEFAULT 'customer',
             print_payload JSONB,
+            priority BOOLEAN NOT NULL DEFAULT FALSE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
     `);
@@ -404,6 +405,21 @@ async function ensureOrderPrintPayloadColumn() {
     }
 }
 
+async function ensureOrderPriorityColumn() {
+    try {
+        await pool.query(`
+            ALTER TABLE orders
+            ADD COLUMN IF NOT EXISTS priority BOOLEAN NOT NULL DEFAULT FALSE
+        `);
+    } catch (err) {
+        if (err.code === "42P01") {
+            console.warn("[migrations] orders table missing; skipping priority column");
+            return;
+        }
+        throw err;
+    }
+}
+
 async function ensurePerformanceIndexes() {
     const statements = [
         `
@@ -457,6 +473,7 @@ async function runMigrations() {
     await ensureRestaurantLogoColumn();
     await ensureRestaurantCategoryImageColumn();
     await ensureOrderPrintPayloadColumn();
+    await ensureOrderPriorityColumn();
     await ensurePerformanceIndexes();
 }
 

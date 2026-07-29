@@ -88,6 +88,9 @@ function WaiterOrdersScreen({
                             >
                                 <div className="waiter-order-card__headline">
                                     <span className="waiter-order-card__title">
+                                        {order.priority ? (
+                                            <span className="waiter-order-card__priority-badge">!</span>
+                                        ) : null}
                                         {order.tableName} · #{order.id}
                                     </span>
                                     <span className="waiter-order-card__meta">

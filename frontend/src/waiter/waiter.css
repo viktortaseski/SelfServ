@@ -434,6 +434,14 @@
     background: #4172d6;
 }
 
+.waiter-quickbar__btn--priority {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.waiter-quickbar__btn--priority-active {
+    background: #b5820a;
+}
+
 .waiter-quickbar__btn:disabled {
     opacity: 0.35;
     cursor: not-allowed;
@@ -658,6 +666,21 @@
     text-transform: uppercase;
     letter-spacing: 0.02em;
     color: #1b2a3d;
+}
+
+.waiter-order-card__priority-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: #b5820a;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    vertical-align: middle;
 }
 
 .waiter-order-card__meta {

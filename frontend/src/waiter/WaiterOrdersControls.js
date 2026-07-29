@@ -4,11 +4,13 @@ function WaiterOrdersControls({
     onMerge,
     onSplit,
     onClose,
+    onTogglePriority,
     mergeBusy,
-    closeBusy,
+    orderBusy,
     refreshing,
 }) {
     const canAct = !!selectedOrder;
+    const isPriority = !!selectedOrder?.priority;
 
     return (
         <div className="waiter-quickbar">
@@ -33,9 +35,19 @@ function WaiterOrdersControls({
                 </button>
                 <button
                     type="button"
+                    className={`waiter-quickbar__btn waiter-quickbar__btn--note waiter-quickbar__btn--priority ${
+                        isPriority ? "waiter-quickbar__btn--priority-active" : ""
+                    }`}
+                    onClick={onTogglePriority}
+                    disabled={!canAct || orderBusy}
+                >
+                    {orderBusy ? "…" : isPriority ? "Unflag" : "Priority"}
+                </button>
+                <button
+                    type="button"
                     className="waiter-quickbar__btn waiter-quickbar__btn--note waiter-quickbar__btn--split"
                     onClick={onSplit}
-                    disabled={!canAct || mergeBusy || closeBusy}
+                    disabled={!canAct || mergeBusy || orderBusy}
                 >
                     Split
                 </button>
@@ -51,9 +63,9 @@ function WaiterOrdersControls({
                     type="button"
                     className="waiter-quickbar__btn waiter-quickbar__btn--note waiter-quickbar__btn--minus"
                     onClick={onClose}
-                    disabled={!canAct || closeBusy}
+                    disabled={!canAct || orderBusy}
                 >
-                    {closeBusy ? "…" : "Close"}
+                    {orderBusy ? "…" : "Close"}
                 </button>
             </div>
         </div>
