@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { formatMoney } from "./money";
 
 const STATUS_FILTERS = [
@@ -36,9 +35,9 @@ function WaiterOrdersScreen({
     onReprint,
     onMarkPaid,
     busyOrderId,
+    selectedOrderId,
+    onSelectOrder,
 }) {
-    const [expandedId, setExpandedId] = useState(null);
-
     const hasOrders = Array.isArray(orders) && orders.length > 0;
 
     return (
@@ -64,20 +63,26 @@ function WaiterOrdersScreen({
 
             <div className="waiter-order-list">
                 {orders.map((order) => {
-                    const isExpanded = expandedId === order.id;
+                    const isExpanded = selectedOrderId === order.id;
                     const isBusy = busyOrderId === order.id;
                     const statusLabel = STATUS_LABELS[order.status] || "Unknown";
+                    const selectOrder = () => onSelectOrder?.(isExpanded ? null : order);
                     return (
-                        <div key={order.id} className="waiter-order-card">
+                        <div
+                            key={order.id}
+                            className={`waiter-order-card ${
+                                isExpanded ? "waiter-order-card--selected" : ""
+                            }`}
+                        >
                             <div
                                 className="waiter-order-card__header"
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => setExpandedId(isExpanded ? null : order.id)}
+                                onClick={selectOrder}
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" || e.key === " ") {
                                         e.preventDefault();
-                                        setExpandedId(isExpanded ? null : order.id);
+                                        selectOrder();
                                     }
                                 }}
                             >

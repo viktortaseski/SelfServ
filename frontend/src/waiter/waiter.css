@@ -400,14 +400,14 @@
 }
 
 .waiter-quickbar__btn {
-    height: 48px;
-    min-width: 48px;
-    padding: 0 14px;
+    height: 60px;
+    min-width: 60px;
+    padding: 0 16px;
     border: none;
     border-radius: 4px;
     background: rgba(255, 255, 255, 0.16);
     color: #fff;
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 700;
     cursor: pointer;
     display: flex;
@@ -430,6 +430,46 @@
 }
 
 .waiter-quickbar__btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.waiter-orders-controls {
+    display: flex;
+    align-items: center;
+    justify-content: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #1b2a3d;
+}
+
+.waiter-orders-controls__btn {
+    flex: 1 1 0;
+    height: 60px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.waiter-orders-controls__btn--merge {
+    background: #2f7a3d;
+}
+
+.waiter-orders-controls__btn--close {
+    background: #a4262c;
+}
+
+.waiter-orders-controls__btn:disabled {
     opacity: 0.35;
     cursor: not-allowed;
 }
@@ -624,6 +664,12 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+.waiter-order-card--selected {
+    border: 2px solid #4172d6;
+    background: #eef3fd;
+    padding: 9px;
 }
 
 .waiter-order-card__header {

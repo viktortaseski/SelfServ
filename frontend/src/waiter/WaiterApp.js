@@ -6,6 +6,7 @@ import WaiterNav from "./WaiterNav";
 import WaiterQuickControls from "./WaiterQuickControls";
 import WaiterNoteModal from "./WaiterNoteModal";
 import WaiterOrdersScreen from "./WaiterOrdersScreen";
+import WaiterOrdersControls from "./WaiterOrdersControls";
 import { formatTableLabel } from "./tableLabel";
 import {
     fetchWaiterTables,
@@ -58,6 +59,7 @@ function WaiterApp({ user, onLogout }) {
     const [ordersError, setOrdersError] = useState("");
     const [ordersFilter, setOrdersFilter] = useState("open");
     const [orderActionBusyId, setOrderActionBusyId] = useState(null);
+    const [selectedManageOrder, setSelectedManageOrder] = useState(null);
 
     const [noteEditor, setNoteEditor] = useState(createNoteEditorState);
 
@@ -293,16 +295,28 @@ function WaiterApp({ user, onLogout }) {
 
     const handleCloseOrdersPanel = useCallback(() => {
         setManageOrdersOpen(false);
+        setSelectedManageOrder(null);
     }, []);
 
     const handleOrdersFilterChange = useCallback((value) => {
         const next = value || "open";
         setOrdersFilter(next);
+        setSelectedManageOrder(null);
     }, []);
 
     const handleOrdersRefresh = useCallback(() => {
         loadOrders(ordersFilter);
     }, [loadOrders, ordersFilter]);
+
+    const handleMergeSelectedOrder = useCallback(async () => {
+        if (!selectedManageOrder?.tableId) return;
+        await handleMergeOrders({
+            id: selectedManageOrder.tableId,
+            name: selectedManageOrder.tableName,
+        });
+        setSelectedManageOrder(null);
+        loadOrders(ordersFilter);
+    }, [handleMergeOrders, selectedManageOrder, loadOrders, ordersFilter]);
 
     const handleReprintExistingOrder = useCallback(
         async (order) => {
@@ -583,24 +597,7 @@ function WaiterApp({ user, onLogout }) {
                 </div>
 
                 <div className="waiter-topbar__actions">
-                    {manageOrdersOpen ? (
-                        <>
-                            <button
-                                type="button"
-                                className="waiter-btn waiter-btn--primary"
-                                onClick={handleOrdersRefresh}
-                            >
-                                Refresh
-                            </button>
-                            <button
-                                type="button"
-                                className="waiter-btn waiter-btn--ghost"
-                                onClick={handleCloseOrdersPanel}
-                            >
-                                Close
-                            </button>
-                        </>
-                    ) : step === "tables" ? (
+                    {manageOrdersOpen ? null : step === "tables" ? (
                         <button
                             type="button"
                             className="waiter-btn waiter-btn--ghost"
@@ -677,6 +674,8 @@ function WaiterApp({ user, onLogout }) {
                         onReprint={handleReprintExistingOrder}
                         onMarkPaid={handleMarkOrderPaid}
                         busyOrderId={orderActionBusyId}
+                        selectedOrderId={selectedManageOrder?.id ?? null}
+                        onSelectOrder={setSelectedManageOrder}
                     />
                 ) : (
                     <>
@@ -728,6 +727,17 @@ function WaiterApp({ user, onLogout }) {
                         onIncrease={() => selectedItem && incrementItem(selectedItem)}
                         onDecrease={() => selectedItem && decrementItem(selectedItem)}
                         onRequestNote={() => selectedItem && openNoteEditor(selectedItem, selectedNote)}
+                    />
+                ) : null}
+
+                {manageOrdersOpen ? (
+                    <WaiterOrdersControls
+                        onRefresh={handleOrdersRefresh}
+                        onClose={handleCloseOrdersPanel}
+                        onMerge={handleMergeSelectedOrder}
+                        canMerge={!!selectedManageOrder?.tableId}
+                        busy={tableActionBusy}
+                        refreshing={loadingOrders}
                     />
                 ) : null}
 
