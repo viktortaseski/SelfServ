@@ -114,8 +114,9 @@ export async function closeTableOrders(tableId) {
 }
 
 function normalizeOrderItem(raw) {
-    if (!raw) return { name: "", quantity: 0, price: 0, note: null };
+    if (!raw) return { id: null, name: "", quantity: 0, price: 0, note: null };
     return {
+        id: raw.id != null && Number.isFinite(Number(raw.id)) ? Number(raw.id) : null,
         name: raw.name || "",
         quantity: Number(raw.quantity || 0),
         price: Number(raw.price || 0),
@@ -163,6 +164,20 @@ export async function fetchWaiterOrders({ status, tableId, limit } = {}) {
 export async function reprintWaiterOrder(orderId) {
     const headers = buildAuthHeaders();
     const { data } = await api.post(`/orders/waiter/${orderId}/reprint`, {}, { headers });
+    return data;
+}
+
+export async function splitWaiterOrder(orderId, items) {
+    const headers = buildAuthHeaders();
+    const payload = {
+        items: Array.isArray(items)
+            ? items.map((item) => ({
+                  orderItemId: Number(item.orderItemId),
+                  quantity: Number(item.quantity) || 0,
+              }))
+            : [],
+    };
+    const { data } = await api.post(`/orders/waiter/${orderId}/split`, payload, { headers });
     return data;
 }
 

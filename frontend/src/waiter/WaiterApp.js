@@ -7,6 +7,7 @@ import WaiterQuickControls from "./WaiterQuickControls";
 import WaiterNoteModal from "./WaiterNoteModal";
 import WaiterOrdersScreen from "./WaiterOrdersScreen";
 import WaiterOrdersControls from "./WaiterOrdersControls";
+import WaiterSplitModal from "./WaiterSplitModal";
 import { formatTableLabel } from "./tableLabel";
 import {
     fetchWaiterTables,
@@ -17,6 +18,7 @@ import {
     fetchWaiterOrders,
     reprintWaiterOrder,
     updateWaiterOrderStatus,
+    splitWaiterOrder,
 } from "./waiterApi";
 import "./waiter.css";
 
@@ -60,6 +62,8 @@ function WaiterApp({ user, onLogout }) {
     const [ordersFilter, setOrdersFilter] = useState("open");
     const [orderActionBusyId, setOrderActionBusyId] = useState(null);
     const [selectedManageOrder, setSelectedManageOrder] = useState(null);
+    const [splitModalOpen, setSplitModalOpen] = useState(false);
+    const [splitSubmitting, setSplitSubmitting] = useState(false);
 
     const [noteEditor, setNoteEditor] = useState(createNoteEditorState);
 
@@ -293,11 +297,6 @@ function WaiterApp({ user, onLogout }) {
         setManageOrdersOpen(true);
     }, []);
 
-    const handleCloseOrdersPanel = useCallback(() => {
-        setManageOrdersOpen(false);
-        setSelectedManageOrder(null);
-    }, []);
-
     const handleOrdersFilterChange = useCallback((value) => {
         const next = value || "open";
         setOrdersFilter(next);
@@ -317,6 +316,45 @@ function WaiterApp({ user, onLogout }) {
         setSelectedManageOrder(null);
         loadOrders(ordersFilter);
     }, [handleMergeOrders, selectedManageOrder, loadOrders, ordersFilter]);
+
+    const handleOpenSplitOrder = useCallback(() => {
+        if (!selectedManageOrder) return;
+        setSplitModalOpen(true);
+    }, [selectedManageOrder]);
+
+    const handleCloseSplitModal = useCallback(() => {
+        setSplitModalOpen(false);
+    }, []);
+
+    const handleConfirmSplitOrder = useCallback(
+        async (items) => {
+            if (!selectedManageOrder?.id) return;
+            setSplitSubmitting(true);
+            setFeedback(null);
+            try {
+                await splitWaiterOrder(selectedManageOrder.id, items);
+                setFeedback({
+                    kind: "success",
+                    message: `Split a new check off order #${selectedManageOrder.id}.`,
+                });
+                setSplitModalOpen(false);
+                setSelectedManageOrder(null);
+                await loadOrders(ordersFilter);
+            } catch (err) {
+                const msg =
+                    err?.response?.data?.error ||
+                    err?.message ||
+                    "Failed to split this order.";
+                setFeedback({
+                    kind: "error",
+                    message: msg,
+                });
+            } finally {
+                setSplitSubmitting(false);
+            }
+        },
+        [selectedManageOrder, loadOrders, ordersFilter]
+    );
 
     const handleReprintExistingOrder = useCallback(
         async (order) => {
@@ -380,6 +418,12 @@ function WaiterApp({ user, onLogout }) {
         },
         [loadOrders, ordersFilter, loadTables]
     );
+
+    const handleCloseSelectedOrder = useCallback(async () => {
+        if (!selectedManageOrder) return;
+        await handleMarkOrderPaid(selectedManageOrder);
+        setSelectedManageOrder(null);
+    }, [handleMarkOrderPaid, selectedManageOrder]);
 
     const resetOrder = useCallback(() => {
         setOrderLines(new Map());
@@ -732,11 +776,13 @@ function WaiterApp({ user, onLogout }) {
 
                 {manageOrdersOpen ? (
                     <WaiterOrdersControls
+                        selectedOrder={selectedManageOrder}
                         onRefresh={handleOrdersRefresh}
-                        onClose={handleCloseOrdersPanel}
                         onMerge={handleMergeSelectedOrder}
-                        canMerge={!!selectedManageOrder?.tableId}
-                        busy={tableActionBusy}
+                        onSplit={handleOpenSplitOrder}
+                        onClose={handleCloseSelectedOrder}
+                        mergeBusy={tableActionBusy}
+                        closeBusy={orderActionBusyId === selectedManageOrder?.id}
                         refreshing={loadingOrders}
                     />
                 ) : null}
@@ -760,6 +806,14 @@ function WaiterApp({ user, onLogout }) {
                 onChange={(val) => setNoteEditor((prev) => ({ ...prev, value: val }))}
                 onClose={closeNoteEditor}
                 onSave={saveNoteEditor}
+            />
+
+            <WaiterSplitModal
+                open={splitModalOpen}
+                order={selectedManageOrder}
+                onClose={handleCloseSplitModal}
+                onConfirm={handleConfirmSplitOrder}
+                submitting={splitSubmitting}
             />
         </div>
     );

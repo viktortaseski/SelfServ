@@ -930,6 +930,181 @@ router.post("/waiter/close", requireRoles(["admin", "staff"]), async (req, res) 
     }
 });
 
+router.post("/waiter/:orderId/split", requireRoles(["admin", "staff"]), async (req, res) => {
+    const restaurantId = pickRestaurantId(req);
+    const orderId = Number(req.params.orderId);
+    const { items } = req.body || {};
+
+    if (!Number.isFinite(orderId) || orderId <= 0) {
+        return res.status(400).json({ error: "Invalid orderId" });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Items to split are required" });
+    }
+
+    const requestedSplits = new Map();
+    for (const raw of items) {
+        const itemId = Number(raw?.orderItemId);
+        const quantity = Math.round(Number(raw?.quantity) || 0);
+        if (!Number.isFinite(itemId) || itemId <= 0 || quantity <= 0) continue;
+        requestedSplits.set(itemId, (requestedSplits.get(itemId) || 0) + quantity);
+    }
+    if (requestedSplits.size === 0) {
+        return res.status(400).json({ error: "No valid items to split" });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const orderRes = await client.query(
+            `
+            SELECT id, table_id, status, tip, created_by_role
+            FROM orders
+            WHERE id = $1
+              AND restaurant_id = $2
+            LIMIT 1
+            FOR UPDATE
+        `,
+            [orderId, restaurantId]
+        );
+        if (orderRes.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ error: "Order not found for this restaurant" });
+        }
+        const order = orderRes.rows[0];
+        if (order.status !== "open") {
+            await client.query("ROLLBACK");
+            return res.status(400).json({ error: "Only open orders can be split" });
+        }
+
+        const itemIds = [...requestedSplits.keys()];
+        const itemsRes = await client.query(
+            `
+            SELECT id, restaurant_product_id, quantity, total_price, note
+            FROM order_items
+            WHERE order_id = $1
+              AND id = ANY($2)
+            FOR UPDATE
+        `,
+            [orderId, itemIds]
+        );
+
+        const rowsById = new Map(itemsRes.rows.map((row) => [Number(row.id), row]));
+        const missing = itemIds.filter((id) => !rowsById.has(id));
+        if (missing.length) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                error: "Some items do not belong to this order",
+                missingItems: missing,
+            });
+        }
+
+        const newLines = [];
+        for (const [itemId, splitQty] of requestedSplits) {
+            const row = rowsById.get(itemId);
+            const currentQty = Number(row.quantity);
+            if (splitQty > currentQty) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ error: "Cannot split more than the current quantity" });
+            }
+            const unitPrice = currentQty > 0 ? Number(row.total_price) / currentQty : 0;
+            const remainingQty = currentQty - splitQty;
+
+            newLines.push({
+                restaurant_product_id: row.restaurant_product_id,
+                quantity: splitQty,
+                total_price: roundMoney(unitPrice * splitQty),
+                note: row.note,
+            });
+
+            if (remainingQty <= 0) {
+                await client.query("DELETE FROM order_items WHERE id = $1", [itemId]);
+            } else {
+                await client.query(
+                    "UPDATE order_items SET quantity = $1, total_price = $2 WHERE id = $3",
+                    [remainingQty, roundMoney(unitPrice * remainingQty), itemId]
+                );
+            }
+        }
+
+        const newOrderRes = await client.query(
+            `
+            INSERT INTO orders (restaurant_id, table_id, total_price, tip, status, created_by_role)
+            VALUES ($1, $2, 0, 0, 'open', $3)
+            RETURNING id
+        `,
+            [restaurantId, order.table_id, order.created_by_role || "staff"]
+        );
+        const newOrderId = newOrderRes.rows[0].id;
+
+        for (const line of newLines) {
+            await client.query(
+                `
+                INSERT INTO order_items (order_id, restaurant_product_id, quantity, total_price, note)
+                VALUES ($1, $2, $3, $4, $5)
+            `,
+                [newOrderId, line.restaurant_product_id, line.quantity, line.total_price, line.note]
+            );
+        }
+
+        const newSubtotalRes = await client.query(
+            "SELECT COALESCE(SUM(total_price), 0) AS subtotal FROM order_items WHERE order_id = $1",
+            [newOrderId]
+        );
+        const newSubtotal = roundMoney(newSubtotalRes.rows[0]?.subtotal || 0);
+        await client.query("UPDATE orders SET total_price = $1 WHERE id = $2", [
+            newSubtotal,
+            newOrderId,
+        ]);
+
+        const remainingRes = await client.query(
+            "SELECT COUNT(*)::int AS count, COALESCE(SUM(total_price), 0) AS subtotal FROM order_items WHERE order_id = $1",
+            [orderId]
+        );
+        const remainingCount = Number(remainingRes.rows[0]?.count || 0);
+        const remainingSubtotal = roundMoney(remainingRes.rows[0]?.subtotal || 0);
+
+        if (remainingCount === 0) {
+            await client.query(
+                `
+                UPDATE orders
+                   SET status = 'void',
+                       total_price = 0,
+                       tip = 0,
+                       print_payload = NULL
+                 WHERE id = $1
+            `,
+                [orderId]
+            );
+        } else {
+            await client.query(
+                `
+                UPDATE orders
+                   SET total_price = $1,
+                       print_payload = NULL
+                 WHERE id = $2
+            `,
+                [remainingSubtotal, orderId]
+            );
+        }
+
+        await client.query("COMMIT");
+
+        return res.status(201).json({
+            orderId,
+            newOrderId,
+            remainingItemCount: remainingCount,
+        });
+    } catch (err) {
+        await client.query("ROLLBACK").catch(() => {});
+        console.error("POST /orders/waiter/:orderId/split error:", err);
+        return res.status(500).json({ error: "Server error" });
+    } finally {
+        client.release();
+    }
+});
+
 router.get("/waiter/orders", requireRoles(["admin", "staff"]), async (req, res) => {
     try {
         const restaurantId = pickRestaurantId(req);
@@ -978,6 +1153,7 @@ router.get("/waiter/orders", requireRoles(["admin", "staff"]), async (req, res) 
                     COALESCE(SUM(oi.total_price), 0) AS subtotal,
                     JSON_AGG(
                         JSON_BUILD_OBJECT(
+                            'id', oi.id,
                             'name', p.name,
                             'quantity', oi.quantity,
                             'price', CASE WHEN oi.quantity > 0 THEN oi.total_price / oi.quantity ELSE 0 END,
@@ -1028,6 +1204,7 @@ router.get("/waiter/orders", requireRoles(["admin", "staff"]), async (req, res) 
             const updatedAt = createdAt;
             const items = Array.isArray(row.items)
                 ? row.items.map((item) => ({
+                      id: Number(item?.id) || null,
                       name: item?.name || "",
                       quantity: Number(item?.quantity || 0),
                       price: roundMoney(item?.price || 0),

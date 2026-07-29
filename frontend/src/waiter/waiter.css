@@ -395,6 +395,7 @@
 .waiter-quickbar__actions {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
     flex-shrink: 0;
 }
@@ -429,47 +430,11 @@
     background: #a4262c;
 }
 
+.waiter-quickbar__btn--split {
+    background: #4172d6;
+}
+
 .waiter-quickbar__btn:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-}
-
-.waiter-orders-controls {
-    display: flex;
-    align-items: center;
-    justify-content: stretch;
-    gap: 8px;
-    padding: 10px 12px;
-    background: #1b2a3d;
-}
-
-.waiter-orders-controls__btn {
-    flex: 1 1 0;
-    height: 60px;
-    padding: 0 14px;
-    border: none;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.16);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.waiter-orders-controls__btn--merge {
-    background: #2f7a3d;
-}
-
-.waiter-orders-controls__btn--close {
-    background: #a4262c;
-}
-
-.waiter-orders-controls__btn:disabled {
     opacity: 0.35;
     cursor: not-allowed;
 }
@@ -866,6 +831,83 @@
 .waiter-note-modal__btn--save {
     background: #2f7a3d;
     color: #fff;
+}
+
+.waiter-split-modal {
+    max-width: 460px;
+}
+
+.waiter-split-modal__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.waiter-split-modal__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px;
+    border: 1px solid #e1e6ee;
+    border-radius: 4px;
+}
+
+.waiter-split-modal__row-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.waiter-split-modal__row-name {
+    font-weight: 700;
+    color: #1b2a3d;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.waiter-split-modal__row-meta {
+    font-size: 12px;
+    color: #7a869a;
+}
+
+.waiter-split-modal__stepper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.waiter-split-modal__stepper-btn {
+    height: 36px;
+    width: 36px;
+    border: none;
+    border-radius: 4px;
+    background: #eef1f5;
+    color: #1b2a3d;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.waiter-split-modal__stepper-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.waiter-split-modal__stepper-value {
+    min-width: 20px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 16px;
+    color: #1b2a3d;
 }
 
 @media (min-width: 640px) {
