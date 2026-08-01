@@ -1,12 +1,13 @@
 import React, { memo } from "react";
 import { fmtMKD, PLACEHOLDER } from "../common/format";
 
-function PickCard({ item, onAdd }) {
+function PickCard({ item, qty = 0, onAdd, onInfo }) {
     if (!item) return null;
 
     const isLongName = (item.name || "").length > 18;
 
     const handleAdd = () => onAdd?.(item);
+    const handleInfo = () => onInfo?.(item);
     const handleImgError = (e) => {
         e.currentTarget.src = PLACEHOLDER;
     };
@@ -20,15 +21,22 @@ function PickCard({ item, onAdd }) {
                 loading="lazy"
                 decoding="async"
                 fetchPriority="low"
-                onClick={handleAdd}
+                onClick={handleInfo}
                 onError={handleImgError}
             />
             <div
                 className={`pick-meta ${isLongName ? "pick-meta--tight" : ""}`}
-                onClick={handleAdd}
+                onClick={handleInfo}
             >
-                <div className="pick-name">{item.name}</div>
-                <div className="pick-price">{fmtMKD(item.price || 0)}</div>
+                <div className="pick-meta-text">
+                    <div className="pick-name">{item.name}</div>
+                    <div className="pick-price">{fmtMKD(item.price || 0)}</div>
+                </div>
+                {qty > 0 && (
+                    <span className="pick-qty" aria-live="polite">
+                        {qty}
+                    </span>
+                )}
             </div>
             <button
                 className="pick-add"
@@ -47,6 +55,7 @@ export default memo(
         const a = prev.item || {};
         const b = next.item || {};
         return (
+            prev.qty === next.qty &&
             a.id === b.id &&
             a.name === b.name &&
             a.price === b.price &&

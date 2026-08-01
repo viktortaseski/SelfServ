@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import api from "../api";
 import "./components-style/Menu.css";
 import MenuItem from "./menu/MenuItem";
 import PickCard from "./menu/PickCard";
+import ItemDetailSheet from "./menu/ItemDetailSheet";
 import { t } from "../i18n";
 
 const FALLBACK_CATEGORIES = ["coffee", "drinks", "food", "desserts", "other"];
@@ -10,6 +11,7 @@ const FALLBACK_CATEGORIES = ["coffee", "drinks", "food", "desserts", "other"];
 function Menu({
     addToCart,
     removeFromCart,
+    clearFromCart,
     cart = [],
     search,
     category,
@@ -22,6 +24,10 @@ function Menu({
     const [items, setItems] = useState([]);
     const [topPicks, setTopPicks] = useState([]);
     const [availableCategories, setAvailableCategories] = useState([]);
+
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [isSheetClosing, setIsSheetClosing] = useState(false);
+    const sheetCloseTimer = useRef(null);
 
     const [localSearch, setLocalSearch] = useState("");
     const hasExternalSearch = typeof search === "string";
@@ -66,6 +72,33 @@ function Menu({
         },
         [removeFromCart, show, qtyById]
     );
+
+    const handleInfo = useCallback((item) => {
+        if (sheetCloseTimer.current) {
+            clearTimeout(sheetCloseTimer.current);
+            sheetCloseTimer.current = null;
+        }
+        setIsSheetClosing(false);
+        setSelectedItem(item);
+    }, []);
+
+    const closeItemDetail = useCallback(() => {
+        setIsSheetClosing((already) => {
+            if (already) return already;
+            sheetCloseTimer.current = setTimeout(() => {
+                sheetCloseTimer.current = null;
+                setIsSheetClosing(false);
+                setSelectedItem(null);
+            }, 320);
+            return true;
+        });
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (sheetCloseTimer.current) clearTimeout(sheetCloseTimer.current);
+        };
+    }, []);
 
     // Load entire menu once (client filters by category/search)
     useEffect(() => {
@@ -230,6 +263,7 @@ function Menu({
                             qty={qtyById.get(item.id) || 0}
                             onAdd={handleAdd}
                             onRemove={handleRemove}
+                            onInfo={handleInfo}
                         />
                     ))}
                 </ul>
@@ -247,7 +281,13 @@ function Menu({
                         role="region"
                     >
                         {topPicks.map((item) => (
-                            <PickCard key={item.id} item={item} onAdd={handleAdd} />
+                            <PickCard
+                                key={item.id}
+                                item={item}
+                                qty={qtyById.get(item.id) || 0}
+                                onAdd={handleAdd}
+                                onInfo={handleInfo}
+                            />
                         ))}
                     </div>
                 </>
@@ -280,11 +320,22 @@ function Menu({
                                     qty={qtyById.get(item.id) || 0}
                                     onAdd={handleAdd}
                                     onRemove={handleRemove}
+                                    onInfo={handleInfo}
                                 />
                             ))}
                         </ul>
                     );
                 })}
+
+            <ItemDetailSheet
+                item={selectedItem}
+                qty={selectedItem ? qtyById.get(selectedItem.id) || 0 : 0}
+                onAdd={handleAdd}
+                onRemove={handleRemove}
+                onClear={clearFromCart}
+                onClose={closeItemDetail}
+                closing={isSheetClosing}
+            />
         </div>
     );
 }

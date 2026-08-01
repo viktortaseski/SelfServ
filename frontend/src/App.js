@@ -494,6 +494,15 @@ function App() {
     });
   };
 
+  const clearFromCart = (item) => {
+    setCart((prev) => {
+      const existing = prev.find((i) => i.id === item.id);
+      if (!existing) return prev;
+      toast(`${item.name} removed from order.`);
+      return prev.filter((i) => i.id !== item.id);
+    });
+  };
+
   const cartCount = useMemo(
     () => cart.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0),
     [cart]
@@ -666,6 +675,7 @@ function App() {
           <Menu
             addToCart={addToCart}
             removeFromCart={removeFromCart}
+            clearFromCart={clearFromCart}
             cart={cart}
             category={category}
             setCategory={setCategoryFromScroll}

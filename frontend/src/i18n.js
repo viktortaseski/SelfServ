@@ -39,6 +39,8 @@ const I18N = {
         menu: {
             noItems: "No items found.",
             topPicks: "Top Picks",
+            close: "Close",
+            clear: "Clear",
         },
 
         orders: {
@@ -100,6 +102,8 @@ const I18N = {
         menu: {
             noItems: "Нема пронајдени артикли.",
             topPicks: "Најпопуларни",
+            close: "Затвори",
+            clear: "Избриши",
         },
 
         orders: {

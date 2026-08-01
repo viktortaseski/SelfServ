@@ -9,6 +9,7 @@ function MenuItem({
     qty = 0,
     onAdd,
     onRemove,
+    onInfo,
     className = "",
     variant = "menu",
     note = "",
@@ -51,7 +52,7 @@ function MenuItem({
             {/* INFO */}
             <div
                 className="item-info"
-                onClick={variant === "menu" ? () => onAdd?.(item) : undefined}
+                onClick={variant === "menu" ? () => onInfo?.(item) : undefined}
             >
                 {variant === "cart" && (
                     <button
