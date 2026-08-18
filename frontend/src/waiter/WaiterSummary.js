@@ -1,10 +1,8 @@
 import { formatMoney } from "./money";
 
-function WaiterSummary({ items = [], total, selectedItemId, onSelectItem, submitting, error }) {
+function WaiterSummary({ items = [], total, selectedItemId, onSelectItem, submitting }) {
     return (
         <section className="waiter-section">
-            {error ? <div className="waiter-error">{error}</div> : null}
-
             <div className="waiter-receipt">
                 {items.map((line) => {
                     const { item, quantity, note } = line;

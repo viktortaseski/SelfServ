@@ -6,6 +6,7 @@ import WaiterNav from "./WaiterNav";
 import WaiterQuickControls from "./WaiterQuickControls";
 import WaiterNoteModal from "./WaiterNoteModal";
 import WaiterOrdersScreen from "./WaiterOrdersScreen";
+import WaiterTableDetails from "./WaiterTableDetails";
 import WaiterOrdersControls from "./WaiterOrdersControls";
 import WaiterSplitModal from "./WaiterSplitModal";
 import { formatTableLabel } from "./tableLabel";
@@ -14,7 +15,6 @@ import {
     fetchWaiterMenu,
     createWaiterOrder,
     mergeTableOrders,
-    closeTableOrders,
     fetchWaiterOrders,
     reprintWaiterOrder,
     updateWaiterOrderStatus,
@@ -38,12 +38,10 @@ function WaiterApp({ user, onLogout }) {
     const [stepIdx, setStepIdx] = useState(0);
     const [tables, setTables] = useState([]);
     const [loadingTables, setLoadingTables] = useState(false);
-    const [tablesError, setTablesError] = useState("");
     const [selectedTableId, setSelectedTableId] = useState(null);
 
     const [menuItems, setMenuItems] = useState([]);
     const [loadingMenu, setLoadingMenu] = useState(false);
-    const [menuError, setMenuError] = useState("");
 
     const [searchText, setSearchText] = useState("");
     const [activeCategory, setActiveCategory] = useState("all");
@@ -54,13 +52,11 @@ function WaiterApp({ user, onLogout }) {
     const [accountOpen, setAccountOpen] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [submitting, setSubmitting] = useState(false);
-    const [submitError, setSubmitError] = useState("");
     const [tableActionBusy, setTableActionBusy] = useState(false);
     const [manageOrdersOpen, setManageOrdersOpen] = useState(false);
     const [detailsTableId, setDetailsTableId] = useState(null);
     const [waiterOrders, setWaiterOrders] = useState([]);
     const [loadingOrders, setLoadingOrders] = useState(false);
-    const [ordersError, setOrdersError] = useState("");
     const [ordersFilter, setOrdersFilter] = useState("open");
     const [orderActionBusyId, setOrderActionBusyId] = useState(null);
     const [selectedManageOrder, setSelectedManageOrder] = useState(null);
@@ -133,19 +129,23 @@ function WaiterApp({ user, onLogout }) {
         return Array.from(map.values());
     }, [menuItems]);
 
+    const isDetailsPay = detailsTableId != null;
+    const paySelectedDisabled =
+        !selectedManageOrder || orderActionBusyId === selectedManageOrder?.id;
+
     const canGoBack = ordersOverlayOpen ? true : stepIdx > 0 && !tableActionBusy && !submitting;
-    const canGoForward =
-        step === "tables"
-            ? !!selectedTable && !tableActionBusy
-            : step === "items"
-            ? orderItems.length > 0 && !tableActionBusy
-            : step === "summary"
-            ? orderItems.length > 0 && !submitting && !tableActionBusy
-            : false;
+    const canGoForward = isDetailsPay
+        ? !paySelectedDisabled
+        : step === "tables"
+        ? !!selectedTable && !tableActionBusy
+        : step === "items"
+        ? orderItems.length > 0 && !tableActionBusy
+        : step === "summary"
+        ? orderItems.length > 0 && !submitting && !tableActionBusy
+        : false;
 
     const loadTables = useCallback(async () => {
         setLoadingTables(true);
-        setTablesError("");
         try {
             const data = await fetchWaiterTables();
             setTables(Array.isArray(data) ? data : []);
@@ -154,7 +154,7 @@ function WaiterApp({ user, onLogout }) {
                 err?.response?.data?.error ||
                 err?.message ||
                 "Unable to load tables. Please try again.";
-            setTablesError(msg);
+            setFeedback({ kind: "error", message: msg });
         } finally {
             setLoadingTables(false);
         }
@@ -162,7 +162,6 @@ function WaiterApp({ user, onLogout }) {
 
     const loadMenu = useCallback(async () => {
         setLoadingMenu(true);
-        setMenuError("");
         try {
             const result = await fetchWaiterMenu({ restaurantId });
             if (Array.isArray(result?.items)) {
@@ -186,7 +185,7 @@ function WaiterApp({ user, onLogout }) {
                 err?.response?.data?.error ||
                 err?.message ||
                 "Unable to load menu. Please try again.";
-            setMenuError(msg);
+            setFeedback({ kind: "error", message: msg });
             setMenuItems([]);
         } finally {
             setLoadingMenu(false);
@@ -197,7 +196,6 @@ function WaiterApp({ user, onLogout }) {
         async (statusValue) => {
             const statusParam = statusValue || ordersFilter || "open";
             setLoadingOrders(true);
-            setOrdersError("");
             try {
                 const data = await fetchWaiterOrders({
                     status: statusParam,
@@ -209,7 +207,7 @@ function WaiterApp({ user, onLogout }) {
                     err?.response?.data?.error ||
                     err?.message ||
                     "Unable to load orders. Please try again.";
-                setOrdersError(msg);
+                setFeedback({ kind: "error", message: msg });
                 setWaiterOrders([]);
             } finally {
                 setLoadingOrders(false);
@@ -247,47 +245,6 @@ function WaiterApp({ user, onLogout }) {
                     err?.response?.data?.error ||
                     err?.message ||
                     "Failed to merge orders for this table.";
-                setFeedback({
-                    kind: "error",
-                    message: msg,
-                });
-            } finally {
-                try {
-                    await loadTables();
-                } catch {
-                    // ignore refresh failures
-                }
-                setTableActionBusy(false);
-            }
-        },
-        [loadTables]
-    );
-
-    const handleCloseOrders = useCallback(
-        async (table) => {
-            if (!table || !table.id) return;
-            setTableActionBusy(true);
-            setFeedback(null);
-            try {
-                const result = await closeTableOrders(table.id);
-                const closedCount =
-                    Number(result?.closedCount) ||
-                    (Array.isArray(result?.closedOrderIds) ? result.closedOrderIds.length : 0);
-                const message =
-                    closedCount > 0
-                        ? `Closed ${closedCount} open ${
-                              closedCount === 1 ? "order" : "orders"
-                          } for ${table.name || `Table ${table.id}`}.`
-                        : "No open orders to close for this table.";
-                setFeedback({
-                    kind: "success",
-                    message,
-                });
-            } catch (err) {
-                const msg =
-                    err?.response?.data?.error ||
-                    err?.message ||
-                    "Failed to close orders for this table.";
                 setFeedback({
                     kind: "error",
                     message: msg,
@@ -342,6 +299,13 @@ function WaiterApp({ user, onLogout }) {
         setSelectedManageOrder(null);
         loadOrders(ordersFilter);
     }, [handleMergeOrders, selectedManageOrder, loadOrders, ordersFilter]);
+
+    const handleMergeCurrentTable = useCallback(async () => {
+        if (detailsTableId == null || !detailsTable) return;
+        await handleMergeOrders(detailsTable);
+        setSelectedManageOrder(null);
+        loadOrders(ordersFilter);
+    }, [detailsTableId, detailsTable, handleMergeOrders, loadOrders, ordersFilter]);
 
     const handleOpenSplitOrder = useCallback(() => {
         if (!selectedManageOrder) return;
@@ -493,6 +457,12 @@ function WaiterApp({ user, onLogout }) {
     }, [loadTables]);
 
     useEffect(() => {
+        if (!feedback) return undefined;
+        const timer = setTimeout(() => setFeedback(null), 3500);
+        return () => clearTimeout(timer);
+    }, [feedback]);
+
+    useEffect(() => {
         if (step === "items" && menuItems.length === 0 && !loadingMenu) {
             loadMenu();
         }
@@ -502,6 +472,16 @@ function WaiterApp({ user, onLogout }) {
         if (!ordersOverlayOpen) return;
         loadOrders(ordersFilter);
     }, [ordersOverlayOpen, ordersFilter, loadOrders]);
+
+    useEffect(() => {
+        if (detailsTableId == null) return;
+        setSelectedManageOrder((prev) => {
+            if (prev && waiterOrders.some((order) => order.id === prev.id)) {
+                return waiterOrders.find((order) => order.id === prev.id);
+            }
+            return waiterOrders[0] || null;
+        });
+    }, [detailsTableId, waiterOrders]);
 
     const setStep = useCallback(
         (next) => {
@@ -595,7 +575,6 @@ function WaiterApp({ user, onLogout }) {
     const submitOrder = useCallback(async () => {
         if (!selectedTable || orderItems.length === 0) return;
         setSubmitting(true);
-        setSubmitError("");
         setFeedback(null);
         try {
             const payload = {
@@ -620,7 +599,6 @@ function WaiterApp({ user, onLogout }) {
                 err?.response?.data?.error ||
                 err?.message ||
                 "Could not submit the order. Please retry.";
-            setSubmitError(msg);
             setFeedback({
                 kind: "error",
                 message: msg,
@@ -768,11 +746,17 @@ function WaiterApp({ user, onLogout }) {
                     </div>
                 ) : null}
 
-                {ordersOverlayOpen ? (
+                {detailsTableId != null ? (
+                    <WaiterTableDetails
+                        orders={waiterOrders}
+                        loading={loadingOrders}
+                        selectedOrderId={selectedManageOrder?.id ?? null}
+                        onSelectOrder={setSelectedManageOrder}
+                    />
+                ) : manageOrdersOpen ? (
                     <WaiterOrdersScreen
                         orders={waiterOrders}
                         loading={loadingOrders}
-                        error={ordersError}
                         filter={ordersFilter}
                         onChangeFilter={handleOrdersFilterChange}
                         onReprint={handleReprintExistingOrder}
@@ -789,7 +773,6 @@ function WaiterApp({ user, onLogout }) {
                                 selectedTableId={selectedTableId}
                                 onSelectTable={handleSelectTable}
                                 loading={loadingTables}
-                                error={tablesError}
                             />
                         ) : null}
 
@@ -797,7 +780,6 @@ function WaiterApp({ user, onLogout }) {
                             <WaiterMenu
                                 items={menuItems}
                                 loading={loadingMenu}
-                                error={menuError}
                                 search={searchText}
                                 onSearchChange={setSearchText}
                                 categories={categories}
@@ -816,7 +798,6 @@ function WaiterApp({ user, onLogout }) {
                                 selectedItemId={selectedItemId}
                                 onSelectItem={selectItem}
                                 submitting={submitting}
-                                error={submitError}
                             />
                         ) : null}
                     </>
@@ -838,25 +819,31 @@ function WaiterApp({ user, onLogout }) {
                     <WaiterOrdersControls
                         selectedOrder={selectedManageOrder}
                         onRefresh={handleOrdersRefresh}
-                        onMerge={handleMergeSelectedOrder}
+                        onMerge={detailsTableId != null ? handleMergeCurrentTable : handleMergeSelectedOrder}
                         onSplit={handleOpenSplitOrder}
                         onClose={handleCloseSelectedOrder}
                         onTogglePriority={handleTogglePriority}
                         mergeBusy={tableActionBusy}
                         orderBusy={orderActionBusyId === selectedManageOrder?.id}
                         refreshing={loadingOrders}
+                        canMerge={detailsTableId != null ? waiterOrders.length > 0 : undefined}
                     />
                 ) : null}
 
                 <WaiterNav
                     step={step}
+                    isDetailsPay={isDetailsPay}
                     canGoBack={canGoBack}
                     canGoForward={canGoForward}
                     onBack={goBack}
-                    onForward={goForward}
+                    onForward={isDetailsPay ? handleCloseSelectedOrder : goForward}
                     onHome={goHome}
                     onManageOrders={handleManageOrders}
-                    disableForward={ordersOverlayOpen || (step === "summary" && submitting) || tableActionBusy}
+                    disableForward={
+                        isDetailsPay
+                            ? paySelectedDisabled
+                            : ordersOverlayOpen || (step === "summary" && submitting) || tableActionBusy
+                    }
                 />
             </div>
 

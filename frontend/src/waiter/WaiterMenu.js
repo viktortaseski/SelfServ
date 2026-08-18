@@ -49,7 +49,6 @@ function itemCategoryName(item) {
 function WaiterMenu({
     items = [],
     loading,
-    error,
     search,
     onSearchChange,
     categories = [],
@@ -139,8 +138,6 @@ function WaiterMenu({
                     ))}
                 </div>
             </div>
-
-            {error ? <div className="waiter-error">{error}</div> : null}
 
             <div className="waiter-tile-grid">
                 {loading && items.length === 0 ? (

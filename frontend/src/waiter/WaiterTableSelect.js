@@ -1,10 +1,8 @@
 import { formatTableLabel } from "./tableLabel";
 
-function WaiterTableSelect({ tables = [], selectedTableId, onSelectTable, loading, error }) {
+function WaiterTableSelect({ tables = [], selectedTableId, onSelectTable, loading }) {
     return (
         <section className="waiter-section">
-            {error ? <div className="waiter-error">{error}</div> : null}
-
             <div className="waiter-table-list">
                 {loading && tables.length === 0 ? (
                     <div className="waiter-placeholder">Loading tables…</div>

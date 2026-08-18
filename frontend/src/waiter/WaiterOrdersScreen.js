@@ -29,7 +29,6 @@ function formatDate(value) {
 function WaiterOrdersScreen({
     orders = [],
     loading,
-    error,
     filter,
     onChangeFilter,
     onReprint,
@@ -54,8 +53,6 @@ function WaiterOrdersScreen({
                     </button>
                 ))}
             </div>
-
-            {error ? <div className="waiter-error">{error}</div> : null}
             {loading && !hasOrders ? <div className="waiter-placeholder">Loading orders…</div> : null}
             {!loading && !hasOrders ? (
                 <div className="waiter-placeholder">No orders match the selected filters.</div>
@@ -72,7 +69,7 @@ function WaiterOrdersScreen({
                             key={order.id}
                             className={`waiter-order-card ${
                                 isExpanded ? "waiter-order-card--selected" : ""
-                            }`}
+                            } ${order.priority ? "waiter-order-card--priority" : ""}`}
                         >
                             <div
                                 className="waiter-order-card__header"

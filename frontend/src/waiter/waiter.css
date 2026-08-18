@@ -49,15 +49,6 @@
     cursor: not-allowed;
 }
 
-.waiter-error {
-    background: #ffe8e8;
-    color: #9f1c1c;
-    border: 1px solid #f1bcbc;
-    padding: 10px 12px;
-    border-radius: 4px;
-    margin-bottom: 8px;
-}
-
 .waiter-placeholder {
     text-align: center;
     color: #607086;
@@ -65,10 +56,18 @@
 }
 
 .waiter-feedback {
-    margin-bottom: 8px;
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    max-width: calc(100vw - 32px);
     padding: 10px 14px;
-    border-radius: 4px;
+    border-radius: 6px;
     font-weight: 500;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    animation: waiter-feedback-fade 3.5s ease forwards;
+    pointer-events: none;
 }
 
 .waiter-feedback--success {
@@ -81,6 +80,25 @@
     background: #ffe8e8;
     color: #9f1c1c;
     border: 1px solid #f1bcbc;
+}
+
+@keyframes waiter-feedback-fade {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-6px);
+    }
+    8% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    82% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-6px);
+    }
 }
 
 
@@ -278,6 +296,37 @@
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
+.waiter-table-details__receipt {
+    border: 1px solid #d7deea;
+    border-radius: 4px;
+    padding: 12px;
+    background: #ffffff;
+}
+
+.waiter-table-details__notice {
+    margin-bottom: 8px;
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-weight: 500;
+    background: #ffe8e8;
+    color: #9f1c1c;
+    border: 1px solid #f1bcbc;
+}
+
+.waiter-table-details__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.waiter-table-details__grand-total {
+    margin-top: 8px;
+    text-align: right;
+    font-size: 13px;
+    color: #607086;
+}
+
 .waiter-receipt__item {
     padding: 8px 6px;
     margin: 0 -6px;
@@ -414,6 +463,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.waiter-quickbar__stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+}
+
+.waiter-quickbar__btn--compact {
+    height: 26px;
+    min-width: 44px;
+    padding: 0 8px;
+    font-size: 11px;
 }
 
 .waiter-quickbar__btn--note {
@@ -645,6 +708,16 @@
     padding: 9px;
 }
 
+.waiter-order-card--priority {
+    background: #fdf1f0;
+    border-color: #e8b2ac;
+}
+
+.waiter-order-card--priority.waiter-order-card--selected {
+    background: #fbe4e2;
+    border-color: #d97b72;
+}
+
 .waiter-order-card__header {
     display: flex;
     justify-content: space-between;
@@ -676,7 +749,7 @@
     height: 18px;
     margin-right: 6px;
     border-radius: 50%;
-    background: #b5820a;
+    background: #c0453b;
     color: #fff;
     font-size: 12px;
     font-weight: 800;

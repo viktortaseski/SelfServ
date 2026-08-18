@@ -1,5 +1,6 @@
 function WaiterNav({
   step,
+  isDetailsPay,
   canGoBack,
   canGoForward,
   onBack,
@@ -8,7 +9,7 @@ function WaiterNav({
   onManageOrders,
   disableForward,
 }) {
-  const forwardLabel = step === "summary" ? "Submit" : "Next";
+  const forwardLabel = isDetailsPay ? "Pay" : step === "summary" ? "Submit" : "Next";
 
   return (
     <nav className="waiter-nav">

@@ -978,6 +978,15 @@ router.post("/waiter/:orderId/split", requireRoles(["admin", "staff"]), async (r
             return res.status(400).json({ error: "Only open orders can be split" });
         }
 
+        const itemCountRes = await client.query(
+            "SELECT COUNT(*)::int AS count FROM order_items WHERE order_id = $1",
+            [orderId]
+        );
+        if (itemCountRes.rows[0].count < 2) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({ error: "Order needs at least 2 items to split" });
+        }
+
         const itemIds = [...requestedSplits.keys()];
         const itemsRes = await client.query(
             `
