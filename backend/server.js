@@ -18,13 +18,27 @@ const app = express();
 
 app.set("trust proxy", 1);
 
+const allowedOrigins = [
+    "https://selfservscaled.onrender.com",
+    "http://localhost:3000",
+    "http://localhost:3001",
+    ...(process.env.CORS_ORIGINS || "")
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean),
+];
+
 app.use(
     cors({
-        origin: [
-            "https://selfservscaled.onrender.com",
-            "http://localhost:3000",
-            "http://localhost:3001",
-        ],
+        origin: (origin, callback) => {
+            // Allow non-browser requests (curl, server-to-server) with no origin
+            if (!origin) return callback(null, true);
+            // Allow explicit allowlist and any Vercel deployment (prod + previews)
+            if (allowedOrigins.includes(origin) || /\.vercel\.app$/.test(new URL(origin).hostname)) {
+                return callback(null, true);
+            }
+            return callback(new Error(`Not allowed by CORS: ${origin}`));
+        },
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"],
         credentials: true,
