@@ -48,6 +48,11 @@ app.use(
 // Allow larger JSON bodies for image uploads (base64)
 app.use(bodyParser.json({ limit: '10mb' }));
 
+// Lightweight health check for uptime pingers (keeps the host awake without touching the DB)
+app.get(["/health", "/api/health"], (req, res) => {
+    res.status(200).json({ status: "ok", uptime: process.uptime() });
+});
+
 // Serve uploaded files (e.g., menu item images)
 const uploadsDir = path.resolve(__dirname, "uploads");
 app.use("/uploads", express.static(uploadsDir));
